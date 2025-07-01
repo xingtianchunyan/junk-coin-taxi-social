@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, Plus, Users, Clock } from 'lucide-react';
+import { Car, Plus, Users, Clock, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
@@ -141,6 +141,13 @@ const Index = () => {
           <div className="flex items-center justify-center gap-3 mb-4">
             <Car className="h-8 w-8 text-green-600" />
             <h1 className="text-4xl font-bold text-gray-800">垃圾币打车</h1>
+            <Link 
+              to="/admin" 
+              className="ml-4 p-2 text-gray-500 hover:text-gray-700 transition-colors"
+              title="管理后台"
+            >
+              <Shield className="h-5 w-5" />
+            </Link>
           </div>
           <p className="text-gray-600 text-lg">用加密货币支付的便民用车服务</p>
         </div>
