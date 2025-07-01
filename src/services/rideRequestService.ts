@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination } from '@/types/RideRequest';
 
@@ -232,6 +233,9 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      type: item.type as PaymentMethod['type'],
+      is_active: item.is_active ?? true,
+      description: item.description ?? undefined,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -246,6 +250,9 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      type: item.type as PaymentMethod['type'],
+      is_active: item.is_active ?? true,
+      description: item.description ?? undefined,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -264,6 +271,9 @@ export class RideRequestService {
 
     return {
       ...data,
+      type: data.type as PaymentMethod['type'],
+      is_active: data.is_active ?? true,
+      description: data.description ?? undefined,
       created_at: new Date(data.created_at)
     };
   }
@@ -298,6 +308,8 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      exchange: item.exchange as SupportedCoin['exchange'],
+      is_active: item.is_active ?? true,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -312,6 +324,8 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      exchange: item.exchange as SupportedCoin['exchange'],
+      is_active: item.is_active ?? true,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -330,6 +344,8 @@ export class RideRequestService {
 
     return {
       ...data,
+      exchange: data.exchange as SupportedCoin['exchange'],
+      is_active: data.is_active ?? true,
       created_at: new Date(data.created_at)
     };
   }
@@ -355,6 +371,8 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      is_active: item.is_active ?? true,
+      description: item.description ?? undefined,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -369,6 +387,8 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      is_active: item.is_active ?? true,
+      description: item.description ?? undefined,
       created_at: new Date(item.created_at)
     })) || [];
   }
@@ -387,6 +407,8 @@ export class RideRequestService {
 
     return {
       ...data,
+      is_active: data.is_active ?? true,
+      description: data.description ?? undefined,
       created_at: new Date(data.created_at)
     };
   }
