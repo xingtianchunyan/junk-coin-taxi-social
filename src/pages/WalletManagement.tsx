@@ -1,25 +1,35 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, Plus, Edit, Trash2, Copy, QrCode } from 'lucide-react';
+import { Wallet, Plus, Edit, Trash2, Copy, QrCode, CreditCard, Coins, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { WalletAddress } from '@/types/RideRequest';
+import { WalletAddress, PresetDestination } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
+import PaymentMethodManager from '@/components/PaymentMethodManager';
 
 const WalletManagement = () => {
   const [wallets, setWallets] = useState<WalletAddress[]>([]);
+  const [destinations, setDestinations] = useState<PresetDestination[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const [showDestinations, setShowDestinations] = useState(false);
+  const [showAddDestination, setShowAddDestination] = useState(false);
   const [editingWallet, setEditingWallet] = useState<WalletAddress | null>(null);
+  const [editingDestination, setEditingDestination] = useState<PresetDestination | null>(null);
   const [formData, setFormData] = useState({
     chain_name: '',
     symbol: '',
     address: '',
     qr_code_url: ''
+  });
+  const [destinationFormData, setDestinationFormData] = useState({
+    name: '',
+    address: '',
+    description: ''
   });
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,7 +39,7 @@ const WalletManagement = () => {
     const adminToken = localStorage.getItem('adminToken');
     if (adminToken) {
       setIsAuthenticated(true);
-      loadWallets();
+      loadData();
     } else {
       setLoading(false);
     }
@@ -39,7 +49,7 @@ const WalletManagement = () => {
     if (adminPassword === 'admin123') {
       localStorage.setItem('adminToken', 'authenticated');
       setIsAuthenticated(true);
-      loadWallets();
+      loadData();
       toast({
         title: "登录成功",
         description: "欢迎进入钱包管理",
@@ -53,16 +63,20 @@ const WalletManagement = () => {
     }
   };
 
-  const loadWallets = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await rideRequestService.getAllWalletAddresses();
-      setWallets(data);
+      const [walletsData, destinationsData] = await Promise.all([
+        rideRequestService.getAllWalletAddresses(),
+        rideRequestService.getAllPresetDestinations()
+      ]);
+      setWallets(walletsData);
+      setDestinations(destinationsData);
     } catch (error) {
-      console.error('加载钱包地址失败:', error);
+      console.error('加载数据失败:', error);
       toast({
         title: "加载失败",
-        description: "无法加载钱包地址",
+        description: "无法加载数据",
         variant: "destructive",
       });
     } finally {
@@ -89,7 +103,7 @@ const WalletManagement = () => {
       setFormData({ chain_name: '', symbol: '', address: '', qr_code_url: '' });
       setShowAddForm(false);
       setEditingWallet(null);
-      loadWallets();
+      loadData();
     } catch (error) {
       console.error('操作失败:', error);
       toast({
@@ -118,7 +132,7 @@ const WalletManagement = () => {
         title: "状态已更新",
         description: `钱包地址已${!isActive ? '启用' : '禁用'}`,
       });
-      loadWallets();
+      loadData();
     } catch (error) {
       console.error('更新状态失败:', error);
       toast({
@@ -135,6 +149,64 @@ const WalletManagement = () => {
       title: "已复制",
       description: "地址已复制到剪贴板",
     });
+  };
+
+  const handleDestinationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingDestination) {
+        await rideRequestService.updatePresetDestination(editingDestination.id, destinationFormData);
+        toast({
+          title: "更新成功",
+          description: "预设目的地已更新",
+        });
+      } else {
+        await rideRequestService.createPresetDestination(destinationFormData);
+        toast({
+          title: "添加成功",
+          description: "新预设目的地已添加",
+        });
+      }
+      setDestinationFormData({ name: '', address: '', description: '' });
+      setShowAddDestination(false);
+      setEditingDestination(null);
+      loadData();
+    } catch (error) {
+      console.error('操作失败:', error);
+      toast({
+        title: "操作失败",
+        description: "无法保存预设目的地",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditDestination = (destination: PresetDestination) => {
+    setEditingDestination(destination);
+    setDestinationFormData({
+      name: destination.name,
+      address: destination.address,
+      description: destination.description || ''
+    });
+    setShowAddDestination(true);
+  };
+
+  const handleToggleDestination = async (id: string, isActive: boolean) => {
+    try {
+      await rideRequestService.togglePresetDestination(id, !isActive);
+      toast({
+        title: "状态已更新",
+        description: `预设目的地已${!isActive ? '启用' : '禁用'}`,
+      });
+      loadData();
+    } catch (error) {
+      console.error('更新状态失败:', error);
+      toast({
+        title: "更新失败",
+        description: "无法更新预设目的地状态",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!isAuthenticated) {
@@ -172,7 +244,17 @@ const WalletManagement = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <Wallet className="h-12 w-12 text-slate-600 mx-auto mb-4 animate-spin" />
-          <p className="text-slate-600">加载钱包数据中...</p>
+          <p className="text-slate-600">加载数据中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showPaymentMethods) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <PaymentMethodManager onClose={() => setShowPaymentMethods(false)} />
         </div>
       </div>
     );
@@ -186,19 +268,172 @@ const WalletManagement = () => {
             <Wallet className="h-8 w-8 text-slate-600" />
             <h1 className="text-3xl font-bold text-slate-800">钱包地址管理</h1>
           </div>
-          <Button
-            onClick={() => {
-              setShowAddForm(!showAddForm);
-              if (!showAddForm) {
-                setEditingWallet(null);
-                setFormData({ chain_name: '', symbol: '', address: '', qr_code_url: '' });
-              }
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {showAddForm ? '取消' : '添加钱包'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowPaymentMethods(true)}
+              variant="outline"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              添加支付途径
+            </Button>
+            <Button
+              onClick={() => setShowDestinations(!showDestinations)}
+              variant="outline"
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              {showDestinations ? '隐藏目的地' : '管理目的地'}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                if (!showAddForm) {
+                  setEditingWallet(null);
+                  setFormData({ chain_name: '', symbol: '', address: '', qr_code_url: '' });
+                }
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {showAddForm ? '取消' : '添加钱包'}
+            </Button>
+          </div>
         </div>
+
+        {showDestinations && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  预设目的地管理
+                </CardTitle>
+                <Button
+                  onClick={() => {
+                    setShowAddDestination(!showAddDestination);
+                    if (!showAddDestination) {
+                      setEditingDestination(null);
+                      setDestinationFormData({ name: '', address: '', description: '' });
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {showAddDestination ? '取消' : '添加目的地'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {showAddDestination && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{editingDestination ? '编辑' : '添加'}预设目的地</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleDestinationSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">名称</label>
+                          <Input
+                            value={destinationFormData.name}
+                            onChange={(e) => setDestinationFormData({...destinationFormData, name: e.target.value})}
+                            placeholder="例如: 主校区"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">地址</label>
+                          <Input
+                            value={destinationFormData.address}
+                            onChange={(e) => setDestinationFormData({...destinationFormData, address: e.target.value})}
+                            placeholder="详细地址"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">描述 (可选)</label>
+                        <Input
+                          value={destinationFormData.description}
+                          onChange={(e) => setDestinationFormData({...destinationFormData, description: e.target.value})}
+                          placeholder="目的地描述"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="submit">
+                          {editingDestination ? '更新' : '添加'}
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowAddDestination(false);
+                            setEditingDestination(null);
+                          }}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {destinations.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>名称</TableHead>
+                      <TableHead>地址</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {destinations.map((destination) => (
+                      <TableRow key={destination.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{destination.name}</div>
+                            {destination.description && (
+                              <div className="text-sm text-gray-500">{destination.description}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{destination.address}</TableCell>
+                        <TableCell>
+                          <Badge variant={destination.is_active ? "default" : "secondary"}>
+                            {destination.is_active ? '启用' : '禁用'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditDestination(destination)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleToggleDestination(destination.id, destination.is_active)}
+                            >
+                              {destination.is_active ? '禁用' : '启用'}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">还没有配置预设目的地</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {showAddForm && (
           <Card className="mb-8">

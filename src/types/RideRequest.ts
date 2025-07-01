@@ -40,3 +40,31 @@ export interface Payment {
   created_at: Date;
   confirmed_at?: Date;
 }
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: 'exchange_uid' | 'wallet_address' | 'other';
+  identifier: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface SupportedCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  exchange: 'binance' | 'okx' | 'manual';
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface PresetDestination {
+  id: string;
+  name: string;
+  address: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+}

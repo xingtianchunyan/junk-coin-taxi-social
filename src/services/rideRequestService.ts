@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { RideRequest, WalletAddress, Payment } from '@/types/RideRequest';
+import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination } from '@/types/RideRequest';
 
 export class RideRequestService {
   // 获取所有用车需求（只显示基本信息）
@@ -219,6 +218,195 @@ export class RideRequestService {
       pendingPayments: payments.filter(p => p.payment_status === 'pending').length,
       confirmedPayments: payments.filter(p => p.payment_status === 'confirmed').length,
     };
+  }
+
+  // 支付途径管理
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async getAllPaymentMethods(): Promise<PaymentMethod[]> {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async createPaymentMethod(methodData: Omit<PaymentMethod, 'id' | 'created_at' | 'is_active'>): Promise<PaymentMethod> {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .insert([{
+        ...methodData,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  async updatePaymentMethod(id: string, methodData: Partial<Omit<PaymentMethod, 'id' | 'created_at'>>): Promise<void> {
+    const { error } = await supabase
+      .from('payment_methods')
+      .update(methodData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async togglePaymentMethod(id: string, isActive: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('payment_methods')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 支持币种管理
+  async getSupportedCoins(): Promise<SupportedCoin[]> {
+    const { data, error } = await supabase
+      .from('supported_coins')
+      .select('*')
+      .eq('is_active', true)
+      .order('symbol', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async getAllSupportedCoins(): Promise<SupportedCoin[]> {
+    const { data, error } = await supabase
+      .from('supported_coins')
+      .select('*')
+      .order('symbol', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async createSupportedCoin(coinData: Omit<SupportedCoin, 'id' | 'created_at' | 'is_active'>): Promise<SupportedCoin> {
+    const { data, error } = await supabase
+      .from('supported_coins')
+      .insert([{
+        ...coinData,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  async toggleSupportedCoin(id: string, isActive: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('supported_coins')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 预设目的地管理
+  async getPresetDestinations(): Promise<PresetDestination[]> {
+    const { data, error } = await supabase
+      .from('preset_destinations')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async getAllPresetDestinations(): Promise<PresetDestination[]> {
+    const { data, error } = await supabase
+      .from('preset_destinations')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async createPresetDestination(destinationData: Omit<PresetDestination, 'id' | 'created_at' | 'is_active'>): Promise<PresetDestination> {
+    const { data, error } = await supabase
+      .from('preset_destinations')
+      .insert([{
+        ...destinationData,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  async updatePresetDestination(id: string, destinationData: Partial<Omit<PresetDestination, 'id' | 'created_at'>>): Promise<void> {
+    const { error } = await supabase
+      .from('preset_destinations')
+      .update(destinationData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async togglePresetDestination(id: string, isActive: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('preset_destinations')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
   }
 }
 

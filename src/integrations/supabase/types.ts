@@ -33,6 +33,36 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          identifier: string
+          is_active: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          identifier: string
+          is_active?: boolean | null
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          identifier?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -79,6 +109,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      preset_destinations: {
+        Row: {
+          address: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
       }
       ride_requests: {
         Row: {
@@ -134,6 +191,33 @@ export type Database = {
           start_location?: string
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      supported_coins: {
+        Row: {
+          created_at: string
+          exchange: string
+          id: string
+          is_active: boolean | null
+          name: string
+          symbol: string
+        }
+        Insert: {
+          created_at?: string
+          exchange: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          symbol: string
+        }
+        Update: {
+          created_at?: string
+          exchange?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          symbol?: string
         }
         Relationships: []
       }
