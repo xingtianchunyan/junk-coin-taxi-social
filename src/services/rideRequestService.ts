@@ -84,6 +84,25 @@ export class RideRequestService {
     if (error) throw error;
   }
 
+  // 更新支付状态
+  async updatePaymentStatus(id: string, paymentStatus: RideRequest['payment_status'], txHash?: string): Promise<void> {
+    const updateData: any = { 
+      payment_status: paymentStatus, 
+      updated_at: new Date().toISOString() 
+    };
+    
+    if (txHash) {
+      updateData.payment_tx_hash = txHash;
+    }
+
+    const { error } = await supabase
+      .from('ride_requests')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // 获取钱包地址
   async getWalletAddresses(): Promise<WalletAddress[]> {
     const { data, error } = await supabase
@@ -98,6 +117,60 @@ export class RideRequestService {
       ...item,
       created_at: new Date(item.created_at)
     })) || [];
+  }
+
+  // 获取所有钱包地址（包括禁用的）
+  async getAllWalletAddresses(): Promise<WalletAddress[]> {
+    const { data, error } = await supabase
+      .from('wallet_addresses')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  // 创建钱包地址
+  async createWalletAddress(walletData: Omit<WalletAddress, 'id' | 'created_at' | 'is_active'>): Promise<WalletAddress> {
+    const { data, error } = await supabase
+      .from('wallet_addresses')
+      .insert([{
+        ...walletData,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  // 更新钱包地址
+  async updateWalletAddress(id: string, walletData: Partial<Omit<WalletAddress, 'id' | 'created_at'>>): Promise<void> {
+    const { error } = await supabase
+      .from('wallet_addresses')
+      .update(walletData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 切换钱包地址状态
+  async toggleWalletAddress(id: string, isActive: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('wallet_addresses')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
   }
 
   // 创建支付记录
@@ -115,6 +188,36 @@ export class RideRequestService {
       status: (data.status as Payment['status']) || 'pending',
       created_at: new Date(data.created_at),
       confirmed_at: data.confirmed_at ? new Date(data.confirmed_at) : undefined
+    };
+  }
+
+  // 获取统计数据
+  async getStatistics(): Promise<{
+    totalRequests: number;
+    pendingRequests: number;
+    completedRequests: number;
+    totalPayments: number;
+    pendingPayments: number;
+    confirmedPayments: number;
+  }> {
+    const [requestsResult, paymentsResult] = await Promise.all([
+      supabase.from('ride_requests').select('status, payment_required'),
+      supabase.from('ride_requests').select('payment_status').eq('payment_required', true)
+    ]);
+
+    if (requestsResult.error) throw requestsResult.error;
+    if (paymentsResult.error) throw paymentsResult.error;
+
+    const requests = requestsResult.data || [];
+    const payments = paymentsResult.data || [];
+
+    return {
+      totalRequests: requests.length,
+      pendingRequests: requests.filter(r => r.status === 'pending').length,
+      completedRequests: requests.filter(r => r.status === 'completed').length,
+      totalPayments: payments.length,
+      pendingPayments: payments.filter(p => p.payment_status === 'pending').length,
+      confirmedPayments: payments.filter(p => p.payment_status === 'confirmed').length,
     };
   }
 }

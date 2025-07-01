@@ -1,17 +1,26 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, Wallet, Settings, CheckCircle, X, Eye } from 'lucide-react';
+import { Shield, Users, Wallet, Settings, CheckCircle, X, Eye, BarChart3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { RideRequest } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
+import PaymentStatusManager from '@/components/PaymentStatusManager';
 
 const Admin = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [statistics, setStatistics] = useState({
+    totalRequests: 0,
+    pendingRequests: 0,
+    completedRequests: 0,
+    totalPayments: 0,
+    pendingPayments: 0,
+    confirmedPayments: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -50,8 +59,12 @@ const Admin = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await rideRequestService.getAllRideRequests();
-      setRequests(data);
+      const [requestsData, statsData] = await Promise.all([
+        rideRequestService.getAllRideRequests(),
+        rideRequestService.getStatistics()
+      ]);
+      setRequests(requestsData);
+      setStatistics(statsData);
     } catch (error) {
       console.error('加载数据失败:', error);
       toast({
@@ -72,6 +85,9 @@ const Admin = () => {
         title: "状态已更新",
         description: `需求状态已更新为${status === 'confirmed' ? '已确认' : '已完成'}`,
       });
+      // 重新加载统计数据
+      const statsData = await rideRequestService.getStatistics();
+      setStatistics(statsData);
     } catch (error) {
       console.error('更新状态失败:', error);
       toast({
@@ -80,6 +96,12 @@ const Admin = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handlePaymentStatusUpdate = (id: string, paymentStatus: RideRequest['payment_status']) => {
+    setRequests(prev => prev.map(req => req.id === id ? { ...req, payment_status: paymentStatus } : req));
+    // 重新加载统计数据
+    rideRequestService.getStatistics().then(setStatistics);
   };
 
   const handleLogout = () => {
@@ -141,19 +163,39 @@ const Admin = () => {
             <Shield className="h-8 w-8 text-slate-600" />
             <h1 className="text-3xl font-bold text-slate-800">管理后台</h1>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            退出登录
-          </Button>
+          <div className="flex gap-2">
+            <Link to="/wallet-management">
+              <Button variant="outline">
+                <Wallet className="h-4 w-4 mr-2" />
+                钱包管理
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={handleLogout}>
+              退出登录
+            </Button>
+          </div>
         </div>
 
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">总需求</p>
+                  <p className="text-2xl font-bold text-blue-600">{statistics.totalRequests}</p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">待处理</p>
-                  <p className="text-2xl font-bold text-orange-600">{pendingRequests.length}</p>
+                  <p className="text-2xl font-bold text-orange-600">{statistics.pendingRequests}</p>
                 </div>
                 <Eye className="h-8 w-8 text-orange-200" />
               </div>
@@ -164,20 +206,8 @@ const Admin = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">已确认</p>
-                  <p className="text-2xl font-bold text-blue-600">{confirmedRequests.length}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm text-gray-600">已完成</p>
-                  <p className="text-2xl font-bold text-green-600">{completedRequests.length}</p>
+                  <p className="text-2xl font-bold text-green-600">{statistics.completedRequests}</p>
                 </div>
                 <Users className="h-8 w-8 text-green-200" />
               </div>
@@ -189,9 +219,33 @@ const Admin = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">需付费</p>
-                  <p className="text-2xl font-bold text-purple-600">{paymentRequests.length}</p>
+                  <p className="text-2xl font-bold text-purple-600">{statistics.totalPayments}</p>
                 </div>
                 <Wallet className="h-8 w-8 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">待付款</p>
+                  <p className="text-2xl font-bold text-yellow-600">{statistics.pendingPayments}</p>
+                </div>
+                <Settings className="h-8 w-8 text-yellow-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">已支付</p>
+                  <p className="text-2xl font-bold text-emerald-600">{statistics.confirmedPayments}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-emerald-200" />
               </div>
             </CardContent>
           </Card>
@@ -249,6 +303,12 @@ const Admin = () => {
                       </Button>
                     </div>
                   </div>
+                  {request.payment_required && (
+                    <PaymentStatusManager 
+                      request={request}
+                      onStatusUpdate={handlePaymentStatusUpdate}
+                    />
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -262,6 +322,7 @@ const Admin = () => {
             )}
           </TabsContent>
 
+          
           <TabsContent value="confirmed" className="space-y-4">
             {confirmedRequests.map((request) => (
               <Card key={request.id}>
@@ -288,6 +349,12 @@ const Admin = () => {
                       完成
                     </Button>
                   </div>
+                  {request.payment_required && (
+                    <PaymentStatusManager 
+                      request={request}
+                      onStatusUpdate={handlePaymentStatusUpdate}
+                    />
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -319,6 +386,12 @@ const Admin = () => {
                       </p>
                     </div>
                   </div>
+                  {request.payment_required && (
+                    <PaymentStatusManager 
+                      request={request}
+                      onStatusUpdate={handlePaymentStatusUpdate}
+                    />
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -366,6 +439,10 @@ const Admin = () => {
                       )}
                     </div>
                   </div>
+                  <PaymentStatusManager 
+                    request={request}
+                    onStatusUpdate={handlePaymentStatusUpdate}
+                  />
                 </CardContent>
               </Card>
             ))}
