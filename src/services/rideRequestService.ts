@@ -14,6 +14,8 @@ export class RideRequestService {
     
     return data?.map(item => ({
       ...item,
+      status: (item.status as RideRequest['status']) || 'pending',
+      payment_status: (item.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(item.requested_time),
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at)
@@ -37,6 +39,8 @@ export class RideRequestService {
 
     const request: RideRequest = {
       ...data,
+      status: (data.status as RideRequest['status']) || 'pending',
+      payment_status: (data.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
       updated_at: new Date(data.updated_at)
@@ -51,7 +55,7 @@ export class RideRequestService {
       .from('ride_requests')
       .select('*')
       .eq('access_code', accessCode)
-      .单条();
+      .single();
 
     if (error) {
       console.error('Error fetching ride request:', error);
@@ -62,6 +66,8 @@ export class RideRequestService {
 
     return {
       ...data,
+      status: (data.status as RideRequest['status']) || 'pending',
+      payment_status: (data.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
       updated_at: new Date(data.updated_at)
@@ -106,6 +112,7 @@ export class RideRequestService {
 
     return {
       ...data,
+      status: (data.status as Payment['status']) || 'pending',
       created_at: new Date(data.created_at),
       confirmed_at: data.confirmed_at ? new Date(data.confirmed_at) : undefined
     };
