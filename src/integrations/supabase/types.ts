@@ -9,7 +9,164 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          password_hash: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          password_hash: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          password_hash?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          payment_method: string
+          ride_request_id: string | null
+          status: string | null
+          transaction_hash: string | null
+          wallet_address: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          created_at?: string | null
+          currency: string
+          id?: string
+          payment_method: string
+          ride_request_id?: string | null
+          status?: string | null
+          transaction_hash?: string | null
+          wallet_address: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          payment_method?: string
+          ride_request_id?: string | null
+          status?: string | null
+          transaction_hash?: string | null
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_ride_request_id_fkey"
+            columns: ["ride_request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_requests: {
+        Row: {
+          access_code: string
+          contact_info: string | null
+          created_at: string | null
+          end_location: string
+          friend_name: string
+          id: string
+          notes: string | null
+          payment_amount: number | null
+          payment_currency: string | null
+          payment_required: boolean | null
+          payment_status: string | null
+          payment_tx_hash: string | null
+          requested_time: string
+          start_location: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_code?: string
+          contact_info?: string | null
+          created_at?: string | null
+          end_location: string
+          friend_name: string
+          id?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_currency?: string | null
+          payment_required?: boolean | null
+          payment_status?: string | null
+          payment_tx_hash?: string | null
+          requested_time: string
+          start_location: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_code?: string
+          contact_info?: string | null
+          created_at?: string | null
+          end_location?: string
+          friend_name?: string
+          id?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_currency?: string | null
+          payment_required?: boolean | null
+          payment_status?: string | null
+          payment_tx_hash?: string | null
+          requested_time?: string
+          start_location?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      wallet_addresses: {
+        Row: {
+          address: string
+          chain_name: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          qr_code_url: string | null
+          symbol: string
+        }
+        Insert: {
+          address: string
+          chain_name: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          qr_code_url?: string | null
+          symbol: string
+        }
+        Update: {
+          address?: string
+          chain_name?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          qr_code_url?: string | null
+          symbol?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

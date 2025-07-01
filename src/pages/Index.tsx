@@ -1,63 +1,155 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Car, Plus, Users, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
+import AccessControl from '@/components/AccessControl';
 import { RideRequest } from '@/types/RideRequest';
+import { rideRequestService } from '@/services/rideRequestService';
+
 const Index = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [accessLevel, setAccessLevel] = useState<'public' | 'private' | 'admin'>('public');
+  const [accessCode, setAccessCode] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // 加载本地存储的数据
+  // 加载用车需求数据
   useEffect(() => {
-    const savedRequests = localStorage.getItem('rideRequests');
-    if (savedRequests) {
-      const parsed = JSON.parse(savedRequests);
-      setRequests(parsed.map((req: any) => ({
-        ...req,
-        requestedTime: new Date(req.requestedTime),
-        createdAt: new Date(req.createdAt)
-      })));
-    }
+    loadRideRequests();
   }, []);
 
-  // 保存到本地存储
-  useEffect(() => {
-    localStorage.setItem('rideRequests', JSON.stringify(requests));
-  }, [requests]);
-  const addRequest = (requestData: Omit<RideRequest, 'id' | 'createdAt' | 'status'>) => {
-    const newRequest: RideRequest = {
-      ...requestData,
-      id: Date.now().toString(),
-      status: 'pending',
-      createdAt: new Date()
-    };
-    setRequests(prev => [newRequest, ...prev]);
-    setShowForm(false);
+  const loadRideRequests = async () => {
+    try {
+      setLoading(true);
+      const data = await rideRequestService.getAllRideRequests();
+      setRequests(data);
+    } catch (error) {
+      console.error('加载用车需求失败:', error);
+      toast({
+        title: "加载失败",
+        description: "无法加载用车需求，请刷新页面重试",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-  const completeRequest = (id: string) => {
-    setRequests(prev => prev.map(req => req.id === id ? {
-      ...req,
-      status: 'completed' as const
-    } : req));
-  };
-  const pendingRequests = requests.filter(req => req.status === 'pending');
-  const completedRequests = requests.filter(req => req.status === 'completed');
 
-  // 按时间排序
-  const sortedPendingRequests = [...pendingRequests].sort((a, b) => a.requestedTime.getTime() - b.requestedTime.getTime());
-  return <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white">
+  const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
+    try {
+      const { request, accessCode: newAccessCode } = await rideRequestService.createRideRequest(requestData);
+      setRequests(prev => [request, ...prev]);
+      setShowForm(false);
+      
+      // 显示访问码给用户
+      toast({
+        title: "用车需求已创建",
+        description: `您的访问码是: ${newAccessCode}`,
+        duration: 10000,
+      });
+      
+      // 可以选择自动切换到私密模式
+      setTimeout(() => {
+        if (confirm('是否要使用访问码查看完整信息？')) {
+          handleAccessChange('private', newAccessCode);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('创建用车需求失败:', error);
+      toast({
+        title: "创建失败",
+        description: "无法创建用车需求，请重试",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const completeRequest = async (id: string) => {
+    try {
+      await rideRequestService.updateRideRequestStatus(id, 'completed');
+      setRequests(prev => prev.map(req => req.id === id ? {
+        ...req,
+        status: 'completed' as const
+      } : req));
+      
+      toast({
+        title: "状态已更新",
+        description: "用车需求已标记为完成",
+      });
+    } catch (error) {
+      console.error('更新状态失败:', error);
+      toast({
+        title: "更新失败",
+        description: "无法更新状态，请重试",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAccessChange = (level: 'public' | 'private' | 'admin', code?: string) => {
+    setAccessLevel(level);
+    setAccessCode(code || '');
+  };
+
+  // 根据访问级别过滤和处理数据
+  const getFilteredRequests = () => {
+    if (accessLevel === 'admin') {
+      return requests; // 管理员可以看到所有信息
+    } else if (accessLevel === 'private' && accessCode) {
+      return requests; // 有访问码的用户可以看到所有信息
+    } else {
+      // 公开访问只显示时间和状态信息
+      return requests.map(req => ({
+        ...req,
+        friend_name: '***',
+        start_location: '***',
+        end_location: '***',
+        contact_info: '***',
+        notes: undefined
+      }));
+    }
+  };
+
+  const filteredRequests = getFilteredRequests();
+  const pendingRequests = filteredRequests.filter(req => req.status === 'pending');
+  const completedRequests = filteredRequests.filter(req => req.status === 'completed');
+  const sortedPendingRequests = [...pendingRequests].sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime());
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <Car className="h-12 w-12 text-green-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white">
       <div className="container mx-auto px-4 py-8">
         {/* 头部 */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Car className="h-8 w-8 text-green-600" />
-            <h1 className="text-4xl font-bold text-gray-800">用车管理</h1>
+            <h1 className="text-4xl font-bold text-gray-800">垃圾币打车</h1>
           </div>
-          <p className="text-gray-600 text-lg">轻松管理朋友们的用车需求，合理安排接送时间</p>
+          <p className="text-gray-600 text-lg">用加密货币支付的便民用车服务</p>
         </div>
+
+        {/* 访问控制 */}
+        <AccessControl 
+          onAccessChange={handleAccessChange}
+          currentLevel={accessLevel}
+        />
 
         {/* 统计卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -107,14 +199,17 @@ const Index = () => {
         </div>
 
         {/* 添加表单 */}
-        {showForm && <div className="flex justify-center mb-8">
+        {showForm && (
+          <div className="flex justify-center mb-8">
             <RideRequestForm onSubmit={addRequest} />
-          </div>}
+          </div>
+        )}
 
         {/* 用车需求列表 */}
         <div className="space-y-8">
           {/* 待处理的需求 */}
-          {sortedPendingRequests.length > 0 && <div>
+          {sortedPendingRequests.length > 0 && (
+            <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-2xl font-semibold text-gray-800">待处理需求</h2>
                 <Badge variant="outline" className="bg-orange-100 text-orange-700">
@@ -122,12 +217,21 @@ const Index = () => {
                 </Badge>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {sortedPendingRequests.map(request => <RideRequestCard key={request.id} request={request} onComplete={completeRequest} />)}
+                {sortedPendingRequests.map(request => (
+                  <RideRequestCard 
+                    key={request.id} 
+                    request={request} 
+                    onComplete={completeRequest}
+                    accessLevel={accessLevel}
+                  />
+                ))}
               </div>
-            </div>}
+            </div>
+          )}
 
           {/* 已完成的需求 */}
-          {completedRequests.length > 0 && <div>
+          {completedRequests.length > 0 && (
+            <div>
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-2xl font-semibold text-gray-800">已完成需求</h2>
                 <Badge variant="outline" className="bg-green-100 text-green-700">
@@ -135,21 +239,35 @@ const Index = () => {
                 </Badge>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {completedRequests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 4) // 只显示最近的4个已完成需求
-            .map(request => <RideRequestCard key={request.id} request={request} onComplete={completeRequest} />)}
+                {completedRequests
+                  .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+                  .slice(0, 4)
+                  .map(request => (
+                    <RideRequestCard 
+                      key={request.id} 
+                      request={request} 
+                      onComplete={completeRequest}
+                      accessLevel={accessLevel}
+                    />
+                  ))}
               </div>
-            </div>}
+            </div>
+          )}
 
           {/* 空状态 */}
-          {requests.length === 0 && <Card className="text-center py-12">
+          {requests.length === 0 && (
+            <Card className="text-center py-12">
               <CardContent>
                 <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">还没有用车需求</h3>
                 <p className="text-gray-500 mb-6">点击上方按钮添加第一个用车需求吧！</p>
               </CardContent>
-            </Card>}
+            </Card>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
