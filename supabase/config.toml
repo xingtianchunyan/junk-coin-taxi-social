@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.calculate-route-price]
 verify_jwt = false
+
+[functions.auto-generate-routes]
+verify_jwt = false

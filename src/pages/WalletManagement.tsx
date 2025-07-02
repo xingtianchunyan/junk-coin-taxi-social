@@ -4,20 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, Plus, Edit, Trash2, Copy, QrCode, CreditCard, Coins, MapPin } from 'lucide-react';
+import { Wallet, Plus, Edit, Trash2, Copy, QrCode, CreditCard, Coins, MapPin, Route } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { WalletAddress, PresetDestination } from '@/types/RideRequest';
+import { WalletAddress, PresetDestination, FixedRoute } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import PaymentMethodManager from '@/components/PaymentMethodManager';
 
 const WalletManagement = () => {
   const [wallets, setWallets] = useState<WalletAddress[]>([]);
   const [destinations, setDestinations] = useState<PresetDestination[]>([]);
+  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [showDestinations, setShowDestinations] = useState(false);
   const [showAddDestination, setShowAddDestination] = useState(false);
+  const [showFixedRoutes, setShowFixedRoutes] = useState(false);
   const [editingWallet, setEditingWallet] = useState<WalletAddress | null>(null);
   const [editingDestination, setEditingDestination] = useState<PresetDestination | null>(null);
   const [formData, setFormData] = useState({
@@ -66,12 +68,14 @@ const WalletManagement = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [walletsData, destinationsData] = await Promise.all([
+      const [walletsData, destinationsData, routesData] = await Promise.all([
         rideRequestService.getAllWalletAddresses(),
-        rideRequestService.getAllPresetDestinations()
+        rideRequestService.getAllPresetDestinations(),
+        rideRequestService.getAllFixedRoutes()
       ]);
       setWallets(walletsData);
       setDestinations(destinationsData);
+      setFixedRoutes(routesData);
     } catch (error) {
       console.error('加载数据失败:', error);
       toast({
@@ -161,11 +165,14 @@ const WalletManagement = () => {
           description: "预设目的地已更新",
         });
       } else {
-        await rideRequestService.createPresetDestination(destinationFormData);
+        const newDestination = await rideRequestService.createPresetDestination(destinationFormData);
         toast({
           title: "添加成功",
-          description: "新预设目的地已添加",
+          description: "新预设目的地已添加，正在自动生成固定路线...",
         });
+        
+        // 自动生成固定路线
+        await generateFixedRoutes(newDestination.name, newDestination.address);
       }
       setDestinationFormData({ name: '', address: '', description: '' });
       setShowAddDestination(false);
@@ -176,6 +183,39 @@ const WalletManagement = () => {
       toast({
         title: "操作失败",
         description: "无法保存预设目的地",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateFixedRoutes = async (destinationName: string, destinationAddress: string) => {
+    try {
+      const response = await fetch(`https://gwfuygmhcfmbzkewiuuv.supabase.co/functions/v1/auto-generate-routes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          destination_name: destinationName,
+          destination_address: destinationAddress
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "路线生成成功",
+          description: result.message,
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('自动生成路线失败:', error);
+      toast({
+        title: "路线生成失败",
+        description: "请稍后手动重试",
         variant: "destructive",
       });
     }
@@ -282,6 +322,13 @@ const WalletManagement = () => {
             >
               <MapPin className="h-4 w-4 mr-2" />
               {showDestinations ? '隐藏目的地' : '管理目的地'}
+            </Button>
+            <Button
+              onClick={() => setShowFixedRoutes(!showFixedRoutes)}
+              variant="outline"
+            >
+              <Route className="h-4 w-4 mr-2" />
+              {showFixedRoutes ? '隐藏路线' : '查看固定路线'}
             </Button>
             <Button
               onClick={() => {
@@ -429,6 +476,59 @@ const WalletManagement = () => {
                 <div className="text-center py-8">
                   <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">还没有配置预设目的地</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {showFixedRoutes && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Route className="h-5 w-5" />
+                自动生成的固定路线
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {fixedRoutes.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>路线名称</TableHead>
+                      <TableHead>起点→终点</TableHead>
+                      <TableHead>距离</TableHead>
+                      <TableHead>时长</TableHead>
+                      <TableHead>市场价</TableHead>
+                      <TableHead>我们的价格</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fixedRoutes.map((route) => (
+                      <TableRow key={route.id}>
+                        <TableCell className="font-medium">{route.name}</TableCell>
+                        <TableCell>{route.start_location} → {route.end_location}</TableCell>
+                        <TableCell>{route.distance_km ? `${route.distance_km}km` : '-'}</TableCell>
+                        <TableCell>{route.estimated_duration_minutes ? `${route.estimated_duration_minutes}分钟` : '-'}</TableCell>
+                        <TableCell>{route.market_price ? `¥${route.market_price}` : '-'}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {route.our_price ? `¥${route.our_price}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={route.is_active ? "default" : "secondary"}>
+                            {route.is_active ? '启用' : '禁用'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <Route className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">还没有自动生成的固定路线</p>
+                  <p className="text-sm text-gray-400 mt-2">添加预设目的地后会自动生成路线</p>
                 </div>
               )}
             </CardContent>

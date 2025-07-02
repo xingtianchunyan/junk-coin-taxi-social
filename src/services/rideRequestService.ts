@@ -413,6 +413,29 @@ export class RideRequestService {
     };
   }
 
+  // 自动生成固定路线
+  async generateFixedRoutesForDestination(destinationName: string, destinationAddress: string): Promise<void> {
+    const response = await fetch(`https://gwfuygmhcfmbzkewiuuv.supabase.co/functions/v1/auto-generate-routes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        destination_name: destinationName,
+        destination_address: destinationAddress
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('自动生成路线失败');
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || '自动生成路线失败');
+    }
+  }
+
   async updatePresetDestination(id: string, destinationData: Partial<Omit<PresetDestination, 'id' | 'created_at'>>): Promise<void> {
     const { error } = await supabase
       .from('preset_destinations')
