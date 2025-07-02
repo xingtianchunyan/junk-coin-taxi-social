@@ -24,7 +24,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
     notes: '',
     payment_required: false,
     payment_amount: 0,
-    payment_currency: 'USDT'
+    payment_currency: 'USDT',
+    sender_wallet_address: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,7 +38,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
       ...formData,
       requested_time: new Date(formData.requested_time),
       payment_amount: formData.payment_required ? formData.payment_amount : undefined,
-      payment_currency: formData.payment_required ? formData.payment_currency : undefined
+      payment_currency: formData.payment_required ? formData.payment_currency : undefined,
+      sender_wallet_address: formData.payment_required ? formData.sender_wallet_address : undefined
     });
 
     setFormData({
@@ -49,7 +51,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
       notes: '',
       payment_required: false,
       payment_amount: 0,
-      payment_currency: 'USDT'
+      payment_currency: 'USDT',
+      sender_wallet_address: ''
     });
   };
 
@@ -147,37 +150,52 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
             </div>
             
             {formData.payment_required && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payment_amount">支付金额</Label>
-                  <Input
-                    id="payment_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.payment_amount}
-                    onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_amount">支付金额</Label>
+                    <Input
+                      id="payment_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.payment_amount}
+                      onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_currency">支付币种</Label>
+                    <Select
+                      value={formData.payment_currency}
+                      onValueChange={(value) => handleInputChange('payment_currency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择币种" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USDT">USDT</SelectItem>
+                        <SelectItem value="BNB">BNB</SelectItem>
+                        <SelectItem value="ETH">ETH</SelectItem>
+                        <SelectItem value="MATIC">MATIC</SelectItem>
+                        <SelectItem value="TRX">TRX</SelectItem>
+                        <SelectItem value="BTC">BTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="payment_currency">支付币种</Label>
-                  <Select
-                    value={formData.payment_currency}
-                    onValueChange={(value) => handleInputChange('payment_currency', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择币种" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USDT">USDT</SelectItem>
-                      <SelectItem value="BNB">BNB</SelectItem>
-                      <SelectItem value="ETH">ETH</SelectItem>
-                      <SelectItem value="MATIC">MATIC</SelectItem>
-                      <SelectItem value="TRX">TRX</SelectItem>
-                      <SelectItem value="BTC">BTC</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="sender_wallet_address">您的钱包地址 (用于自动检测支付)</Label>
+                  <Input
+                    id="sender_wallet_address"
+                    value={formData.sender_wallet_address}
+                    onChange={(e) => handleInputChange('sender_wallet_address', e.target.value)}
+                    placeholder="输入您用于支付的钱包地址"
+                    className="font-mono text-xs"
+                  />
+                  <div className="text-xs text-gray-500">
+                    💡 提供钱包地址后，系统可自动检测您的付款交易
+                  </div>
                 </div>
               </div>
             )}

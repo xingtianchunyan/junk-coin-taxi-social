@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, Clock, AlertCircle, CreditCard } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, CreditCard, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RideRequest } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PaymentStatusManagerProps {
   request: RideRequest;
@@ -39,6 +40,51 @@ const PaymentStatusManager: React.FC<PaymentStatusManagerProps> = ({
       toast({
         title: "更新失败",
         description: "无法更新支付状态",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAutoDetectPayment = async () => {
+    if (!request.payment_required || !request.sender_wallet_address) {
+      toast({
+        title: "无法自动检测",
+        description: "需要钱包地址才能自动检测支付",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-detect-payment', {
+        body: { rideRequestId: request.id }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        onStatusUpdate(request.id, 'confirmed');
+        toast({
+          title: "检测成功",
+          description: `已找到匹配的支付交易: ${data.transaction.hash.substring(0, 10)}...`,
+        });
+      } else {
+        toast({
+          title: "未找到支付",
+          description: data.message || "未找到匹配的支付交易，请稍后重试或手动确认",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('自动检测支付失败:', error);
+      toast({
+        title: "检测失败",
+        description: "自动检测支付时出现错误，请稍后重试",
         variant: "destructive",
       });
     } finally {
@@ -106,7 +152,31 @@ const PaymentStatusManager: React.FC<PaymentStatusManagerProps> = ({
           />
         </div>
 
-        <div className="flex gap-2">
+        {/* 自动检测支付按钮 */}
+        {request.sender_wallet_address && (request.payment_status === 'unpaid' || request.payment_status === 'pending') && (
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <div className="font-medium text-blue-800">🔍 智能检测支付</div>
+                <div className="text-blue-600">系统可自动检测区块链交易记录</div>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleAutoDetectPayment}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Search className="h-4 w-4 mr-1" />
+                {loading ? '检测中...' : '自动检测'}
+              </Button>
+            </div>
+            <div className="text-xs text-blue-500 mt-2">
+              钱包地址: {request.sender_wallet_address.substring(0, 10)}...{request.sender_wallet_address.substring(request.sender_wallet_address.length - 8)}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 flex-wrap">
           {request.payment_status === 'unpaid' && (
             <Button
               size="sm"

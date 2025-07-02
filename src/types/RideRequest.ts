@@ -14,6 +14,7 @@ export interface RideRequest {
   payment_currency?: string;
   payment_status: 'unpaid' | 'pending' | 'confirmed' | 'failed';
   payment_tx_hash?: string;
+  sender_wallet_address?: string;
   created_at: Date;
   updated_at: Date;
 }

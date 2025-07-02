@@ -152,6 +152,7 @@ export type Database = {
           payment_status: string | null
           payment_tx_hash: string | null
           requested_time: string
+          sender_wallet_address: string | null
           start_location: string
           status: string | null
           updated_at: string | null
@@ -170,6 +171,7 @@ export type Database = {
           payment_status?: string | null
           payment_tx_hash?: string | null
           requested_time: string
+          sender_wallet_address?: string | null
           start_location: string
           status?: string | null
           updated_at?: string | null
@@ -188,6 +190,7 @@ export type Database = {
           payment_status?: string | null
           payment_tx_hash?: string | null
           requested_time?: string
+          sender_wallet_address?: string | null
           start_location?: string
           status?: string | null
           updated_at?: string | null
