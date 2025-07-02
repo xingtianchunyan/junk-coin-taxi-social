@@ -33,6 +33,51 @@ export type Database = {
         }
         Relationships: []
       }
+      fixed_routes: {
+        Row: {
+          created_at: string
+          currency: string | null
+          distance_km: number | null
+          end_location: string
+          estimated_duration_minutes: number | null
+          id: string
+          is_active: boolean | null
+          market_price: number | null
+          name: string
+          our_price: number | null
+          start_location: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          distance_km?: number | null
+          end_location: string
+          estimated_duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          market_price?: number | null
+          name: string
+          our_price?: number | null
+          start_location: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          distance_km?: number | null
+          end_location?: string
+          estimated_duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          market_price?: number | null
+          name?: string
+          our_price?: number | null
+          start_location?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_methods: {
         Row: {
           created_at: string
@@ -143,6 +188,7 @@ export type Database = {
           contact_info: string | null
           created_at: string | null
           end_location: string
+          fixed_route_id: string | null
           friend_name: string
           id: string
           notes: string | null
@@ -162,6 +208,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string | null
           end_location: string
+          fixed_route_id?: string | null
           friend_name: string
           id?: string
           notes?: string | null
@@ -181,6 +228,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string | null
           end_location?: string
+          fixed_route_id?: string | null
           friend_name?: string
           id?: string
           notes?: string | null
@@ -195,7 +243,15 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ride_requests_fixed_route_id_fkey"
+            columns: ["fixed_route_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supported_coins: {
         Row: {

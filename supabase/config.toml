@@ -32,3 +32,6 @@ s3_region = "us-east-1"
 
 [functions.auto-detect-payment]
 verify_jwt = false
+
+[functions.calculate-route-price]
+verify_jwt = false

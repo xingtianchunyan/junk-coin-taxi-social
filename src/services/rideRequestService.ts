@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination } from '@/types/RideRequest';
+import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination, FixedRoute } from '@/types/RideRequest';
 
 export class RideRequestService {
   // 获取所有用车需求（只显示基本信息）
@@ -425,6 +425,81 @@ export class RideRequestService {
   async togglePresetDestination(id: string, isActive: boolean): Promise<void> {
     const { error } = await supabase
       .from('preset_destinations')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 固定路线管理
+  async getFixedRoutes(): Promise<FixedRoute[]> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      currency: item.currency ?? 'CNY',
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
+  }
+
+  async getAllFixedRoutes(): Promise<FixedRoute[]> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      currency: item.currency ?? 'CNY',
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
+  }
+
+  async createFixedRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>): Promise<FixedRoute> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .insert([{
+        ...routeData,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      currency: data.currency ?? 'CNY',
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
+  }
+
+  async updateFixedRoute(id: string, routeData: Partial<Omit<FixedRoute, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+    const { error } = await supabase
+      .from('fixed_routes')
+      .update(routeData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async toggleFixedRoute(id: string, isActive: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('fixed_routes')
       .update({ is_active: isActive })
       .eq('id', id);
 

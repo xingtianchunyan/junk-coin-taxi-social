@@ -15,6 +15,7 @@ export interface RideRequest {
   payment_status: 'unpaid' | 'pending' | 'confirmed' | 'failed';
   payment_tx_hash?: string;
   sender_wallet_address?: string;
+  fixed_route_id?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -68,4 +69,19 @@ export interface PresetDestination {
   description?: string;
   is_active: boolean;
   created_at: Date;
+}
+
+export interface FixedRoute {
+  id: string;
+  name: string;
+  start_location: string;
+  end_location: string;
+  distance_km?: number;
+  estimated_duration_minutes?: number;
+  market_price?: number;
+  our_price?: number;
+  currency: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
