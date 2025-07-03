@@ -18,8 +18,7 @@ export async function generateRoutesForAllDestinations() {
       const { data: result, error } = await supabase.functions.invoke('auto-generate-routes', {
         body: {
           destination_name: destination.name,
-          destination_address: destination.address,
-          gaode_api_key: true // 指示使用真实API
+          destination_address: destination.address
         }
       });
 

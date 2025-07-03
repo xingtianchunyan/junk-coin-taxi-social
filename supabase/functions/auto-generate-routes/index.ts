@@ -35,8 +35,11 @@ serve(async (req) => {
 
     console.log(`开始为目的地 ${destination_name} 生成固定路线...`)
 
+    // 获取高德地图API密钥
+    const gaodeApiKey = Deno.env.get('GAODE_API_KEY')
+    
     // 搜索附近的交通枢纽 (模拟数据，实际应使用高德地图API)
-    const transportHubs = await searchNearbyTransportHubs(destination_address, gaode_api_key)
+    const transportHubs = await searchNearbyTransportHubs(destination_address, gaodeApiKey)
     
     console.log(`找到 ${transportHubs.length} 个交通枢纽`)
 
@@ -45,7 +48,7 @@ serve(async (req) => {
     for (const hub of transportHubs) {
       try {
         // 计算路线信息
-        const routeInfo = await calculateRouteInfo(hub.address, destination_address, gaode_api_key)
+        const routeInfo = await calculateRouteInfo(hub.address, destination_address, gaodeApiKey)
         
         // 创建固定路线
         const routeData = {
@@ -120,8 +123,8 @@ async function searchNearbyTransportHubs(address: string, apiKey?: string): Prom
   return simulatedHubs.slice(0, count)
 }
 
-// 使用高德地图API搜索 (实际实现)
-async function searchWithGaodeAPI(address: string, apiKey: string): Promise<Array<{name: string, address: string, type: string}>> {
+// 使用高德地图API搜索 (实际实现)  
+async function searchWithGaodeAPI(address: string, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
   const hubs: Array<{name: string, address: string, type: string}> = []
   
   // 搜索不同类型的交通枢纽
@@ -134,7 +137,7 @@ async function searchWithGaodeAPI(address: string, apiKey: string): Promise<Arra
 
   for (const searchType of searchTypes) {
     try {
-      const url = `https://restapi.amap.com/v3/place/text?key=${apiKey}&keywords=${searchType.keywords}&city=${encodeURIComponent(address)}&output=json&offset=3`
+      const url = `https://restapi.amap.com/v3/place/text?key=${gaodeKey}&keywords=${searchType.keywords}&city=${encodeURIComponent(address)}&output=json&offset=3`
       const response = await fetch(url)
       const data = await response.json()
 
