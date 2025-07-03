@@ -47,16 +47,21 @@ serve(async (req) => {
 
     for (const hub of transportHubs) {
       try {
-        // 检查是否已存在相同路线
-        const { data: existingRoute } = await supabase
+        // 检查是否已存在相同路线（使用更严格的检查逻辑）
+        const { data: existingRoutes } = await supabase
           .from('fixed_routes')
-          .select('id')
-          .eq('start_location', hub.name)
+          .select('id, start_location')
           .eq('end_location', destination_name)
-          .single()
 
-        if (existingRoute) {
-          console.log(`路线已存在，跳过: ${hub.name} -> ${destination_name}`)
+        // 检查是否存在相似的起点名称（去除括号等变体）
+        const standardizedHubName = hub.name.replace(/\s*\(.*?\)\s*/g, '').trim()
+        const isDuplicate = existingRoutes?.some(route => {
+          const standardizedExistingName = route.start_location.replace(/\s*\(.*?\)\s*/g, '').trim()
+          return standardizedExistingName === standardizedHubName
+        })
+
+        if (isDuplicate) {
+          console.log(`路线已存在（标准化名称匹配），跳过: ${hub.name} -> ${destination_name}`)
           continue
         }
 
@@ -171,8 +176,12 @@ async function searchWithImprovedGaodeAPI(address: string, gaodeKey: string): Pr
     // 2. 按照行政区划层级搜索交通枢纽
     const allHubs = await searchHubsByAdministrativeDivision(destinationInfo, gaodeKey)
     
-    // 3. 计算距离并按类型筛选
-    const filteredHubs = await filterHubsByDistanceAndType(destinationInfo, allHubs, gaodeKey)
+    // 3. 去重和标准化枢纽名称
+    const deduplicatedHubs = deduplicateTransportHubs(allHubs)
+    console.log(`去重后剩余 ${deduplicatedHubs.length} 个交通枢纽`)
+    
+    // 4. 计算距离并按类型筛选
+    const filteredHubs = await filterHubsByDistanceAndType(destinationInfo, deduplicatedHubs, gaodeKey)
     
     console.log(`最终筛选出 ${filteredHubs.length} 个交通枢纽`)
     return filteredHubs
@@ -445,19 +454,9 @@ async function calculateWithGaodeAPI(start: string, end: string, apiKey: string)
   }
 }
 
-// 获取地址坐标
+// 获取地址坐标 (使用改进的验证逻辑)
 async function getCoordinates(address: string, apiKey: string): Promise<string> {
-  const url = `https://restapi.amap.com/v3/geocode/geo?key=${apiKey}&address=${encodeURIComponent(address)}&output=json`
-  const response = await fetch(url)
-  const data = await response.json()
-  
-  console.log(`获取坐标 ${address}:`, data)
-
-  if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
-    return data.geocodes[0].location
-  }
-
-  throw new Error(`无法获取地址 ${address} 的坐标`)
+  return await getCoordinatesWithValidation(address, apiKey)
 }
 
 // 基于地名估算距离的简化函数
@@ -504,4 +503,87 @@ function calculateMarketPrice(distance: number): number {
   }
   
   return basePrice + (distance - baseDistance) * pricePerKm
+}
+
+// 去重交通枢纽函数
+function deduplicateTransportHubs(hubs: Array<{name: string, address: string, type: string, coordinates?: string}>): Array<{name: string, address: string, type: string, coordinates?: string}> {
+  console.log('开始去重交通枢纽...')
+  
+  // 创建标准化名称映射
+  const standardizeHubName = (name: string): string => {
+    // 移除常见的变体后缀和前缀
+    let standardized = name
+      .replace(/\s*\(.*?\)\s*/g, '') // 移除括号内容
+      .replace(/高铁.*?站|.*?高铁站/g, '高铁站') // 标准化高铁站名称
+      .replace(/国际机场.*|.*国际机场/g, '国际机场') // 标准化机场名称
+      .replace(/客运.*站|.*客运站/g, '客运站') // 标准化客运站名称
+      .replace(/汽车.*站|.*汽车站/g, '汽车站') // 标准化汽车站名称
+      .trim()
+    
+    return standardized
+  }
+  
+  // 按标准化名称和坐标去重
+  const uniqueHubs = new Map<string, typeof hubs[0]>()
+  
+  for (const hub of hubs) {
+    const standardName = standardizeHubName(hub.name)
+    const key = `${standardName}_${hub.type}_${hub.coordinates || hub.address}`
+    
+    if (!uniqueHubs.has(key)) {
+      // 保留原始名称中最短且最标准的版本
+      const existingHub = uniqueHubs.get(key)
+      if (!existingHub || hub.name.length < existingHub.name.length) {
+        uniqueHubs.set(key, {
+          ...hub,
+          name: hub.name.includes('(') ? hub.name.split('(')[0].trim() : hub.name
+        })
+      }
+    }
+  }
+  
+  const result = Array.from(uniqueHubs.values())
+  console.log(`去重完成: ${hubs.length} -> ${result.length}`)
+  
+  return result
+}
+
+// 改进获取地址坐标函数，增加多次尝试和验证
+async function getCoordinatesWithValidation(address: string, apiKey: string): Promise<string> {
+  const attempts = [
+    address, // 原始地址
+    address.replace(/\s*\(.*?\)\s*/g, ''), // 移除括号内容
+    address.split('(')[0].trim(), // 只取括号前的部分
+  ]
+  
+  for (const attempt of attempts) {
+    try {
+      const url = `https://restapi.amap.com/v3/geocode/geo?key=${apiKey}&address=${encodeURIComponent(attempt)}&output=json`
+      const response = await fetch(url)
+      const data = await response.json()
+      
+      console.log(`获取坐标尝试 "${attempt}":`, data)
+      
+      if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
+        const geocode = data.geocodes[0]
+        const coords = geocode.location
+        
+        // 验证坐标格式 (应该是 "longitude,latitude" 格式)
+        if (coords && coords.includes(',')) {
+          const [lng, lat] = coords.split(',').map(Number)
+          if (lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
+            console.log(`成功获取有效坐标: ${coords}`)
+            return coords
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`获取坐标失败 "${attempt}":`, error)
+    }
+    
+    // 避免API调用过于频繁
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  
+  throw new Error(`无法获取地址 ${address} 的有效坐标`)
 }
