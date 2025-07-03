@@ -19,90 +19,13 @@ serve(async (req) => {
   }
 
   try {
-    const { destination_name, destination_address, gaode_api_key }: AutoGenerateRequest = await req.json()
-
-    if (!destination_name || !destination_address) {
-      return new Response(
-        JSON.stringify({ error: '目的地名称和地址不能为空' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    console.log(`开始为目的地 ${destination_name} 生成固定路线...`)
-
-    // 获取高德地图API密钥
-    const gaodeApiKey = Deno.env.get('GAODE_API_KEY')
-    
-    // 搜索附近的交通枢纽 (模拟数据，实际应使用高德地图API)
-    const transportHubs = await searchNearbyTransportHubs(destination_address, gaodeApiKey)
-    
-    console.log(`找到 ${transportHubs.length} 个交通枢纽`)
-
-    const generatedRoutes = []
-
-    for (const hub of transportHubs) {
-      try {
-        // 检查是否已存在相同路线（使用更严格的检查逻辑）
-        const { data: existingRoutes } = await supabase
-          .from('fixed_routes')
-          .select('id, start_location')
-          .eq('end_location', destination_name)
-
-        // 检查是否存在相似的起点名称（去除括号等变体）
-        const standardizedHubName = hub.name.replace(/\s*\(.*?\)\s*/g, '').trim()
-        const isDuplicate = existingRoutes?.some(route => {
-          const standardizedExistingName = route.start_location.replace(/\s*\(.*?\)\s*/g, '').trim()
-          return standardizedExistingName === standardizedHubName
-        })
-
-        if (isDuplicate) {
-          console.log(`路线已存在（标准化名称匹配），跳过: ${hub.name} -> ${destination_name}`)
-          continue
-        }
-
-        // 计算路线信息
-        const routeInfo = await calculateRouteInfo(hub.address, destination_address, gaodeApiKey)
-        
-        // 创建固定路线
-        const routeData = {
-          name: `${hub.name}到${destination_name}`,
-          start_location: hub.name,
-          end_location: destination_name,
-          distance_km: routeInfo.distance_km,
-          estimated_duration_minutes: routeInfo.duration_minutes,
-          market_price: routeInfo.market_price,
-          our_price: routeInfo.our_price,
-          currency: 'CNY',
-          is_active: true
-        }
-
-        const { data: route, error } = await supabase
-          .from('fixed_routes')
-          .insert([routeData])
-          .select()
-          .single()
-
-        if (error) {
-          console.error(`创建路线失败: ${hub.name} -> ${destination_name}`, error)
-        } else {
-          console.log(`成功创建路线: ${route.name}`)
-          generatedRoutes.push(route)
-        }
-      } catch (error) {
-        console.error(`处理交通枢纽 ${hub.name} 时出错:`, error)
-      }
-    }
+    console.log('固定路线生成功能已暂时关闭，以保护手动编辑的数据')
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: `成功生成 ${generatedRoutes.length} 条固定路线`,
-        routes: generatedRoutes
+        success: false,
+        message: '固定路线生成功能已暂时关闭，以保护当前手动编辑的数据',
+        status: 'disabled'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
