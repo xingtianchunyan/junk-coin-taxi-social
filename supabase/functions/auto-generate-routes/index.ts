@@ -113,10 +113,10 @@ serve(async (req) => {
 
 // 搜索附近的交通枢纽 (根据目的地获取真实的交通枢纽)
 async function searchNearbyTransportHubs(address: string, apiKey?: string): Promise<Array<{name: string, address: string, type: string}>> {
-  // 如果有API密钥，调用真实的高德地图API
+  // 如果有API密钥，调用改进的高德地图API搜索
   if (apiKey) {
     try {
-      return await searchWithGaodeAPI(address, apiKey)
+      return await searchWithImprovedGaodeAPI(address, apiKey)
     } catch (error) {
       console.error('高德地图API调用失败，使用预设数据:', error)
     }
@@ -154,57 +154,215 @@ function getPresetTransportHubs(address: string): Array<{name: string, address: 
   ]
 }
 
-// 使用高德地图API搜索 (实际实现) - 搜索目的地附近的交通枢纽
-async function searchWithGaodeAPI(address: string, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
-  const hubs: Array<{name: string, address: string, type: string}> = []
-  
-  // 先获取目的地的城市信息
-  let cityName = ''
+// 使用改进的高德地图API搜索 - 基于行政区划和距离限制搜索交通枢纽
+async function searchWithImprovedGaodeAPI(address: string, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
+  try {
+    console.log(`开始改进搜索流程，目的地: ${address}`)
+    
+    // 1. 获取目的地的详细信息和坐标
+    const destinationInfo = await getDestinationInfo(address, gaodeKey)
+    if (!destinationInfo) {
+      console.log('无法获取目的地信息，使用预设数据')
+      return getPresetTransportHubs(address)
+    }
+    
+    console.log(`目的地信息:`, destinationInfo)
+    
+    // 2. 按照行政区划层级搜索交通枢纽
+    const allHubs = await searchHubsByAdministrativeDivision(destinationInfo, gaodeKey)
+    
+    // 3. 计算距离并按类型筛选
+    const filteredHubs = await filterHubsByDistanceAndType(destinationInfo, allHubs, gaodeKey)
+    
+    console.log(`最终筛选出 ${filteredHubs.length} 个交通枢纽`)
+    return filteredHubs
+    
+  } catch (error) {
+    console.error('改进搜索失败:', error)
+    return getPresetTransportHubs(address)
+  }
+}
+
+// 获取目的地详细信息
+async function getDestinationInfo(address: string, gaodeKey: string): Promise<{
+  name: string,
+  coordinates: string,
+  district: string,
+  city: string,
+  province: string
+} | null> {
   try {
     const geoUrl = `https://restapi.amap.com/v3/geocode/geo?key=${gaodeKey}&address=${encodeURIComponent(address)}&output=json`
     const geoResponse = await fetch(geoUrl)
     const geoData = await geoResponse.json()
     
+    console.log(`地理编码响应:`, JSON.stringify(geoData, null, 2))
+    
     if (geoData.status === '1' && geoData.geocodes && geoData.geocodes.length > 0) {
       const geocode = geoData.geocodes[0]
-      cityName = geocode.city || geocode.province
+      return {
+        name: address,
+        coordinates: geocode.location,
+        district: geocode.district || '',
+        city: geocode.city || '',
+        province: geocode.province || ''
+      }
     }
   } catch (error) {
-    console.error('获取城市信息失败:', error)
-    return getPresetTransportHubs(address)
+    console.error('获取目的地信息失败:', error)
   }
+  return null
+}
+
+// 按行政区划搜索交通枢纽
+async function searchHubsByAdministrativeDivision(destinationInfo: any, gaodeKey: string): Promise<Array<{name: string, address: string, type: string, coordinates?: string}>> {
+  const allHubs: Array<{name: string, address: string, type: string, coordinates?: string}> = []
   
-  // 搜索不同类型的交通枢纽
+  // 定义搜索类型和关键词
   const searchTypes = [
-    { keywords: '火车站', type: 'railway' },
-    { keywords: '高铁站', type: 'high_speed_rail' },
-    { keywords: '机场', type: 'airport' },
-    { keywords: '汽车站', type: 'bus_station' }
+    { keywords: ['机场'], type: 'airport' },
+    { keywords: ['高铁站', '高速铁路'], type: 'high_speed_rail' },
+    { keywords: ['火车站', '铁路'], type: 'railway' },
+    { keywords: ['汽车站', '客运站'], type: 'bus_station' }
   ]
-
-  for (const searchType of searchTypes) {
-    try {
-      // 使用目的地的城市来搜索附近的交通枢纽
-      const url = `https://restapi.amap.com/v3/place/text?key=${gaodeKey}&keywords=${searchType.keywords}&city=${encodeURIComponent(cityName)}&output=json&offset=5`
-      const response = await fetch(url)
-      const data = await response.json()
-
-      if (data.status === '1' && data.pois) {
-        for (const poi of data.pois) {
-          hubs.push({
-            name: poi.name,
-            address: poi.address || `${poi.pname}${poi.cityname}${poi.adname}`,
-            type: searchType.type
-          })
+  
+  // 搜索范围：先区县级，再市级
+  const searchAreas = [
+    { name: '区县级', area: destinationInfo.district || destinationInfo.city },
+    { name: '市级', area: destinationInfo.city }
+  ]
+  
+  for (const area of searchAreas) {
+    if (!area.area) continue
+    
+    console.log(`在${area.name}搜索交通枢纽: ${area.area}`)
+    
+    for (const searchType of searchTypes) {
+      for (const keyword of searchType.keywords) {
+        try {
+          const url = `https://restapi.amap.com/v3/place/text?key=${gaodeKey}&keywords=${keyword}&city=${encodeURIComponent(area.area)}&output=json&offset=10`
+          const response = await fetch(url)
+          const data = await response.json()
+          
+          if (data.status === '1' && data.pois) {
+            for (const poi of data.pois) {
+              // 获取每个枢纽的坐标
+              const hubCoordinates = poi.location
+              
+              allHubs.push({
+                name: poi.name,
+                address: poi.address || `${poi.pname}${poi.cityname}${poi.adname}`,
+                type: searchType.type,
+                coordinates: hubCoordinates
+              })
+            }
+          }
+        } catch (error) {
+          console.error(`搜索 ${keyword} 失败:`, error)
         }
+        
+        // 避免API调用过于频繁
+        await new Promise(resolve => setTimeout(resolve, 200))
       }
-    } catch (error) {
-      console.error(`搜索 ${searchType.keywords} 失败:`, error)
     }
   }
+  
+  // 去重（根据名称）
+  const uniqueHubs = allHubs.filter((hub, index, self) => 
+    index === self.findIndex(h => h.name === hub.name)
+  )
+  
+  console.log(`搜索到 ${uniqueHubs.length} 个唯一交通枢纽`)
+  return uniqueHubs
+}
 
-  // 如果API搜索失败或没有结果，回退到预设数据
-  return hubs.length > 0 ? hubs : getPresetTransportHubs(address)
+// 根据距离和类型筛选交通枢纽
+async function filterHubsByDistanceAndType(destinationInfo: any, hubs: Array<{name: string, address: string, type: string, coordinates?: string}>, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
+  const distanceLimits = {
+    'airport': 200000, // 200公里
+    'high_speed_rail': 100000, // 100公里
+    'railway': 60000, // 60公里
+    'bus_station': 30000 // 30公里
+  }
+  
+  const tolerance = 0.1 // 10%容差
+  const filteredHubs: Array<{name: string, address: string, type: string}> = []
+  
+  // 按类型分组
+  const hubsByType = hubs.reduce((acc, hub) => {
+    if (!acc[hub.type]) acc[hub.type] = []
+    acc[hub.type].push(hub)
+    return acc
+  }, {} as Record<string, typeof hubs>)
+  
+  for (const [type, typeHubs] of Object.entries(hubsByType)) {
+    const limit = distanceLimits[type as keyof typeof distanceLimits] || 30000
+    
+    console.log(`处理 ${type} 类型枢纽，距离限制: ${limit/1000}公里`)
+    
+    // 计算每个枢纽到目的地的距离
+    const hubsWithDistance = await Promise.all(
+      typeHubs.map(async (hub) => {
+        try {
+          const distance = await calculateDrivingDistance(
+            destinationInfo.coordinates,
+            hub.coordinates || '',
+            gaodeKey
+          )
+          return { ...hub, distance }
+        } catch (error) {
+          console.error(`计算距离失败: ${hub.name}`, error)
+          return { ...hub, distance: Infinity }
+        }
+      })
+    )
+    
+    // 筛选在距离限制内的枢纽
+    const validHubs = hubsWithDistance.filter(hub => hub.distance <= limit)
+    
+    if (validHubs.length === 0) {
+      console.log(`${type} 类型没有符合距离要求的枢纽`)
+      continue
+    }
+    
+    // 找到最近的距离
+    const minDistance = Math.min(...validHubs.map(h => h.distance))
+    const toleranceDistance = limit * tolerance
+    
+    // 选择最近的枢纽，以及与最近距离差值在容差范围内的枢纽
+    const selectedHubs = validHubs.filter(hub => 
+      hub.distance - minDistance <= toleranceDistance
+    )
+    
+    console.log(`${type} 类型选择了 ${selectedHubs.length} 个枢纽`)
+    
+    filteredHubs.push(...selectedHubs.map(hub => ({
+      name: hub.name,
+      address: hub.address,
+      type: hub.type
+    })))
+  }
+  
+  return filteredHubs
+}
+
+// 计算驾车距离
+async function calculateDrivingDistance(origin: string, destination: string, gaodeKey: string): Promise<number> {
+  try {
+    const url = `https://restapi.amap.com/v3/direction/driving?key=${gaodeKey}&origin=${origin}&destination=${destination}&output=json`
+    const response = await fetch(url)
+    const data = await response.json()
+    
+    if (data.status === '1' && data.route && data.route.paths && data.route.paths.length > 0) {
+      const distance = parseFloat(data.route.paths[0].distance)
+      console.log(`距离计算结果: ${distance}米 (${(distance/1000).toFixed(2)}公里)`)
+      return distance
+    }
+  } catch (error) {
+    console.error('计算驾车距离失败:', error)
+  }
+  
+  throw new Error('无法计算驾车距离')
 }
 
 // 计算路线信息
