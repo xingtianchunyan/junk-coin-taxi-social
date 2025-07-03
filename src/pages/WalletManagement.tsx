@@ -197,7 +197,8 @@ const WalletManagement = () => {
         },
         body: JSON.stringify({
           destination_name: destinationName,
-          destination_address: destinationAddress
+          destination_address: destinationAddress,
+          gaode_api_key: true // 指示使用真实的高德地图API
         })
       });
 
@@ -216,6 +217,34 @@ const WalletManagement = () => {
       toast({
         title: "路线生成失败",
         description: "请稍后手动重试",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateAllRoutes = async () => {
+    const { generateRoutesForAllDestinations } = await import('@/utils/generateRoutesForDestinations');
+    
+    toast({
+      title: "开始生成路线",
+      description: "正在为所有预设目的地生成真实路线数据...",
+    });
+    
+    try {
+      const results = await generateRoutesForAllDestinations();
+      const successCount = results.filter(r => r.success).length;
+      
+      toast({
+        title: "路线生成完成",
+        description: `成功为 ${successCount}/${results.length} 个目的地生成了路线`,
+      });
+      
+      // 刷新数据
+      loadData();
+    } catch (error) {
+      toast({
+        title: "批量生成失败",
+        description: "请检查网络连接后重试",
         variant: "destructive",
       });
     }
@@ -485,10 +514,16 @@ const WalletManagement = () => {
         {showFixedRoutes && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Route className="h-5 w-5" />
-                自动生成的固定路线
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Route className="h-5 w-5" />
+                  自动生成的固定路线
+                </CardTitle>
+                <Button onClick={generateAllRoutes} variant="outline" size="sm">
+                  <Route className="h-4 w-4 mr-2" />
+                  为所有目的地生成真实路线
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {fixedRoutes.length > 0 ? (
