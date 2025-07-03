@@ -47,6 +47,19 @@ serve(async (req) => {
 
     for (const hub of transportHubs) {
       try {
+        // 检查是否已存在相同路线
+        const { data: existingRoute } = await supabase
+          .from('fixed_routes')
+          .select('id')
+          .eq('start_location', hub.name)
+          .eq('end_location', destination_name)
+          .single()
+
+        if (existingRoute) {
+          console.log(`路线已存在，跳过: ${hub.name} -> ${destination_name}`)
+          continue
+        }
+
         // 计算路线信息
         const routeInfo = await calculateRouteInfo(hub.address, destination_address, gaodeApiKey)
         
@@ -240,16 +253,21 @@ async function calculateWithGaodeAPI(start: string, end: string, apiKey: string)
     const url = `https://restapi.amap.com/v3/direction/driving?key=${apiKey}&origin=${startCoord}&destination=${endCoord}&output=json`
     const response = await fetch(url)
     const data = await response.json()
+    
+    console.log(`路线规划API响应 ${start} -> ${end}:`, JSON.stringify(data, null, 2))
 
     if (data.status === '1' && data.route && data.route.paths && data.route.paths.length > 0) {
       const path = data.route.paths[0]
       const distance = parseFloat(path.distance) / 1000 // 转换为公里
       const duration = Math.ceil(parseFloat(path.duration) / 60) // 转换为分钟
+      
+      console.log(`计算得到距离: ${distance}公里, 时间: ${duration}分钟`)
+      
       const marketPrice = calculateMarketPrice(distance)
       const ourPrice = marketPrice * 0.7
 
       return {
-        distance_km: distance,
+        distance_km: Math.round(distance * 100) / 100, // 保留两位小数
         duration_minutes: duration,
         market_price: marketPrice,
         our_price: ourPrice
@@ -274,6 +292,8 @@ async function getCoordinates(address: string, apiKey: string): Promise<string> 
   const url = `https://restapi.amap.com/v3/geocode/geo?key=${apiKey}&address=${encodeURIComponent(address)}&output=json`
   const response = await fetch(url)
   const data = await response.json()
+  
+  console.log(`获取坐标 ${address}:`, data)
 
   if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
     return data.geocodes[0].location
