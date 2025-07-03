@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { WalletAddress, PresetDestination, FixedRoute } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import PaymentMethodManager from '@/components/PaymentMethodManager';
+import { supabase } from '@/integrations/supabase/client';
 
 const WalletManagement = () => {
   const [wallets, setWallets] = useState<WalletAddress[]>([]);
@@ -190,19 +191,17 @@ const WalletManagement = () => {
 
   const generateFixedRoutes = async (destinationName: string, destinationAddress: string) => {
     try {
-      const response = await fetch(`https://gwfuygmhcfmbzkewiuuv.supabase.co/functions/v1/auto-generate-routes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('auto-generate-routes', {
+        body: {
           destination_name: destinationName,
           destination_address: destinationAddress,
           gaode_api_key: true // 指示使用真实的高德地图API
-        })
+        }
       });
 
-      const result = await response.json();
+      if (error) {
+        throw new Error(error.message);
+      }
       
       if (result.success) {
         toast({

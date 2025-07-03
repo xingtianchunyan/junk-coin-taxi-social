@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 // 为所有预设目的地生成固定路线的工具函数
 export async function generateRoutesForAllDestinations() {
   const destinations = [
@@ -13,19 +15,17 @@ export async function generateRoutesForAllDestinations() {
     try {
       console.log(`正在为 ${destination.name} 生成路线...`);
       
-      const response = await fetch(`https://gwfuygmhcfmbzkewiuuv.supabase.co/functions/v1/auto-generate-routes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('auto-generate-routes', {
+        body: {
           destination_name: destination.name,
           destination_address: destination.address,
           gaode_api_key: true // 指示使用真实API
-        })
+        }
       });
 
-      const result = await response.json();
+      if (error) {
+        throw new Error(error.message);
+      }
       results.push({
         destination: destination.name,
         success: result.success,
