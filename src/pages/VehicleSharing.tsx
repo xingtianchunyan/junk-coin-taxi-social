@@ -10,14 +10,12 @@ import { rideRequestService } from '@/services/rideRequestService';
 import DestinationSelector from '@/components/DestinationSelector';
 import VehicleForm from '@/components/VehicleForm';
 import MyVehicleCard from '@/components/MyVehicleCard';
-
 interface Destination {
   id: string;
   name: string;
   address: string;
   description: string | null;
 }
-
 const VehicleSharing: React.FC = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,13 +24,15 @@ const VehicleSharing: React.FC = () => {
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showMyVehicle, setShowMyVehicle] = useState(false);
   const [showAuditDriver, setShowAuditDriver] = useState(false);
-  const { toast } = useToast();
-  const { hasAccess } = useAccessCode();
-
+  const {
+    toast
+  } = useToast();
+  const {
+    hasAccess
+  } = useAccessCode();
   useEffect(() => {
     loadRideRequests();
   }, []);
-
   const loadRideRequests = async () => {
     try {
       setLoading(true);
@@ -43,7 +43,7 @@ const VehicleSharing: React.FC = () => {
       toast({
         title: "加载失败",
         description: "无法加载用车需求，请刷新页面重试",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -65,62 +65,47 @@ const VehicleSharing: React.FC = () => {
       start_location: '***',
       end_location: '***',
       contact_info: '***',
-      notes: undefined,
+      notes: undefined
     }));
   };
-
   const ownerViewRequests = getOwnerViewRequests();
-  
+
   // 根据选定目的地过滤请求（模拟数据）
   const getFilteredRequests = () => {
     if (!selectedDestination) return ownerViewRequests;
     // 这里应该根据实际的目的地字段过滤，现在模拟返回所有数据
     return ownerViewRequests;
   };
-  
   const filteredRequests = getFilteredRequests();
-  
+
   // 统计数据 - 从实际数据计算
   const historicalPassengers = filteredRequests.filter(req => req.payment_status === 'confirmed').length;
   const currentDrivers = 0; // 需要从数据库获取实际司机数量
   const historicalVehicles = 0; // 需要从数据库获取实际车辆数量
 
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
+    return <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <Car className="h-12 w-12 text-green-600 mx-auto mb-4 animate-spin" />
           <p className="text-gray-600">加载中...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">无偿供车</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">查看用车需求，管理车辆信息，感谢无偿供车的好心人们</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDestinationDialog(true)}
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowDestinationDialog(true)} className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             车辆附近目的地
-            {selectedDestination && (
-              <Badge variant="secondary" className="ml-1">
+            {selectedDestination && <Badge variant="secondary" className="ml-1">
                 {selectedDestination.name}
-              </Badge>
-            )}
+              </Badge>}
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-2">
-          车主视图：仅显示钱包地址、付费状态和乘车时段
-        </p>
+        <p className="text-sm text-muted-foreground mt-2">对车主要有礼貌：油电恢复原量是我们的基本素质=。=</p>
       </div>
 
       {/* 统计卡片 */}
@@ -164,57 +149,32 @@ const VehicleSharing: React.FC = () => {
 
       {/* 添加车辆按钮 */}
       <div className="flex justify-center gap-4 mb-8">
-        <Button 
-          onClick={() => setShowVehicleForm(!showVehicleForm)} 
-          size="lg" 
-          className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
-        >
+        <Button onClick={() => setShowVehicleForm(!showVehicleForm)} size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg">
           <Plus className="h-5 w-5 mr-2" />
           {showVehicleForm ? '取消添加' : '添加可用车辆'}
         </Button>
-        <Button 
-          onClick={() => setShowMyVehicle(!showMyVehicle)} 
-          size="lg" 
-          variant="outline"
-          className="px-8 py-3 text-lg"
-        >
+        <Button onClick={() => setShowMyVehicle(!showMyVehicle)} size="lg" variant="outline" className="px-8 py-3 text-lg">
           <Settings className="h-5 w-5 mr-2" />
           {showMyVehicle ? '关闭' : '我的车辆'}
         </Button>
-        <Button 
-          onClick={() => setShowAuditDriver(!showAuditDriver)} 
-          size="lg" 
-          variant="outline"
-          className="px-8 py-3 text-lg"
-        >
+        <Button onClick={() => setShowAuditDriver(!showAuditDriver)} size="lg" variant="outline" className="px-8 py-3 text-lg">
           <UserCheck className="h-5 w-5 mr-2" />
           {showAuditDriver ? '关闭' : '审核司机'}
         </Button>
       </div>
 
       {/* 添加车辆表单 */}
-      {showVehicleForm && (
-        <div className="flex justify-center mb-8">
-          <VehicleForm 
-            selectedDestination={selectedDestination}
-            onCancel={() => setShowVehicleForm(false)}
-          />
-        </div>
-      )}
+      {showVehicleForm && <div className="flex justify-center mb-8">
+          <VehicleForm selectedDestination={selectedDestination} onCancel={() => setShowVehicleForm(false)} />
+        </div>}
 
       {/* 我的车辆信息 */}
-      {showMyVehicle && (
-        <div className="flex justify-center mb-8">
-          <MyVehicleCard 
-            selectedDestination={selectedDestination}
-            onCancel={() => setShowMyVehicle(false)}
-          />
-        </div>
-      )}
+      {showMyVehicle && <div className="flex justify-center mb-8">
+          <MyVehicleCard selectedDestination={selectedDestination} onCancel={() => setShowMyVehicle(false)} />
+        </div>}
 
       {/* 审核司机 */}
-      {showAuditDriver && (
-        <div className="flex justify-center mb-8">
+      {showAuditDriver && <div className="flex justify-center mb-8">
           <Card className="w-full max-w-4xl mx-auto">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -231,8 +191,7 @@ const VehicleSharing: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+        </div>}
 
       {/* 用车需求列表 */}
       <div className="space-y-8">
@@ -253,14 +212,7 @@ const VehicleSharing: React.FC = () => {
       </div>
 
       {/* 目的地选择弹窗 */}
-      <DestinationSelector
-        open={showDestinationDialog}
-        onOpenChange={setShowDestinationDialog}
-        onSelect={setSelectedDestination}
-        selectedDestination={selectedDestination}
-      />
-    </div>
-  );
+      <DestinationSelector open={showDestinationDialog} onOpenChange={setShowDestinationDialog} onSelect={setSelectedDestination} selectedDestination={selectedDestination} />
+    </div>;
 };
-
 export default VehicleSharing;
