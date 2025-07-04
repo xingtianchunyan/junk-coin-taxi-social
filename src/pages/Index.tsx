@@ -47,21 +47,24 @@ const Index = () => {
 
   const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
     try {
-      const { request, accessCode: newAccessCode } = await rideRequestService.createRideRequest(requestData);
+      // 生成临时访问码（这个逻辑可能需要根据实际需求调整）
+      const tempAccessCode = crypto.randomUUID();
+      
+      const request = await rideRequestService.createRideRequest(requestData, tempAccessCode);
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
       
       // 显示访问码给用户
       toast({
         title: "用车需求已创建",
-        description: `您的访问码是: ${newAccessCode}`,
+        description: `您的访问码是: ${tempAccessCode}`,
         duration: 10000,
       });
       
       // 可以选择自动切换到私密模式
       setTimeout(() => {
         if (confirm('是否要使用访问码查看完整信息？')) {
-          handleAccessChange('private', newAccessCode);
+          handleAccessChange('private', tempAccessCode);
         }
       }, 2000);
       

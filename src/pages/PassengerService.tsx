@@ -50,31 +50,38 @@ const PassengerService: React.FC = () => {
 
   const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
     try {
-      // 检查访问码是否已在相同时段创建需求
-      if (hasAccess && accessCode) {
-        const existingRequest = requests.find(req => 
-          req.access_code === accessCode && 
-          req.requested_time.getHours() === requestData.requested_time.getHours()
-        );
-        
-        if (existingRequest) {
-          toast({
-            title: "创建失败",
-            description: "您已在该时段创建过用车需求",
-            variant: "destructive",
-          });
-          return;
-        }
+      // 必须有访问码才能创建需求
+      if (!hasAccess || !accessCode) {
+        toast({
+          title: "创建失败",
+          description: "请先获取访问码",
+          variant: "destructive",
+        });
+        return;
       }
 
-      const { request, accessCode: newAccessCode } = await rideRequestService.createRideRequest(requestData);
+      // 检查访问码是否已在相同时段创建需求
+      const existingRequest = requests.find(req => 
+        req.access_code === accessCode && 
+        req.requested_time.getHours() === requestData.requested_time.getHours()
+      );
+      
+      if (existingRequest) {
+        toast({
+          title: "创建失败",
+          description: "您已在该时段创建过用车需求",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const request = await rideRequestService.createRideRequest(requestData, accessCode);
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
       
       toast({
         title: "用车需求已创建",
-        description: `您的访问码是: ${newAccessCode}`,
-        duration: 10000,
+        description: "需求已成功提交",
       });
     } catch (error) {
       console.error('创建用车需求失败:', error);

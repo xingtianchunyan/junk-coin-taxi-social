@@ -23,11 +23,12 @@ export class RideRequestService {
   }
 
   // 创建用车需求
-  async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>): Promise<{ request: RideRequest; accessCode: string }> {
+  async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, accessCode: string): Promise<RideRequest> {
     const { data, error } = await supabase
       .from('ride_requests')
       .insert([{
         ...requestData,
+        access_code: accessCode,
         requested_time: requestData.requested_time.toISOString(),
         payment_required: requestData.payment_required || false,
         payment_status: 'unpaid'
@@ -46,7 +47,7 @@ export class RideRequestService {
       updated_at: new Date(data.updated_at)
     };
 
-    return { request, accessCode: data.access_code };
+    return request;
   }
 
   // 使用访问码获取详细信息
