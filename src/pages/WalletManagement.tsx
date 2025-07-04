@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, Plus, Edit, Trash2, Copy, QrCode, CreditCard, Coins, MapPin, Route } from 'lucide-react';
+import { Wallet, Plus, Edit, Trash2, Copy, QrCode, CreditCard, Coins, MapPin, Route, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { WalletAddress, PresetDestination, FixedRoute } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
@@ -333,6 +334,12 @@ const WalletManagement = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                返回主页
+              </Link>
+            </Button>
             <Wallet className="h-8 w-8 text-slate-600" />
             <h1 className="text-3xl font-bold text-slate-800">钱包地址管理</h1>
           </div>
