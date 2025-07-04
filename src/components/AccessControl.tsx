@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Key, Eye, EyeOff, Shield } from 'lucide-react';
+import { Key, Eye, EyeOff, Shield, LogIn } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
+import { sanitizeTextInput } from '@/utils/inputValidation';
 
 interface AccessControlProps {
   onAccessChange: (level: 'public' | 'private' | 'admin', accessCode?: string) => void;
@@ -16,29 +19,38 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   const [accessCode, setAccessCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [showPrivateAccess, setShowPrivateAccess] = useState(false);
+  const { user, isAdmin, signOut } = useAuth();
 
   useEffect(() => {
-    // 检查本地存储的访问码
-    const savedAccessCode = localStorage.getItem('rideAccessCode');
-    if (savedAccessCode && currentLevel === 'public') {
-      setAccessCode(savedAccessCode);
-      handlePrivateAccess(savedAccessCode);
+    // Update access level based on authentication
+    if (user && isAdmin) {
+      onAccessChange('admin');
+    } else if (user) {
+      onAccessChange('private');
+    } else {
+      // Check for saved access code only if not authenticated
+      const savedAccessCode = localStorage.getItem('rideAccessCode');
+      if (savedAccessCode && currentLevel === 'public') {
+        setAccessCode(savedAccessCode);
+        handlePrivateAccess(savedAccessCode);
+      }
     }
-  }, []);
+  }, [user, isAdmin]);
 
   const handlePrivateAccess = async (code: string) => {
-    if (!code.trim()) return;
+    const sanitizedCode = sanitizeTextInput(code, 50);
+    if (!sanitizedCode.trim()) return;
     
     setIsValidating(true);
     try {
-      // 验证访问码（这里简化处理，实际应该调用服务验证）
-      const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(code);
+      // Validate access code format (UUID v4)
+      const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sanitizedCode);
       
       if (isValid) {
-        localStorage.setItem('rideAccessCode', code);
-        onAccessChange('private', code);
+        localStorage.setItem('rideAccessCode', sanitizedCode);
+        onAccessChange('private', sanitizedCode);
       } else {
-        alert('无效的访问码');
+        alert('无效的访问码格式');
       }
     } catch (error) {
       console.error('验证访问码失败:', error);
@@ -48,9 +60,11 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('rideAccessCode');
-    localStorage.removeItem('adminToken');
+    if (user) {
+      await signOut();
+    }
     setAccessCode('');
     onAccessChange('public');
   };
@@ -109,9 +123,15 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
           )}
         </div>
 
-        {currentLevel === 'public' && (
+        {currentLevel === 'public' && !user && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link to="/auth" className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4" />
+                  登录/注册
+                </Link>
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

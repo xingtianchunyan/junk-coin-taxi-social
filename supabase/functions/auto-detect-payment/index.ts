@@ -28,10 +28,18 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      'https://gwfuygmhcfmbzkewiuuv.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3ZnV5Z21oY2ZtYnprZXdpdXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTQ3ODksImV4cCI6MjA2Njk3MDc4OX0.pe1U9ZqkH48mJpnAuFAPazpmv7aDX2MA_M4BheFyUGs'
-    );
+    // Use environment variables for Supabase connection
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ error: 'Missing Supabase configuration' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { rideRequestId } = await req.json();
 
@@ -91,6 +99,11 @@ serve(async (req) => {
 
     let foundTransaction = null;
 
+    // Get API keys from environment (should be set in Supabase secrets)
+    const etherscanApiKey = Deno.env.get('ETHERSCAN_API_KEY');
+    const bscscanApiKey = Deno.env.get('BSCSCAN_API_KEY');
+    const polygonscanApiKey = Deno.env.get('POLYGONSCAN_API_KEY');
+
     // 检查每个激活的钱包地址
     for (const wallet of walletAddresses) {
       const toAddress = wallet.address.toLowerCase();
@@ -98,14 +111,24 @@ serve(async (req) => {
       try {
         // 根据链名称选择合适的API
         let apiUrl = '';
+        let apiKey = '';
+        
         if (wallet.chain_name.toLowerCase().includes('ethereum') || wallet.chain_name.toLowerCase().includes('eth')) {
-          apiUrl = `https://api.etherscan.io/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=YourApiKeyToken`;
+          apiKey = etherscanApiKey || '';
+          apiUrl = `https://api.etherscan.io/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
         } else if (wallet.chain_name.toLowerCase().includes('bsc') || wallet.chain_name.toLowerCase().includes('binance')) {
-          apiUrl = `https://api.bscscan.com/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=YourApiKeyToken`;
+          apiKey = bscscanApiKey || '';
+          apiUrl = `https://api.bscscan.com/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
         } else if (wallet.chain_name.toLowerCase().includes('polygon') || wallet.chain_name.toLowerCase().includes('matic')) {
-          apiUrl = `https://api.polygonscan.com/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=YourApiKeyToken`;
+          apiKey = polygonscanApiKey || '';
+          apiUrl = `https://api.polygonscan.com/api?module=account&action=txlist&address=${fromAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
         } else {
           console.log(`Unsupported chain: ${wallet.chain_name}`);
+          continue;
+        }
+
+        if (!apiKey) {
+          console.log(`No API key available for ${wallet.chain_name}`);
           continue;
         }
 
@@ -193,7 +216,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in auto-detect-payment function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Internal server error' }), // Don't expose internal error details
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

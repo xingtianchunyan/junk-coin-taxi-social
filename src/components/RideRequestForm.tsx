@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator } from 'lucide-react';
 import { RideRequest, FixedRoute } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import { useToast } from '@/hooks/use-toast';
+import { validateRideRequestData, globalRateLimiter } from '@/utils/inputValidation';
 
 interface RideRequestFormProps {
   onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => void;
@@ -33,6 +35,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
   
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [calculating, setCalculating] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   // 加载固定路线
@@ -49,34 +53,65 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.friend_name || !formData.fixed_route_id || !formData.requested_time) {
+    setValidationErrors([]);
+    
+    // Rate limiting check
+    if (!globalRateLimiter.isAllowed('form_submission', 3, 60000)) {
+      setValidationErrors(['提交过于频繁，请稍后再试']);
       return;
     }
-
-    onSubmit({
+    
+    // Validate form data
+    const validation = validateRideRequestData({
       ...formData,
-      requested_time: new Date(formData.requested_time),
-      payment_amount: formData.payment_required ? formData.payment_amount : undefined,
-      payment_currency: formData.payment_required ? formData.payment_currency : undefined,
-      sender_wallet_address: formData.payment_required && formData.payment_currency !== 'CNY' ? formData.sender_wallet_address : undefined,
-      fixed_route_id: formData.fixed_route_id
+      requested_time: formData.requested_time
     });
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    
+    if (!formData.fixed_route_id) {
+      setValidationErrors(['请选择一个固定路线']);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const submitData = {
+        ...validation.sanitizedData,
+        requested_time: new Date(formData.requested_time),
+        payment_amount: formData.payment_required ? formData.payment_amount : undefined,
+        payment_currency: formData.payment_required ? formData.payment_currency : undefined,
+        sender_wallet_address: formData.payment_required && formData.payment_currency !== 'CNY' ? formData.sender_wallet_address : undefined,
+        fixed_route_id: formData.fixed_route_id
+      };
+      
+      await onSubmit(submitData);
 
-    setFormData({
-      friend_name: '',
-      start_location: '',
-      end_location: '',
-      requested_time: '',
-      contact_info: '',
-      notes: '',
-      payment_required: true,
-      payment_amount: 0,
-      payment_currency: 'CNY',
-      sender_wallet_address: '',
-      fixed_route_id: ''
-    });
+      // Reset form after successful submission
+      setFormData({
+        friend_name: '',
+        start_location: '',
+        end_location: '',
+        requested_time: '',
+        contact_info: '',
+        notes: '',
+        payment_required: true,
+        payment_amount: 0,
+        payment_currency: 'CNY',
+        sender_wallet_address: '',
+        fixed_route_id: ''
+      });
+    } catch (error) {
+      setValidationErrors(['提交失败，请重试']);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
@@ -162,6 +197,17 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {validationErrors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                <ul className="list-disc list-inside">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="friend_name" className="flex items-center gap-2">
@@ -318,8 +364,9 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit }) => {
           <Button 
             type="submit" 
             className="w-full bg-green-600 hover:bg-green-700 text-white"
+            disabled={isSubmitting}
           >
-            添加用车需求
+            {isSubmitting ? '提交中...' : '添加用车需求'}
           </Button>
         </form>
       </CardContent>
