@@ -16,21 +16,12 @@ interface MyVehicleCardProps {
   onCancel: () => void;
 }
 
-// 模拟车辆数据
-const mockVehicleData = {
-  vehicleInfo: "丰田凯美瑞2023款",
-  vinNumber: "JTDBAMFA1GJ123456",
-  usageDates: [
-    { date: "2025-01-08", driver: "张三", idCard: "110101199001011234", timeSlot: "09:00-12:00", group: 1 },
-    { date: "2025-01-09", driver: "李四", idCard: "110101199002021234", timeSlot: "14:00-17:00", group: 2 },
-    { date: "2025-01-10", driver: "王五", idCard: "110101199003031234", timeSlot: "10:00-13:00", group: 1 },
-  ],
-  passengerHistory: [
-    { nickname: "小明", date: "2025-01-05", timeSlot: "09:00-12:00", group: 1 },
-    { nickname: "小红", date: "2025-01-05", timeSlot: "09:00-12:00", group: 2 },
-    { nickname: "小李", date: "2025-01-06", timeSlot: "14:00-17:00", group: 1 },
-    { nickname: "小张", date: "2025-01-07", timeSlot: "10:00-13:00", group: 1 },
-  ]
+// 车辆数据 - 需要从数据库获取实际数据
+const vehicleData = {
+  vehicleInfo: "",
+  vinNumber: "",
+  usageDates: [],
+  passengerHistory: []
 };
 
 const MyVehicleCard: React.FC<MyVehicleCardProps> = ({ selectedDestination, onCancel }) => {
@@ -55,13 +46,13 @@ const MyVehicleCard: React.FC<MyVehicleCardProps> = ({ selectedDestination, onCa
             <div>
               <label className="text-sm font-medium text-gray-600">车辆信息</label>
               <div className="mt-1 p-2 bg-gray-50 rounded border">
-                {mockVehicleData.vehicleInfo}
+                {vehicleData.vehicleInfo || '暂无车辆信息'}
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600">车架号</label>
               <div className="mt-1 p-2 bg-gray-50 rounded border font-mono text-sm">
-                {mockVehicleData.vinNumber}
+                {vehicleData.vinNumber || '暂无车架号信息'}
               </div>
             </div>
           </div>
@@ -103,39 +94,45 @@ const MyVehicleCard: React.FC<MyVehicleCardProps> = ({ selectedDestination, onCa
                 使用日期列表
               </h4>
               <div className="space-y-3">
-                {mockVehicleData.usageDates.map((usage, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
-                        <span className="text-sm font-medium text-gray-600">当前司机:</span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <User className="h-3 w-3" />
-                          <span>{usage.driver}</span>
+                {vehicleData.usageDates.length > 0 ? (
+                  vehicleData.usageDates.map((usage, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-600">当前司机:</span>
+                          <div className="flex items-center gap-1 mt-1">
+                            <User className="h-3 w-3" />
+                            <span>{usage.driver}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-600">身份证号:</span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <IdCard className="h-3 w-3" />
-                          <span className="font-mono text-sm">{usage.idCard}</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-600">身份证号:</span>
+                          <div className="flex items-center gap-1 mt-1">
+                            <IdCard className="h-3 w-3" />
+                            <span className="font-mono text-sm">{usage.idCard}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-600">使用时段:</span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{usage.date} {usage.timeSlot}</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-600">使用时段:</span>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{usage.date} {usage.timeSlot}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-600">组别:</span>
-                        <Badge variant="outline" className="mt-1">
-                          第 {usage.group} 组
-                        </Badge>
+                        <div>
+                          <span className="text-sm font-medium text-gray-600">组别:</span>
+                          <Badge variant="outline" className="mt-1">
+                            第 {usage.group} 组
+                          </Badge>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">暂无使用记录</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
@@ -158,16 +155,24 @@ const MyVehicleCard: React.FC<MyVehicleCardProps> = ({ selectedDestination, onCa
                     </tr>
                   </thead>
                   <tbody>
-                    {mockVehicleData.passengerHistory.map((passenger, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="border border-gray-200 px-4 py-2">{passenger.nickname}</td>
-                        <td className="border border-gray-200 px-4 py-2">{passenger.date}</td>
-                        <td className="border border-gray-200 px-4 py-2">{passenger.timeSlot}</td>
-                        <td className="border border-gray-200 px-4 py-2">
-                          <Badge variant="outline">第 {passenger.group} 组</Badge>
+                    {vehicleData.passengerHistory.length > 0 ? (
+                      vehicleData.passengerHistory.map((passenger, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-4 py-2">{passenger.nickname}</td>
+                          <td className="border border-gray-200 px-4 py-2">{passenger.date}</td>
+                          <td className="border border-gray-200 px-4 py-2">{passenger.timeSlot}</td>
+                          <td className="border border-gray-200 px-4 py-2">
+                            <Badge variant="outline">第 {passenger.group} 组</Badge>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="border border-gray-200 px-4 py-8 text-center text-gray-500">
+                          暂无历史乘客信息
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

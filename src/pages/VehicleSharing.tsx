@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, Plus, Eye, Clock, Wallet, MapPin, Users, Settings } from 'lucide-react';
+import { Car, Plus, Eye, Clock, Wallet, MapPin, Users, Settings, UserCheck, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { RideRequest } from '@/types/RideRequest';
@@ -25,6 +25,7 @@ const VehicleSharing: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [showMyVehicle, setShowMyVehicle] = useState(false);
+  const [showAuditDriver, setShowAuditDriver] = useState(false);
   const { toast } = useToast();
   const { hasAccess } = useAccessCode();
 
@@ -79,10 +80,10 @@ const VehicleSharing: React.FC = () => {
   
   const filteredRequests = getFilteredRequests();
   
-  // 模拟统计数据
-  const historicalPassengers = filteredRequests.filter(req => req.payment_status === 'confirmed').length; // 成功支付的乘客
-  const currentDrivers = 3; // 模拟当前司机数
-  const historicalVehicles = 8; // 模拟历史车辆数
+  // 统计数据 - 从实际数据计算
+  const historicalPassengers = filteredRequests.filter(req => req.payment_status === 'confirmed').length;
+  const currentDrivers = 0; // 需要从数据库获取实际司机数量
+  const historicalVehicles = 0; // 需要从数据库获取实际车辆数量
 
   if (loading) {
     return (
@@ -180,6 +181,15 @@ const VehicleSharing: React.FC = () => {
           <Settings className="h-5 w-5 mr-2" />
           {showMyVehicle ? '关闭' : '我的车辆'}
         </Button>
+        <Button 
+          onClick={() => setShowAuditDriver(!showAuditDriver)} 
+          size="lg" 
+          variant="outline"
+          className="px-8 py-3 text-lg"
+        >
+          <UserCheck className="h-5 w-5 mr-2" />
+          {showAuditDriver ? '关闭' : '审核司机'}
+        </Button>
       </div>
 
       {/* 添加车辆表单 */}
@@ -202,80 +212,44 @@ const VehicleSharing: React.FC = () => {
         </div>
       )}
 
+      {/* 审核司机 */}
+      {showAuditDriver && (
+        <div className="flex justify-center mb-8">
+          <Card className="w-full max-w-4xl mx-auto">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold">审核司机</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowAuditDriver(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="text-center py-8">
+                <p className="text-gray-600">暂无需要审核的司机申请</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* 用车需求列表 */}
       <div className="space-y-8">
         {/* 可用车辆 */}
-        {filteredRequests.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-2xl font-semibold text-gray-800">可用车辆</h2>
-              <Badge variant="outline" className="bg-green-100 text-green-700">
-                按开放日期显示
-              </Badge>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 模拟可用车辆数据 */}
-              {[
-                { id: 1, vehicle: "丰田凯美瑞2023款", openTime: "09:00-17:00", date: "2025-01-08", owner: "车主A" },
-                { id: 2, vehicle: "本田雅阁2022款", openTime: "10:00-16:00", date: "2025-01-08", owner: "车主B" },
-                { id: 3, vehicle: "大众迈腾2023款", openTime: "08:00-18:00", date: "2025-01-09", owner: "车主C" },
-              ].map(vehicle => (
-                <Card key={vehicle.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">可用车辆</CardTitle>
-                      <Badge variant="outline" className="bg-green-100 text-green-700">
-                        可预约
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-600">车辆信息:</span>
-                        <p className="mt-1">{vehicle.vehicle}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-600">开放日期:</span>
-                        <p className="mt-1">{vehicle.date}</p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <span className="font-medium text-gray-600">开放时段:</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Clock className="h-4 w-4 text-green-600" />
-                        <span className="font-medium text-green-700">{vehicle.openTime}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-medium text-gray-600">车主:</span>
-                        <Badge variant="secondary" className="ml-2">
-                          {hasAccess ? vehicle.owner : '***'}
-                        </Badge>
-                      </div>
-                      <Car className="h-5 w-5 text-gray-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-2xl font-semibold text-gray-800">可用车辆</h2>
+            <Badge variant="outline" className="bg-green-100 text-green-700">
+              按开放日期显示
+            </Badge>
           </div>
-        )}
-
-
-        {/* 空状态 */}
-        {filteredRequests.length === 0 && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">暂无可用车辆</h3>
-              <p className="text-gray-500">请添加车辆信息或选择不同的目的地</p>
-            </CardContent>
-          </Card>
-        )}
+          <div className="text-center py-8">
+            <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">暂无可用车辆</h3>
+            <p className="text-gray-500">请添加车辆信息或选择不同的目的地</p>
+          </div>
+        </div>
       </div>
 
       {/* 目的地选择弹窗 */}
