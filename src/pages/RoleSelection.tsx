@@ -2,14 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Car, Users, UserCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Car, Users, UserCheck, Mail } from 'lucide-react';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 type UserRole = 'passenger' | 'driver' | 'owner';
 
 const RoleSelection: React.FC = () => {
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
+  const [email, setEmail] = useState('');
+  const [isEmailSent, setIsEmailSent] = useState(false);
   const { setAccessCode } = useAccessCode();
   const navigate = useNavigate();
 
@@ -58,7 +63,47 @@ const RoleSelection: React.FC = () => {
     return Math.random().toString(36).substr(2, 8).toUpperCase();
   };
 
-  const handleConfirmRoles = () => {
+  const sendEmailWithAccessCode = async (accessCode: string) => {
+    if (!email.trim()) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('send-access-code', {
+        body: {
+          email: email.trim(),
+          accessCode,
+          roles: selectedRoles,
+        },
+      });
+
+      if (error) {
+        console.error('Error sending email:', error);
+        toast({
+          title: '邮件发送失败',
+          description: '请检查邮箱地址是否正确',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setIsEmailSent(true);
+      toast({
+        title: '邮件发送成功',
+        description: `访问码已发送到 ${email}`,
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast({
+        title: '邮件发送失败',
+        description: '请稍后重试',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConfirmRoles = async () => {
     if (selectedRoles.length === 0) {
       toast({
         title: '请选择角色',
@@ -72,12 +117,17 @@ const RoleSelection: React.FC = () => {
     const accessCode = generateAccessCode();
     setAccessCode(accessCode);
 
-    // 显示访问码
+    // 显示访问码弹窗
     toast({
       title: '角色选择成功',
       description: `您的访问码是: ${accessCode}，请妥善保管`,
       duration: 10000,
     });
+
+    // 如果有邮箱，发送邮件
+    if (email.trim()) {
+      await sendEmailWithAccessCode(accessCode);
+    }
 
     // 根据角色选择导航
     if (selectedRoles.includes('passenger')) {
@@ -145,17 +195,50 @@ const RoleSelection: React.FC = () => {
           </div>
 
           {selectedRoles.length > 0 && (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">
-                已选择角色: {selectedRoles.map(role => roleConfig[role].title).join('、')}
-              </p>
-              <Button 
-                onClick={handleConfirmRoles}
-                size="lg"
-                className="px-8 py-3 text-lg"
-              >
-                确认角色选择
-              </Button>
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  已选择角色: {selectedRoles.map(role => roleConfig[role].title).join('、')}
+                </p>
+              </div>
+              
+              {/* 邮箱输入区域 */}
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="text-center">
+                  <Mail className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <Label htmlFor="email" className="text-sm font-medium">
+                    邮箱地址 (可选)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    输入邮箱可将访问码发送到您的邮箱，防止遗忘
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  {isEmailSent && (
+                    <div className="flex items-center text-green-600">
+                      <span className="text-xs">✓ 已发送</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <Button 
+                  onClick={handleConfirmRoles}
+                  size="lg"
+                  className="px-8 py-3 text-lg"
+                >
+                  确认角色选择
+                </Button>
+              </div>
             </div>
           )}
 
