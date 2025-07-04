@@ -4,35 +4,40 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/components/AuthProvider";
-import Index from "./pages/Index";
-import Admin from "./pages/Admin";
-import Auth from "./pages/Auth";
-import Profile from "./pages/Profile";
-import WalletManagement from "./pages/WalletManagement";
+import { AccessCodeProvider } from "@/components/AccessCodeProvider";
+import Layout from "./components/Layout";
+import RoleSelection from "./pages/RoleSelection";
+import PassengerService from "./pages/PassengerService";
+import VehicleSharing from "./pages/VehicleSharing";
+import VehicleApplication from "./pages/VehicleApplication";
+import WorkSchedule from "./pages/WorkSchedule";
+import PaymentManagement from "./pages/PaymentManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    <AccessCodeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/wallet-management" element={<WalletManagement />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<RoleSelection />} />
+              <Route path="/passenger" element={<PassengerService />} />
+              <Route path="/vehicle-sharing" element={<VehicleSharing />} />
+              <Route path="/vehicle-application" element={<VehicleApplication />} />
+              <Route path="/work-schedule" element={<WorkSchedule />} />
+              <Route path="/payment-management" element={<PaymentManagement />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
+    </AccessCodeProvider>
   </QueryClientProvider>
 );
 
