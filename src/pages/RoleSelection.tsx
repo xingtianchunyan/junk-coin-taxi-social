@@ -60,7 +60,7 @@ const RoleSelection: React.FC = () => {
   };
 
   const generateAccessCode = (): string => {
-    return Math.random().toString(36).substr(2, 8).toUpperCase();
+    return crypto.randomUUID();
   };
 
   const sendEmailWithAccessCode = async (accessCode: string) => {
