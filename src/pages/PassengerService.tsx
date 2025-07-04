@@ -2,18 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Clock, Users, Car } from 'lucide-react';
+import { Plus, Clock, Users, Car, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
+import DestinationSelector from '@/components/DestinationSelector';
 import { RideRequest } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
+
+interface Destination {
+  id: string;
+  name: string;
+  address: string;
+  description: string | null;
+}
 
 const PassengerService: React.FC = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showDestinationDialog, setShowDestinationDialog] = useState(false);
+  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
   const { toast } = useToast();
   const { hasAccess, accessCode } = useAccessCode();
 
@@ -99,9 +109,20 @@ const PassengerService: React.FC = () => {
   };
 
   const filteredRequests = getFilteredRequests();
-  const pendingRequests = filteredRequests.filter(req => req.status === 'pending');
-  const completedRequests = filteredRequests.filter(req => req.status === 'completed');
-  const sortedPendingRequests = [...pendingRequests].sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime());
+  
+  // 模拟同时段数据 (实际应从数据库获取)
+  const currentPeriodPassengers = filteredRequests.filter(req => req.status === 'pending').length;
+  const currentPeriodDrivers = 3; // 模拟数据
+  const currentPeriodVehicles = 5; // 模拟数据
+  
+  // 按时段分组请求
+  const requestsByPeriod = filteredRequests.reduce((acc, req) => {
+    const hour = req.requested_time.getHours();
+    const period = `${hour}:00-${hour + 1}:00`;
+    if (!acc[period]) acc[period] = [];
+    acc[period].push(req);
+    return acc;
+  }, {} as Record<string, RideRequest[]>);
 
   if (loading) {
     return (
@@ -119,7 +140,23 @@ const PassengerService: React.FC = () => {
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">乘客服务</h1>
-        <p className="text-gray-600">便捷的用车服务，支持加密货币支付</p>
+        <div className="flex items-center justify-center gap-4">
+          <p className="text-gray-600">便捷的用车服务，支持加密货币支付</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDestinationDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            本次到访目的地
+            {selectedDestination && (
+              <Badge variant="secondary" className="ml-1">
+                {selectedDestination.name}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* 统计卡片 */}
@@ -128,10 +165,10 @@ const PassengerService: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100">待处理</p>
-                <p className="text-3xl font-bold">{pendingRequests.length}</p>
+                <p className="text-blue-100">同时段乘客</p>
+                <p className="text-3xl font-bold">{currentPeriodPassengers}</p>
               </div>
-              <Clock className="h-10 w-10 text-blue-200" />
+              <Users className="h-10 w-10 text-blue-200" />
             </div>
           </CardContent>
         </Card>
@@ -140,10 +177,10 @@ const PassengerService: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100">已完成</p>
-                <p className="text-3xl font-bold">{completedRequests.length}</p>
+                <p className="text-green-100">同时段司机</p>
+                <p className="text-3xl font-bold">{currentPeriodDrivers}</p>
               </div>
-              <Users className="h-10 w-10 text-green-200" />
+              <Clock className="h-10 w-10 text-green-200" />
             </div>
           </CardContent>
         </Card>
@@ -152,8 +189,8 @@ const PassengerService: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100">总计</p>
-                <p className="text-3xl font-bold">{requests.length}</p>
+                <p className="text-purple-100">同时段车辆</p>
+                <p className="text-3xl font-bold">{currentPeriodVehicles}</p>
               </div>
               <Car className="h-10 w-10 text-purple-200" />
             </div>
@@ -172,55 +209,48 @@ const PassengerService: React.FC = () => {
       {/* 添加表单 */}
       {showForm && (
         <div className="flex justify-center mb-8">
-          <RideRequestForm onSubmit={addRequest} />
+          <RideRequestForm 
+            onSubmit={addRequest} 
+            selectedDestination={selectedDestination}
+          />
         </div>
       )}
 
       {/* 用车需求列表 */}
       <div className="space-y-8">
-        {/* 待处理的需求 */}
-        {sortedPendingRequests.length > 0 && (
+        {/* 各个时段需求 */}
+        {Object.keys(requestsByPeriod).length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-2xl font-semibold text-gray-800">待处理需求</h2>
-              <Badge variant="outline" className="bg-orange-100 text-orange-700">
-                {pendingRequests.length} 个
+              <h2 className="text-2xl font-semibold text-gray-800">各个时段需求</h2>
+              <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                {Object.keys(requestsByPeriod).length} 个时段
               </Badge>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {sortedPendingRequests.map(request => (
-                <RideRequestCard 
-                  key={request.id} 
-                  request={request} 
-                  onComplete={completeRequest}
-                  accessLevel={hasAccess ? 'private' : 'public'}
-                />
+            <div className="space-y-6">
+              {Object.entries(requestsByPeriod)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([period, periodRequests]) => (
+                <div key={period} className="border rounded-lg p-4 bg-gray-50">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    {period}
+                    <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                      {periodRequests.length} 个需求
+                    </Badge>
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {periodRequests.map(request => (
+                      <RideRequestCard 
+                        key={request.id} 
+                        request={request} 
+                        onComplete={completeRequest}
+                        accessLevel={hasAccess ? 'private' : 'public'}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* 已完成的需求 */}
-        {completedRequests.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-2xl font-semibold text-gray-800">已完成需求</h2>
-              <Badge variant="outline" className="bg-green-100 text-green-700">
-                {completedRequests.length} 个
-              </Badge>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {completedRequests
-                .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-                .slice(0, 4)
-                .map(request => (
-                  <RideRequestCard 
-                    key={request.id} 
-                    request={request} 
-                    onComplete={completeRequest}
-                    accessLevel={hasAccess ? 'private' : 'public'}
-                  />
-                ))}
             </div>
           </div>
         )}
@@ -236,6 +266,14 @@ const PassengerService: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* 目的地选择弹窗 */}
+      <DestinationSelector
+        open={showDestinationDialog}
+        onOpenChange={setShowDestinationDialog}
+        onSelect={setSelectedDestination}
+        selectedDestination={selectedDestination}
+      />
     </div>
   );
 };
