@@ -1,15 +1,81 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Car, FileText, Clock, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Car, FileText, Clock, CheckCircle, MapPin } from 'lucide-react';
+import DestinationSelector from '@/components/DestinationSelector';
+import { useToast } from '@/hooks/use-toast';
 
 const VehicleApplication: React.FC = () => {
+  const [selectedDestination, setSelectedDestination] = useState<any>(null);
+  const [showDestinationSelector, setShowDestinationSelector] = useState(false);
+  const [showApplicationDialog, setShowApplicationDialog] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [applicationData, setApplicationData] = useState({
+    name: '',
+    idNumber: '',
+    vehicleVin: ''
+  });
+  const { toast } = useToast();
+
+  const handleSubmitApplication = () => {
+    if (!applicationData.name || !applicationData.idNumber || !applicationData.vehicleVin) {
+      toast({
+        title: "信息不完整",
+        description: "请填写所有必填信息",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "申请已提交",
+      description: "您的申请已成功提交，等待车主审核",
+    });
+    
+    setShowApplicationDialog(false);
+    setApplicationData({ name: '', idNumber: '', vehicleVin: '' });
+  };
+
+  const handleAccessCodeQuery = () => {
+    if (!accessCode.trim()) {
+      toast({
+        title: "请输入访问码",
+        description: "请输入有效的访问码",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "查询成功",
+      description: "申请状态：审核中",
+    });
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">车辆申请</h1>
-        <p className="text-gray-600">申请使用车辆，开始您的司机之旅</p>
+        <div className="flex items-center justify-center gap-4">
+          <p className="text-gray-600">申请使用车辆，帮助社区成员，开启新型社交</p>
+          <Button
+            variant="outline"
+            onClick={() => setShowDestinationSelector(true)}
+            className="flex items-center gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            服务目的地
+          </Button>
+        </div>
+        {selectedDestination && (
+          <p className="text-sm text-green-600 mt-2">
+            当前目的地：{selectedDestination.name}
+          </p>
+        )}
       </div>
 
       {/* 申请流程说明 */}
@@ -27,21 +93,21 @@ const VehicleApplication: React.FC = () => {
                 <FileText className="h-6 w-6" />
               </div>
               <h3 className="font-semibold mb-2">1. 提交申请</h3>
-              <p className="text-sm text-gray-600">填写个人信息和驾驶证件</p>
+              <p className="text-sm text-gray-600">提供身份信息和驾驶证件</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Clock className="h-6 w-6" />
               </div>
               <h3 className="font-semibold mb-2">2. 审核等待</h3>
-              <p className="text-sm text-gray-600">平台审核您的申请材料</p>
+              <p className="text-sm text-gray-600">车主审核您的申请材料</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="h-6 w-6" />
               </div>
               <h3 className="font-semibold mb-2">3. 开始服务</h3>
-              <p className="text-sm text-gray-600">审核通过后即可接单服务</p>
+              <p className="text-sm text-gray-600">审核通过后即可开始帮助社区</p>
             </div>
           </div>
         </CardContent>
@@ -55,75 +121,104 @@ const VehicleApplication: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600 mb-6">
-              成为司机，开始赚取收入。我们为合格的司机提供车辆使用权。
+              与数字游民社区取得联系，到现场接受车主或负责人的考核和检查后才能开始申请
             </p>
             
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">申请要求</h4>
+                <h4 className="font-semibold text-blue-800 mb-2">考核内容</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• 持有有效驾驶证</li>
-                  <li>• 驾龄满3年</li>
+                  <li>• 实际驾车完成固定路线无事故</li>
                   <li>• 无重大交通违法记录</li>
                   <li>• 通过背景调查</li>
                 </ul>
               </div>
-              
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h4 className="font-semibold text-green-800 mb-2">福利待遇</h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li>• 免费使用平台车辆</li>
-                  <li>• 灵活的工作时间</li>
-                  <li>• 竞争性的收入分成</li>
-                  <li>• 平台保险保障</li>
-                </ul>
-              </div>
             </div>
 
-            <Button className="w-full" size="lg">
-              <Car className="h-5 w-5 mr-2" />
-              开始申请
-            </Button>
+            <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
+              <DialogTrigger asChild>
+                <Button className="w-full" size="lg">
+                  <Car className="h-5 w-5 mr-2" />
+                  开始申请
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>车辆申请</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">姓名</Label>
+                    <Input
+                      id="name"
+                      value={applicationData.name}
+                      onChange={(e) => setApplicationData({
+                        ...applicationData,
+                        name: e.target.value
+                      })}
+                      placeholder="请输入姓名"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="idNumber">身份证号</Label>
+                    <Input
+                      id="idNumber"
+                      value={applicationData.idNumber}
+                      onChange={(e) => setApplicationData({
+                        ...applicationData,
+                        idNumber: e.target.value
+                      })}
+                      placeholder="请输入身份证号"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="vehicleVin">申请车辆车架号</Label>
+                    <Input
+                      id="vehicleVin"
+                      value={applicationData.vehicleVin}
+                      onChange={(e) => setApplicationData({
+                        ...applicationData,
+                        vehicleVin: e.target.value
+                      })}
+                      placeholder="请输入车辆车架号"
+                    />
+                  </div>
+                  <Button onClick={handleSubmitApplication} className="w-full">
+                    提交申请
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>申请状态查询</CardTitle>
+            <CardTitle>输入访问码查看细节</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600 mb-6">
-              已提交申请？在这里查看您的申请状态和进度。
+              输入您的访问码查看申请进度和详细信息。
             </p>
             
             <div className="space-y-4">
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">申请编号: #DR2024001</span>
-                  <span className="text-sm bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                    审核中
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">提交时间: 2024-01-15</p>
-                <p className="text-sm text-gray-600">预计完成: 3-5个工作日</p>
+              <div>
+                <Label htmlFor="accessCode">访问码</Label>
+                <Input
+                  id="accessCode"
+                  type="text"
+                  placeholder="请输入访问码"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                />
               </div>
               
-              <div className="p-4 border rounded-lg opacity-50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">申请编号: #DR2024002</span>
-                  <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">
-                    已通过
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">完成时间: 2024-01-10</p>
-                <p className="text-sm text-gray-600">可开始接单服务</p>
-              </div>
+              <Button onClick={handleAccessCodeQuery} className="w-full">
+                <FileText className="h-5 w-5 mr-2" />
+                查询申请状态
+              </Button>
             </div>
-
-            <Button variant="outline" className="w-full">
-              <FileText className="h-5 w-5 mr-2" />
-              查看详细状态
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -136,9 +231,9 @@ const VehicleApplication: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-semibold mb-2">申请需要多长时间？</h4>
+              <h4 className="font-semibold mb-2">申请实现的逻辑是什么？</h4>
               <p className="text-sm text-gray-600 mb-4">
-                通常需要3-5个工作日完成审核，复杂情况可能需要更长时间。
+                司机要在地接受检查和考核后才能获知车辆车架号，社区负责人只需在司机考核通过后告知车主，车主就能快速核对完成审核。
               </p>
               
               <h4 className="font-semibold mb-2">需要准备什么材料？</h4>
@@ -148,9 +243,9 @@ const VehicleApplication: React.FC = () => {
             </div>
             
             <div>
-              <h4 className="font-semibold mb-2">收入如何计算？</h4>
+              <h4 className="font-semibold mb-2">收费标准如何确定？</h4>
               <p className="text-sm text-gray-600 mb-4">
-                按照订单金额的一定比例分成，具体比例根据服务质量调整。
+                统一根据市场价计算，单程收取50%，往返收取80%。
               </p>
               
               <h4 className="font-semibold mb-2">可以使用自己的车吗？</h4>
@@ -161,6 +256,13 @@ const VehicleApplication: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <DestinationSelector
+        open={showDestinationSelector}
+        onOpenChange={setShowDestinationSelector}
+        onSelect={setSelectedDestination}
+        selectedDestination={selectedDestination}
+      />
     </div>
   );
 };
