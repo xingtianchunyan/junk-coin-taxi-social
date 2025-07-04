@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Key, Eye, EyeOff, Shield, LogIn } from 'lucide-react';
+import { Key, Eye, EyeOff, Shield, LogIn, User } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { sanitizeTextInput } from '@/utils/inputValidation';
 
 interface AccessControlProps {
@@ -20,6 +21,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   const [isValidating, setIsValidating] = useState(false);
   const [showPrivateAccess, setShowPrivateAccess] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
+  const { profile } = useUserProfile();
 
   useEffect(() => {
     // Update access level based on authentication
@@ -115,12 +117,23 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
             <span className="text-sm text-gray-600">{accessInfo.description}</span>
           </div>
           
-          {currentLevel !== 'public' && (
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <EyeOff className="h-4 w-4 mr-1" />
-              退出
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {user && (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/profile" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {profile?.display_name || '个人资料'}
+                </Link>
+              </Button>
+            )}
+            
+            {currentLevel !== 'public' && (
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <EyeOff className="h-4 w-4 mr-1" />
+                退出
+              </Button>
+            )}
+          </div>
         </div>
 
         {currentLevel === 'public' && !user && (
