@@ -50,6 +50,23 @@ const PassengerService: React.FC = () => {
 
   const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
     try {
+      // 检查访问码是否已在相同时段创建需求
+      if (hasAccess && accessCode) {
+        const existingRequest = requests.find(req => 
+          req.access_code === accessCode && 
+          req.requested_time.getHours() === requestData.requested_time.getHours()
+        );
+        
+        if (existingRequest) {
+          toast({
+            title: "创建失败",
+            description: "您已在该时段创建过用车需求",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       const { request, accessCode: newAccessCode } = await rideRequestService.createRideRequest(requestData);
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
@@ -93,36 +110,64 @@ const PassengerService: React.FC = () => {
 
   // 根据访问权限过滤和处理数据
   const getFilteredRequests = () => {
-    if (hasAccess) {
-      return requests; // 有访问码的用户可以看到所有信息
-    } else {
-      // 游客只显示时间和状态信息
-      return requests.map(req => ({
+    if (!selectedDestination) {
+      return []; // 未选择目的地时不显示任何需求
+    }
+
+    return requests.map(req => {
+      // 有访问码且是自己的请求时，显示全部信息
+      if (hasAccess && accessCode && req.access_code === accessCode) {
+        return req;
+      }
+      // 其他情况只显示固定路线信息（保留路线信息）
+      return {
         ...req,
         friend_name: '***',
-        start_location: '***',
-        end_location: '***',
+        start_location: req.fixed_route_id ? req.start_location : '***',
+        end_location: req.fixed_route_id ? req.end_location : '***', 
         contact_info: '***',
         notes: undefined
-      }));
-    }
+      };
+    });
   };
 
   const filteredRequests = getFilteredRequests();
   
-  // 模拟同时段数据 (实际应从数据库获取)
+  // 统计数据基于实际数据计算
   const currentPeriodPassengers = filteredRequests.filter(req => req.status === 'pending').length;
-  const currentPeriodDrivers = 3; // 模拟数据
-  const currentPeriodVehicles = 5; // 模拟数据
+  const currentPeriodDrivers = 0; // 需要从数据库获取司机数据
+  const currentPeriodVehicles = 0; // 需要从数据库获取车辆数据
   
-  // 按时段分组请求
-  const requestsByPeriod = filteredRequests.reduce((acc, req) => {
-    const hour = req.requested_time.getHours();
-    const period = `${hour}:00-${hour + 1}:00`;
-    if (!acc[period]) acc[period] = [];
-    acc[period].push(req);
-    return acc;
-  }, {} as Record<string, RideRequest[]>);
+  // 按路线和时段分组请求，每组最多4人
+  const getGroupedRequests = () => {
+    const groups: Record<string, Record<string, RideRequest[][]>> = {};
+    
+    filteredRequests
+      .sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime()) // 按时间排序
+      .forEach(req => {
+        const hour = req.requested_time.getHours();
+        const period = `${hour}:00-${hour + 1}:00`;
+        const routeKey = req.fixed_route_id || 'other';
+        
+        if (!groups[period]) groups[period] = {};
+        if (!groups[period][routeKey]) groups[period][routeKey] = [];
+        
+        // 找到当前路线的最后一个组
+        let lastGroup = groups[period][routeKey][groups[period][routeKey].length - 1];
+        
+        // 如果没有组或最后一个组已满4人，创建新组
+        if (!lastGroup || lastGroup.length >= 4) {
+          lastGroup = [];
+          groups[period][routeKey].push(lastGroup);
+        }
+        
+        lastGroup.push(req);
+      });
+    
+    return groups;
+  };
+
+  const groupedRequests = getGroupedRequests();
 
   if (loading) {
     return (
@@ -219,34 +264,50 @@ const PassengerService: React.FC = () => {
       {/* 用车需求列表 */}
       <div className="space-y-8">
         {/* 各个时段需求 */}
-        {Object.keys(requestsByPeriod).length > 0 && (
+        {selectedDestination && Object.keys(groupedRequests).length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-semibold text-gray-800">各个时段需求</h2>
               <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                {Object.keys(requestsByPeriod).length} 个时段
+                {Object.keys(groupedRequests).length} 个时段
               </Badge>
             </div>
             <div className="space-y-6">
-              {Object.entries(requestsByPeriod)
+              {Object.entries(groupedRequests)
                 .sort(([a], [b]) => a.localeCompare(b))
-                .map(([period, periodRequests]) => (
+                .map(([period, routeGroups]) => (
                 <div key={period} className="border rounded-lg p-4 bg-gray-50">
                   <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
                     <Clock className="h-5 w-5 text-blue-600" />
                     {period}
-                    <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                      {periodRequests.length} 个需求
-                    </Badge>
                   </h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {periodRequests.map(request => (
-                      <RideRequestCard 
-                        key={request.id} 
-                        request={request} 
-                        onComplete={completeRequest}
-                        accessLevel={hasAccess ? 'private' : 'public'}
-                      />
+                  <div className="space-y-4">
+                    {Object.entries(routeGroups).map(([routeKey, groups]) => (
+                      <div key={routeKey} className="space-y-3">
+                        {groups.map((group, groupIndex) => (
+                          <div key={groupIndex} className="border rounded-lg p-3 bg-white">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-green-100 text-green-700">
+                                第{groupIndex + 1}组 ({group.length}/4人)
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {group.map(request => (
+                                <RideRequestCard 
+                                  key={request.id} 
+                                  request={request} 
+                                  onComplete={completeRequest}
+                                  accessLevel={
+                                    hasAccess && accessCode && request.access_code === accessCode 
+                                      ? 'private' 
+                                      : 'public'
+                                  }
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -256,7 +317,17 @@ const PassengerService: React.FC = () => {
         )}
 
         {/* 空状态 */}
-        {requests.length === 0 && (
+        {!selectedDestination && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">请选择目的地</h3>
+              <p className="text-gray-500 mb-6">点击上方"本次到访目的地"按钮选择您的目的地</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedDestination && requests.length === 0 && (
           <Card className="text-center py-12">
             <CardContent>
               <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
