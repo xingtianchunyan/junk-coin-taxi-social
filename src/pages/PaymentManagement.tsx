@@ -1,64 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wallet, CreditCard, TrendingUp, Download, Eye, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Wallet, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { rideRequestService } from '@/services/rideRequestService';
 
 const PaymentManagement: React.FC = () => {
-  const [selectedWallet, setSelectedWallet] = useState('USDT');
+  const [walletAddresses, setWalletAddresses] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
+  const [newWallet, setNewWallet] = useState({
+    chain_name: '',
+    symbol: '',
+    average_price_30d: '',
+    address: ''
+  });
+  const { toast } = useToast();
 
-  // 模拟数据
-  const walletData = {
-    balance: {
-      USDT: 1250.50,
-      BTC: 0.05432,
-      ETH: 2.1567
-    },
-    transactions: [
-      {
-        id: 1,
-        type: 'income',
-        amount: 45,
-        currency: 'USDT',
-        description: '订单收入 #12345',
-        date: '2024-01-15 10:30',
-        status: 'completed'
-      },
-      {
-        id: 2,
-        type: 'income',
-        amount: 25,
-        currency: 'USDT',
-        description: '订单收入 #12344',
-        date: '2024-01-15 14:00',
-        status: 'completed'
-      },
-      {
-        id: 3,
-        type: 'withdraw',
-        amount: 200,
-        currency: 'USDT',
-        description: '提现到钱包',
-        date: '2024-01-14 16:30',
-        status: 'pending'
-      },
-      {
-        id: 4,
-        type: 'income',
-        amount: 35,
-        currency: 'USDT',
-        description: '订单收入 #12343',
-        date: '2024-01-14 11:15',
-        status: 'completed'
-      }
-    ],
-    stats: {
-      totalEarnings: 1850.75,
-      thisWeekEarnings: 320.50,
-      pendingWithdraw: 200.00,
-      completedOrders: 28
+  useEffect(() => {
+    loadWalletAddresses();
+    loadTransactions();
+  }, []);
+
+  const loadWalletAddresses = async () => {
+    try {
+      const addresses = await rideRequestService.getAllWalletAddresses();
+      setWalletAddresses(addresses);
+    } catch (error) {
+      console.error('加载钱包地址失败:', error);
+    }
+  };
+
+  const loadTransactions = async () => {
+    try {
+      // 这里将来实现区块链交易数据抓取
+      // 目前显示空数组，等待区块链API集成
+      setTransactions([]);
+    } catch (error) {
+      console.error('加载交易记录失败:', error);
+    }
+  };
+
+  const handleAddWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await rideRequestService.createWalletAddress({
+        chain_name: newWallet.chain_name,
+        symbol: newWallet.symbol,
+        address: newWallet.address,
+        qr_code_url: ''
+      });
+      
+      toast({
+        title: "钱包地址已添加",
+        description: "新的钱包地址已成功添加到系统",
+      });
+      
+      setNewWallet({ chain_name: '', symbol: '', average_price_30d: '', address: '' });
+      setShowAddWalletDialog(false);
+      loadWalletAddresses();
+    } catch (error) {
+      toast({
+        title: "添加失败",
+        description: "无法添加钱包地址，请检查输入信息",
+        variant: "destructive",
+      });
     }
   };
 
@@ -67,58 +78,7 @@ const PaymentManagement: React.FC = () => {
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">支付管理</h1>
-        <p className="text-gray-600">管理您的收入和钱包余额</p>
-      </div>
-
-      {/* 余额概览 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100">总收入</p>
-                <p className="text-2xl font-bold">{walletData.stats.totalEarnings} USDT</p>
-              </div>
-              <TrendingUp className="h-10 w-10 text-green-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100">本周收入</p>
-                <p className="text-2xl font-bold">{walletData.stats.thisWeekEarnings} USDT</p>
-              </div>
-              <Wallet className="h-10 w-10 text-blue-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100">可用余额</p>
-                <p className="text-2xl font-bold">{walletData.balance.USDT} USDT</p>
-              </div>
-              <CreditCard className="h-10 w-10 text-purple-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100">处理中</p>
-                <p className="text-2xl font-bold">{walletData.stats.pendingWithdraw} USDT</p>
-              </div>
-              <Download className="h-10 w-10 text-orange-200" />
-            </div>
-          </CardContent>
-        </Card>
+        <p className="text-gray-600">原则上我们不收取人民币，仅收取等值的垃圾币、山寨币，用以达成在帮助社区成员、结识新朋友的同时有基本收入的目的。</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -131,168 +91,152 @@ const PaymentManagement: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* 币种选择 */}
+            {/* 说明文字 */}
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                本网站只需登记钱包地址，无需将加密钱包链接到网站，完全可以在用户已有的加密钱包中进行安全操作，本质上该网站的一切交易都是依靠源自比特币网络的点对点交易功能。
+              </p>
+            </div>
+
+            {/* 钱包地址列表 */}
             <div className="space-y-3">
-              {Object.entries(walletData.balance).map(([currency, balance]) => (
-                <div 
-                  key={currency}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedWallet === currency ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
-                  }`}
-                  onClick={() => setSelectedWallet(currency)}
-                >
+              {walletAddresses.map((wallet) => (
+                <div key={wallet.id} className="p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-semibold">{currency}</h4>
-                      <p className="text-sm text-gray-600">
-                        {currency === 'USDT' ? 'Tether' : currency === 'BTC' ? 'Bitcoin' : 'Ethereum'}
-                      </p>
+                      <h4 className="font-semibold">{wallet.chain_name}</h4>
+                      <p className="text-sm text-gray-600">{wallet.symbol}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{balance}</p>
-                      <p className="text-sm text-gray-600">{currency}</p>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        // 可以添加删除功能
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-500 font-mono break-all">
+                      {wallet.address}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 操作按钮 */}
-            <div className="space-y-2 pt-4 border-t">
-              <Button className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                提现
-              </Button>
-              <Button variant="outline" className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                添加钱包地址
-              </Button>
-            </div>
-
-            {/* 钱包地址 */}
-            <div className="pt-4 border-t">
-              <Label className="text-sm font-medium">当前 {selectedWallet} 地址</Label>
-              <div className="mt-2 p-3 bg-gray-100 rounded font-mono text-xs break-all">
-                1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
-              </div>
-              <Button variant="ghost" size="sm" className="mt-2">
-                <Eye className="h-4 w-4 mr-1" />
-                查看二维码
-              </Button>
-            </div>
+            {/* 添加钱包按钮 */}
+            <Dialog open={showAddWalletDialog} onOpenChange={setShowAddWalletDialog}>
+              <DialogTrigger asChild>
+                <Button className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  添加钱包地址
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>添加钱包地址</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddWallet} className="space-y-4">
+                  <div>
+                    <Label htmlFor="chain_name">区块链网络</Label>
+                    <Input
+                      id="chain_name"
+                      value={newWallet.chain_name}
+                      onChange={(e) => setNewWallet({...newWallet, chain_name: e.target.value})}
+                      placeholder="例如: Ethereum"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="symbol">币种</Label>
+                    <Input
+                      id="symbol"
+                      value={newWallet.symbol}
+                      onChange={(e) => setNewWallet({...newWallet, symbol: e.target.value})}
+                      placeholder="例如: ETH"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="average_price_30d">30日平均币价</Label>
+                    <Input
+                      id="average_price_30d"
+                      value={newWallet.average_price_30d}
+                      onChange={(e) => setNewWallet({...newWallet, average_price_30d: e.target.value})}
+                      placeholder="例如: 2000"
+                      type="number"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address">收款钱包地址</Label>
+                    <Input
+                      id="address"
+                      value={newWallet.address}
+                      onChange={(e) => setNewWallet({...newWallet, address: e.target.value})}
+                      placeholder="输入钱包地址"
+                      className="font-mono"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit">添加</Button>
+                    <Button type="button" variant="outline" onClick={() => setShowAddWalletDialog(false)}>
+                      取消
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 
         {/* 交易记录 */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                交易记录
-              </span>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                导出
-              </Button>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              交易记录
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {walletData.transactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      transaction.type === 'income' 
-                        ? 'bg-green-100 text-green-600' 
-                        : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      {transaction.type === 'income' ? (
-                        <TrendingUp className="h-5 w-5" />
-                      ) : (
-                        <Download className="h-5 w-5" />
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <h4 className="font-semibold">{transaction.description}</h4>
-                    <p className="text-sm text-gray-600">{transaction.date}</p>
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.type === 'income' ? 'text-green-600' : 'text-blue-600'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}{transaction.amount} {transaction.currency}
-                    </p>
-                    <Badge 
-                      variant={transaction.status === 'completed' ? 'default' : 'outline'}
-                      className={transaction.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}
-                    >
-                      {transaction.status === 'completed' ? '已完成' : '处理中'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <Button variant="outline" className="w-full mt-4">
-              查看更多记录
-            </Button>
+            {transactions.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>交易状态</TableHead>
+                    <TableHead>金额</TableHead>
+                    <TableHead>币种</TableHead>
+                    <TableHead>时间</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((tx, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Badge variant={tx.verified ? "default" : "destructive"}>
+                          {tx.verified ? `${tx.passenger_name}-${tx.group_id}-已支付` : `${tx.passenger_name}-${tx.group_id}-未能成功支付`}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{tx.amount}</TableCell>
+                      <TableCell>{tx.currency}</TableCell>
+                      <TableCell>{new Date(tx.timestamp).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">暂无交易记录</p>
+                <p className="text-sm text-gray-400 mt-2">系统将自动从区块链浏览器抓取交易信息并进行核对</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* 提现设置 */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>提现设置</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="minWithdraw">最低提现金额</Label>
-                <Input 
-                  id="minWithdraw"
-                  type="number"
-                  placeholder="50"
-                  className="mt-1"
-                />
-                <p className="text-sm text-gray-600 mt-1">当前设置: 50 USDT</p>
-              </div>
-              
-              <div>
-                <Label htmlFor="autoWithdraw">自动提现阈值</Label>
-                <Input 
-                  id="autoWithdraw"
-                  type="number"
-                  placeholder="1000"
-                  className="mt-1"
-                />
-                <p className="text-sm text-gray-600 mt-1">余额达到此金额时自动提现</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">提现说明</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• 提现手续费: 2 USDT</li>
-                  <li>• 处理时间: 1-3个工作日</li>
-                  <li>• 每日限额: 5000 USDT</li>
-                  <li>• 最低金额: 50 USDT</li>
-                </ul>
-              </div>
-              
-              <Button className="w-full">
-                保存设置
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
