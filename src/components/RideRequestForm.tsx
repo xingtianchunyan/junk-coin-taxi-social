@@ -52,10 +52,12 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
   // 支持的区块链网络和币种
   const blockchainNetworks = [
     { name: 'Ethereum', currencies: ['USDT', 'ETH'] },
-    { name: 'BSC', currencies: ['USDT', 'BNB'] },
-    { name: 'Polygon', currencies: ['USDT', 'MATIC'] },
+    { name: 'Binance Smart Chain', currencies: ['USDT', 'BNB'] },
+    { name: 'Polygon', currencies: ['USDT', 'POL'] },
     { name: 'Tron', currencies: ['USDT', 'TRX'] },
-    { name: 'Bitcoin', currencies: ['BTC'] }
+    { name: 'Bitcoin', currencies: ['BTC'] },
+    { name: 'Solana', currencies: ['SOL'] },
+    { name: 'Arbitrum One', currencies: ['ARB'] }
   ];
 
   // 模拟30日平均币价数据
@@ -64,8 +66,10 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     'BTC': 450000,
     'ETH': 18500,
     'BNB': 3200,
-    'MATIC': 4.8,
-    'TRX': 0.95
+    'POL': 4.8,
+    'TRX': 0.95,
+    'SOL': 980,
+    'ARB': 6.5
   };
 
   // 加载固定路线
