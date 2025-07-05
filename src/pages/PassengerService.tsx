@@ -8,6 +8,7 @@ import { useAccessCode } from '@/components/AccessCodeProvider';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
+import DriverWalletDialog from '@/components/DriverWalletDialog';
 import { RideRequest } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 
@@ -24,6 +25,9 @@ const PassengerService: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showDestinationDialog, setShowDestinationDialog] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [showDriverWalletDialog, setShowDriverWalletDialog] = useState(false);
+  const [driverWalletAddresses, setDriverWalletAddresses] = useState<any[]>([]);
+  const [paymentInfo, setPaymentInfo] = useState<{network: string, currency: string}>({network: '', currency: ''});
   const { toast } = useToast();
   const { hasAccess, accessCode } = useAccessCode();
 
@@ -79,9 +83,22 @@ const PassengerService: React.FC = () => {
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
       
+      // 获取司机钱包地址并显示弹窗
+      try {
+        const walletAddresses = await rideRequestService.getWalletAddresses();
+        setDriverWalletAddresses(walletAddresses);
+        setPaymentInfo({
+          network: requestData.payment_blockchain || 'Ethereum',
+          currency: requestData.payment_currency || 'USDT'
+        });
+        setShowDriverWalletDialog(true);
+      } catch (error) {
+        console.error('获取司机钱包地址失败:', error);
+      }
+      
       toast({
         title: "用车需求已创建",
-        description: "需求已成功提交",
+        description: "需求已成功提交，请查看司机钱包地址进行支付",
       });
     } catch (error) {
       console.error('创建用车需求失败:', error);
@@ -351,6 +368,15 @@ const PassengerService: React.FC = () => {
         onOpenChange={setShowDestinationDialog}
         onSelect={setSelectedDestination}
         selectedDestination={selectedDestination}
+      />
+
+      {/* 司机钱包地址弹窗 */}
+      <DriverWalletDialog
+        open={showDriverWalletDialog}
+        onOpenChange={setShowDriverWalletDialog}
+        selectedNetwork={paymentInfo.network}
+        selectedCurrency={paymentInfo.currency}
+        walletAddresses={driverWalletAddresses}
       />
     </div>
   );
