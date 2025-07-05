@@ -335,6 +335,7 @@ export type Database = {
           notes: string | null
           passenger_count: number | null
           payment_amount: number | null
+          payment_blockchain: string | null
           payment_currency: string | null
           payment_required: boolean | null
           payment_status: string | null
@@ -359,6 +360,7 @@ export type Database = {
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null
+          payment_blockchain?: string | null
           payment_currency?: string | null
           payment_required?: boolean | null
           payment_status?: string | null
@@ -383,6 +385,7 @@ export type Database = {
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null
+          payment_blockchain?: string | null
           payment_currency?: string | null
           payment_required?: boolean | null
           payment_status?: string | null
