@@ -1,145 +1,129 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Car, Users, UserCheck, Mail } from 'lucide-react';
+import { Car } from 'lucide-react';
 import { useAccessCode } from '@/components/AccessCodeProvider';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import AuthDialog from '@/components/AuthDialog';
+import RoleSelectionDialog from '@/components/RoleSelectionDialog';
 
-type UserRole = 'passenger' | 'driver' | 'owner';
+type UserRole = 'passenger' | 'driver' | 'community_admin';
 
 const RoleSelection: React.FC = () => {
-  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
-  const [email, setEmail] = useState('');
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(true);
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [currentAccessCode, setCurrentAccessCode] = useState('');
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { setAccessCode } = useAccessCode();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const roleConfig = {
-    passenger: {
-      icon: Users,
-      title: '乘客',
-      description: '需要出行服务，快速约车支付',
-      color: 'bg-blue-100 text-blue-700',
-      exclusive: true,
-    },
-    driver: {
-      icon: UserCheck,
-      title: '司机',
-      description: '提供驾驶服务，赚取车费收入',
-      color: 'bg-green-100 text-green-700',
-      exclusive: false,
-    },
-    owner: {
-      icon: Car,
-      title: '车主',
-      description: '分享车辆给司机，查看使用记录',
-      color: 'bg-purple-100 text-purple-700',
-      exclusive: false,
-    },
-  };
-
-  const toggleRole = (role: UserRole) => {
-    setSelectedRoles(prev => {
-      if (role === 'passenger') {
-        // 乘客身份是唯一的
-        return prev.includes(role) ? [] : [role];
-      } else {
-        // 司机和车主可以同时选择
-        if (prev.includes(role)) {
-          return prev.filter(r => r !== role);
-        } else {
-          // 如果选择司机或车主，移除乘客身份
-          return [...prev.filter(r => r !== 'passenger'), role];
-        }
-      }
-    });
-  };
-
-  const generateAccessCode = (): string => {
-    return crypto.randomUUID();
-  };
-
-  const sendEmailWithAccessCode = async (accessCode: string) => {
-    if (!email.trim()) {
-      return;
+  useEffect(() => {
+    // 检查是否有存储的访问码
+    const storedAccessCode = localStorage.getItem('access_code');
+    if (storedAccessCode) {
+      handleExistingAccessCode(storedAccessCode);
     }
+  }, []);
 
+  const handleExistingAccessCode = async (accessCode: string) => {
     try {
-      const { error } = await supabase.functions.invoke('send-access-code', {
-        body: {
-          email: email.trim(),
-          accessCode,
-          roles: selectedRoles,
-        },
-      });
+      // 检查访问码对应的用户信息
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('access_code', accessCode)
+        .single();
 
-      if (error) {
-        console.error('Error sending email:', error);
-        toast({
-          title: '邮件发送失败',
-          description: '请检查邮箱地址是否正确',
-          variant: 'destructive',
-        });
-        return;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
       }
 
-      setIsEmailSent(true);
-      toast({
-        title: '邮件发送成功',
-        description: `访问码已发送到 ${email}`,
-        duration: 5000,
-      });
+      if (user) {
+        setCurrentAccessCode(accessCode);
+        setAccessCode(accessCode);
+        
+        if (user.role) {
+          // 用户已有角色，直接跳转
+          setUserRole(user.role as UserRole);
+          navigateToRolePage(user.role as UserRole);
+          setShowAuthDialog(false);
+        } else {
+          // 用户没有角色，显示角色选择
+          setShowAuthDialog(false);
+          setShowRoleDialog(true);
+        }
+      } else {
+        // 访问码无效，清除本地存储
+        localStorage.removeItem('access_code');
+        setShowAuthDialog(true);
+      }
     } catch (error) {
-      console.error('Error sending email:', error);
-      toast({
-        title: '邮件发送失败',
-        description: '请稍后重试',
-        variant: 'destructive',
-      });
+      console.error('检查访问码失败:', error);
+      localStorage.removeItem('access_code');
+      setShowAuthDialog(true);
     }
   };
 
-  const handleConfirmRoles = async () => {
-    if (selectedRoles.length === 0) {
-      toast({
-        title: '请选择角色',
-        description: '请至少选择一个角色',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // 生成访问码
-    const accessCode = generateAccessCode();
+  const handleAuthenticated = async (accessCode: string, role?: string) => {
+    setCurrentAccessCode(accessCode);
     setAccessCode(accessCode);
+    localStorage.setItem('access_code', accessCode);
 
-    // 显示访问码弹窗
-    toast({
-      title: '角色选择成功',
-      description: `您的访问码是: ${accessCode}，请妥善保管`,
-      duration: 10000,
-    });
-
-    // 如果有邮箱，发送邮件
-    if (email.trim()) {
-      await sendEmailWithAccessCode(accessCode);
-    }
-
-    // 根据角色选择导航
-    if (selectedRoles.includes('passenger')) {
-      navigate('/passenger');
-    } else if (selectedRoles.includes('owner')) {
-      // 如果同时选择司机和车主，优先进入车主页面
-      navigate('/vehicle-sharing');
-    } else if (selectedRoles.includes('driver')) {
-      // 只选择司机时，显示导航弹窗（这里简化为直接进入车辆申请页面）
-      navigate('/vehicle-application');
+    if (role) {
+      // 用户已有角色，直接跳转
+      setUserRole(role as UserRole);
+      navigateToRolePage(role as UserRole);
+    } else {
+      // 新用户需要选择角色
+      setShowRoleDialog(true);
     }
   };
+
+  const handleRoleSelected = (role: UserRole) => {
+    setUserRole(role);
+    navigateToRolePage(role);
+  };
+
+  const navigateToRolePage = (role: UserRole) => {
+    setTimeout(() => {
+      switch (role) {
+        case 'passenger':
+          navigate('/passenger');
+          break;
+        case 'driver':
+          navigate('/work-schedule');
+          break;
+        case 'community_admin':
+          navigate('/community-management');
+          break;
+        default:
+          navigate('/passenger');
+      }
+    }, 1000);
+  };
+
+  if (!showAuthDialog && !showRoleDialog) {
+    // 显示跳转中的界面
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white flex items-center justify-center p-4">
+        <Card className="w-full max-w-md mx-auto">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Car className="h-12 w-12 text-green-600 mb-4 animate-spin" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">
+              {userRole === 'passenger' && '进入乘客服务'}
+              {userRole === 'driver' && '进入工作安排'}
+              {userRole === 'community_admin' && '进入社区管理'}
+            </h2>
+            <p className="text-gray-600 text-center">
+              正在为您跳转到对应页面...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white flex items-center justify-center p-4">
@@ -149,105 +133,30 @@ const RoleSelection: React.FC = () => {
             <Car className="h-8 w-8 text-green-600" />
             <CardTitle className="text-3xl font-bold text-gray-800">垃圾币打车</CardTitle>
           </div>
-          <p className="text-gray-600 text-lg">请选择您的身份角色</p>
-          <p className="text-sm text-muted-foreground">
-            乘客身份是唯一的，司机和车主身份可以同时选择
-          </p>
+          <p className="text-gray-600 text-lg">用加密货币支付的便民用车服务</p>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Object.entries(roleConfig).map(([role, config]) => {
-              const Icon = config.icon;
-              const isSelected = selectedRoles.includes(role as UserRole);
-              
-              return (
-                <div
-                  key={role}
-                  className={`p-6 border-2 rounded-lg cursor-pointer transition-all hover:shadow-lg ${
-                    isSelected 
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                      : 'border-border hover:border-muted-foreground'
-                  }`}
-                  onClick={() => toggleRole(role as UserRole)}
-                >
-                  <div className="text-center space-y-4">
-                    <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${config.color}`}>
-                      <Icon className="h-8 w-8" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold mb-2">{config.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {config.description}
-                      </p>
-                    </div>
-                    {isSelected && (
-                      <div className="mt-3">
-                        <span className="inline-block px-3 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-                          已选择
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {selectedRoles.length > 0 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-4">
-                  已选择角色: {selectedRoles.map(role => roleConfig[role].title).join('、')}
-                </p>
-              </div>
-              
-              {/* 邮箱输入区域 */}
-              <div className="max-w-md mx-auto space-y-4">
-                <div className="text-center">
-                  <Mail className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                  <Label htmlFor="email" className="text-sm font-medium">
-                    邮箱地址 (可选)
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    输入邮箱可将访问码发送到您的邮箱，防止遗忘
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  {isEmailSent && (
-                    <div className="flex items-center text-green-600">
-                      <span className="text-xs">✓ 已发送</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-center">
-                <Button 
-                  onClick={handleConfirmRoles}
-                  size="lg"
-                  className="px-8 py-3 text-lg"
-                >
-                  确认角色选择
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="text-center text-sm text-muted-foreground">
-            <p>选择角色后将为您生成唯一的访问码</p>
-            <p>凭借访问码可以在网站内编辑和查看您的数据</p>
-          </div>
+        <CardContent className="text-center py-12">
+          <p className="text-gray-600 mb-4">
+            欢迎使用我们的服务，请先登录或注册
+          </p>
         </CardContent>
       </Card>
+
+      {/* 认证对话框 */}
+      <AuthDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        onAuthenticated={handleAuthenticated}
+      />
+
+      {/* 角色选择对话框 */}
+      <RoleSelectionDialog
+        open={showRoleDialog}
+        onOpenChange={setShowRoleDialog}
+        accessCode={currentAccessCode}
+        onRoleSelected={handleRoleSelected}
+      />
     </div>
   );
 };

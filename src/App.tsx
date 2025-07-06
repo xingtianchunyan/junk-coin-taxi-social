@@ -8,10 +8,8 @@ import { AccessCodeProvider } from "@/components/AccessCodeProvider";
 import Layout from "./components/Layout";
 import RoleSelection from "./pages/RoleSelection";
 import PassengerService from "./pages/PassengerService";
-import VehicleSharing from "./pages/VehicleSharing";
-import VehicleApplication from "./pages/VehicleApplication";
 import WorkSchedule from "./pages/WorkSchedule";
-import PaymentManagement from "./pages/PaymentManagement";
+import CommunityManagement from "./pages/CommunityManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,10 +25,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<RoleSelection />} />
               <Route path="/passenger" element={<PassengerService />} />
-              <Route path="/vehicle-sharing" element={<VehicleSharing />} />
-              <Route path="/vehicle-application" element={<VehicleApplication />} />
               <Route path="/work-schedule" element={<WorkSchedule />} />
-              <Route path="/payment-management" element={<PaymentManagement />} />
+              <Route path="/community-management" element={<CommunityManagement />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

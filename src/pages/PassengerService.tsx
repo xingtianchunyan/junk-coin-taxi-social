@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Clock, Users, Car, MapPin } from 'lucide-react';
+import { Plus, Clock, MapPin, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
+import DestinationSelectionDialog from '@/components/DestinationSelectionDialog';
 import DriverWalletDialog from '@/components/DriverWalletDialog';
 import { RideRequest } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
@@ -24,6 +25,7 @@ const PassengerService: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showDestinationDialog, setShowDestinationDialog] = useState(false);
+  const [showMandatoryDestinationDialog, setShowMandatoryDestinationDialog] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
   const [showDriverWalletDialog, setShowDriverWalletDialog] = useState(false);
   const [driverWalletAddresses, setDriverWalletAddresses] = useState<any[]>([]);
@@ -157,11 +159,6 @@ const PassengerService: React.FC = () => {
 
   const filteredRequests = getFilteredRequests();
   
-  // 统计数据基于实际数据计算
-  const currentPeriodPassengers = filteredRequests.filter(req => req.status === 'pending').length;
-  const currentPeriodDrivers = 0; // 需要从数据库获取司机数据
-  const currentPeriodVehicles = 0; // 需要从数据库获取车辆数据
-  
   // 按路线和时段分组请求，每组最多4人
   const getGroupedRequests = () => {
     const groups: Record<string, Record<string, RideRequest[][]>> = {};
@@ -228,44 +225,7 @@ const PassengerService: React.FC = () => {
         </div>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100">同时段乘客</p>
-                <p className="text-3xl font-bold">{currentPeriodPassengers}</p>
-              </div>
-              <Users className="h-10 w-10 text-blue-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100">同时段司机</p>
-                <p className="text-3xl font-bold">{currentPeriodDrivers}</p>
-              </div>
-              <Clock className="h-10 w-10 text-green-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100">同时段车辆</p>
-                <p className="text-3xl font-bold">{currentPeriodVehicles}</p>
-              </div>
-              <Car className="h-10 w-10 text-purple-200" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* 统计卡片已删除 */}
 
       {/* 添加需求按钮 */}
       <div className="flex justify-center mb-8">

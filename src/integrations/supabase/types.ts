@@ -481,6 +481,30 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          access_code: string
+          created_at: string
+          id: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_code?: string
+          created_at?: string
+          id?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_code?: string
+          created_at?: string
+          id?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vehicle_availability: {
         Row: {
           available_date: string
