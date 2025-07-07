@@ -723,6 +723,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_vehicle_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "passenger" | "driver" | "owner" | "admin"
