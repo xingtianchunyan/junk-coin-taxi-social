@@ -216,7 +216,11 @@ export const vehicleService = {
         ...item.vehicle,
         created_at: new Date(item.vehicle.created_at),
         updated_at: new Date(item.vehicle.updated_at)
-      } : undefined
+      } : undefined,
+      members: item.members?.map(member => ({
+        ...member,
+        joined_at: new Date(member.joined_at)
+      })) || []
     })) || [];
   }
 };
