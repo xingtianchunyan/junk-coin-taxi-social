@@ -222,6 +222,47 @@ export type Database = {
           },
         ]
       }
+      luggage_items: {
+        Row: {
+          created_at: string
+          height_cm: number
+          id: string
+          length_cm: number
+          quantity: number
+          ride_request_id: string | null
+          size_category: string
+          width_cm: number
+        }
+        Insert: {
+          created_at?: string
+          height_cm: number
+          id?: string
+          length_cm: number
+          quantity?: number
+          ride_request_id?: string | null
+          size_category: string
+          width_cm: number
+        }
+        Update: {
+          created_at?: string
+          height_cm?: number
+          id?: string
+          length_cm?: number
+          quantity?: number
+          ride_request_id?: string | null
+          size_category?: string
+          width_cm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "luggage_items_ride_request_id_fkey"
+            columns: ["ride_request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_methods: {
         Row: {
           created_at: string
@@ -325,6 +366,93 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      ride_group_members: {
+        Row: {
+          group_id: string | null
+          id: string
+          joined_at: string
+          ride_request_id: string | null
+        }
+        Insert: {
+          group_id?: string | null
+          id?: string
+          joined_at?: string
+          ride_request_id?: string | null
+        }
+        Update: {
+          group_id?: string | null
+          id?: string
+          joined_at?: string
+          ride_request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "ride_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_group_members_ride_request_id_fkey"
+            columns: ["ride_request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ride_groups: {
+        Row: {
+          created_at: string
+          id: string
+          requested_time: string
+          route_id: string | null
+          status: string | null
+          total_luggage_volume: number | null
+          total_passengers: number | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_time: string
+          route_id?: string | null
+          status?: string | null
+          total_luggage_volume?: number | null
+          total_passengers?: number | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_time?: string
+          route_id?: string | null
+          status?: string | null
+          total_luggage_volume?: number | null
+          total_passengers?: number | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_groups_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_groups_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_requests: {
         Row: {
@@ -499,6 +627,45 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          driver_name: string
+          id: string
+          is_active: boolean | null
+          license_plate: string
+          max_passengers: number
+          trunk_height_cm: number
+          trunk_length_cm: number
+          trunk_width_cm: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          driver_name: string
+          id?: string
+          is_active?: boolean | null
+          license_plate: string
+          max_passengers?: number
+          trunk_height_cm?: number
+          trunk_length_cm?: number
+          trunk_width_cm?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          driver_name?: string
+          id?: string
+          is_active?: boolean | null
+          license_plate?: string
+          max_passengers?: number
+          trunk_height_cm?: number
+          trunk_length_cm?: number
+          trunk_width_cm?: number
           updated_at?: string
         }
         Relationships: []

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Clock, MapPin, Car } from 'lucide-react';
@@ -10,14 +10,19 @@ import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
 import DestinationSelectionDialog from '@/components/DestinationSelectionDialog';
 import DriverWalletDialog from '@/components/DriverWalletDialog';
+import GroupConfirmDialog from '@/components/GroupConfirmDialog';
 import { RideRequest } from '@/types/RideRequest';
+import { LuggageItem, Vehicle, RideGroup } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
+import { vehicleService } from '@/services/vehicleService';
+
 interface Destination {
   id: string;
   name: string;
   address: string;
   description: string | null;
 }
+
 const PassengerService: React.FC = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -34,21 +39,29 @@ const PassengerService: React.FC = () => {
     network: '',
     currency: ''
   });
-  const {
-    toast
-  } = useToast();
-  const {
-    hasAccess,
-    accessCode
-  } = useAccessCode();
+  const [showGroupConfirmDialog, setShowGroupConfirmDialog] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [currentRequest, setCurrentRequest] = useState<RideRequest | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  const { toast } = useToast();
+  const { hasAccess, accessCode } = useAccessCode();
+
   useEffect(() => {
     loadRideRequests();
+    loadVehicles();
   }, []);
+
   const loadRideRequests = async () => {
     try {
       setLoading(true);
       const data = await rideRequestService.getAllRideRequests();
-      setRequests(data);
+      // 过滤掉当前时间之前1小时之外的请求
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const filteredData = data.filter(request => 
+        new Date(request.requested_time) > oneHourAgo
+      );
+      setRequests(filteredData);
     } catch (error) {
       console.error('加载用车需求失败:', error);
       toast({
@@ -60,9 +73,21 @@ const PassengerService: React.FC = () => {
       setLoading(false);
     }
   };
-  const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
+
+  const loadVehicles = async () => {
     try {
-      // 必须有访问码才能创建需求
+      const vehicleData = await vehicleService.getVehicles();
+      setVehicles(vehicleData);
+    } catch (error) {
+      console.error('加载车辆失败:', error);
+    }
+  };
+
+  const addRequest = async (
+    requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, 
+    luggage: Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]
+  ) => {
+    try {
       if (!hasAccess || !accessCode) {
         toast({
           title: "创建失败",
@@ -72,8 +97,10 @@ const PassengerService: React.FC = () => {
         return;
       }
 
-      // 检查访问码是否已在相同时段创建需求
-      const existingRequest = requests.find(req => req.access_code === accessCode && req.requested_time.getHours() === requestData.requested_time.getHours());
+      const existingRequest = requests.find(req => 
+        req.access_code === accessCode && 
+        req.requested_time.getHours() === requestData.requested_time.getHours()
+      );
       if (existingRequest) {
         toast({
           title: "创建失败",
@@ -82,11 +109,20 @@ const PassengerService: React.FC = () => {
         });
         return;
       }
+
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
+      
+      // 创建行李项目
+      if (luggage.length > 0) {
+        await vehicleService.createLuggageItems(request.id, luggage);
+      }
+
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
 
-      // 获取司机钱包地址并显示弹窗
+      // 检查是否可以组队
+      await checkForGrouping(request);
+
       try {
         const walletAddresses = await rideRequestService.getWalletAddresses();
         setDriverWalletAddresses(walletAddresses);
@@ -98,9 +134,10 @@ const PassengerService: React.FC = () => {
       } catch (error) {
         console.error('获取司机钱包地址失败:', error);
       }
+
       toast({
         title: "用车需求已创建",
-        description: "需求已成功提交，请查看司机钱包地址进行支付"
+        description: "需求已成功提交，正在检查组队可能性"
       });
     } catch (error) {
       console.error('创建用车需求失败:', error);
@@ -111,13 +148,110 @@ const PassengerService: React.FC = () => {
       });
     }
   };
+
+  const checkForGrouping = async (newRequest: RideRequest) => {
+    try {
+      if (!newRequest.fixed_route_id) return;
+
+      // 查找同路线同时段的其他请求
+      const sameRouteRequests = requests.filter(req => 
+        req.fixed_route_id === newRequest.fixed_route_id &&
+        req.id !== newRequest.id &&
+        Math.abs(new Date(req.requested_time).getTime() - new Date(newRequest.requested_time).getTime()) <= 30 * 60 * 1000
+      );
+
+      if (sameRouteRequests.length === 0) return;
+
+      // 找到合适的车辆
+      const suitableVehicle = await findSuitableVehicle([...sameRouteRequests, newRequest]);
+      if (!suitableVehicle) return;
+
+      // 创建组队建议
+      const groupData = {
+        vehicle_id: suitableVehicle.id,
+        route_id: newRequest.fixed_route_id,
+        requested_time: newRequest.requested_time,
+        status: 'pending' as const,
+        total_passengers: sameRouteRequests.reduce((sum, req) => sum + (req.passenger_count || 1), 0) + (newRequest.passenger_count || 1),
+        total_luggage_volume: 0 // 会在后面计算
+      };
+
+      // 计算总行李体积
+      let totalLuggageVolume = 0;
+      for (const req of [...sameRouteRequests, newRequest]) {
+        const luggage = await vehicleService.getLuggageItems(req.id);
+        totalLuggageVolume += vehicleService.calculateLuggageVolume(luggage);
+      }
+      groupData.total_luggage_volume = totalLuggageVolume;
+
+      // 显示组队确认弹窗
+      setSelectedGroup({
+        ...groupData,
+        vehicle: suitableVehicle,
+        members: sameRouteRequests.map(req => ({ ride_request: req })),
+        route: {
+          name: '固定路线',
+          start_location: newRequest.start_location,
+          end_location: newRequest.end_location
+        }
+      });
+      setCurrentRequest(newRequest);
+      setShowGroupConfirmDialog(true);
+    } catch (error) {
+      console.error('检查组队失败:', error);
+    }
+  };
+
+  const findSuitableVehicle = async (requests: RideRequest[]): Promise<Vehicle | null> => {
+    const totalPassengers = requests.reduce((sum, req) => sum + (req.passenger_count || 1), 0);
+    
+    for (const vehicle of vehicles) {
+      if (vehicle.max_passengers >= totalPassengers) {
+        const canForm = await vehicleService.canFormGroup(requests, vehicle.id);
+        if (canForm.canForm) {
+          return vehicle;
+        }
+      }
+    }
+    return null;
+  };
+
+  const handleGroupConfirm = async () => {
+    try {
+      if (!selectedGroup || !currentRequest) return;
+
+      // 创建组队
+      const group = await vehicleService.createRideGroup(selectedGroup);
+      
+      // 添加所有成员到组队
+      for (const member of selectedGroup.members) {
+        await vehicleService.joinRideGroup(group.id, member.ride_request.id);
+      }
+      await vehicleService.joinRideGroup(group.id, currentRequest.id);
+
+      toast({
+        title: "组队成功",
+        description: "已成功加入组队，等待司机确认"
+      });
+
+      setShowGroupConfirmDialog(false);
+      loadRideRequests();
+    } catch (error) {
+      console.error('组队失败:', error);
+      toast({
+        title: "组队失败",
+        description: "无法创建组队，请重试",
+        variant: "destructive"
+      });
+    }
+  };
+
   const completeRequest = async (id: string) => {
     try {
       await rideRequestService.updateRideRequestStatus(id, 'completed');
-      setRequests(prev => prev.map(req => req.id === id ? {
-        ...req,
-        status: 'completed' as const
-      } : req));
+      setRequests(prev => prev.map(req => 
+        req.id === id ? { ...req, status: 'completed' as const } : req
+      ));
       toast({
         title: "状态已更新",
         description: "用车需求已标记为完成"
@@ -131,22 +265,20 @@ const PassengerService: React.FC = () => {
       });
     }
   };
+
   const handleDestinationSelected = (destination: Destination) => {
     setSelectedDestination(destination);
     setShowMandatoryDestinationDialog(false);
   };
 
-  // 根据访问权限过滤和处理数据
   const getFilteredRequests = () => {
     if (!selectedDestination) {
-      return []; // 未选择目的地时不显示任何需求
+      return [];
     }
     return requests.map(req => {
-      // 有访问码且是自己的请求时，显示全部信息
       if (hasAccess && accessCode && req.access_code === accessCode) {
         return req;
       }
-      // 其他情况只显示固定路线信息（保留路线信息）
       return {
         ...req,
         friend_name: '***',
@@ -157,41 +289,47 @@ const PassengerService: React.FC = () => {
       };
     });
   };
-  const filteredRequests = getFilteredRequests();
 
-  // 按路线和时段分组请求，每组最多4人
   const getGroupedRequests = () => {
+    const filteredRequests = getFilteredRequests();
     const groups: Record<string, Record<string, RideRequest[][]>> = {};
-    filteredRequests.sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime()) // 按时间排序
-    .forEach(req => {
-      const hour = req.requested_time.getHours();
-      const period = `${hour}:00-${hour + 1}:00`;
-      const routeKey = req.fixed_route_id || 'other';
-      if (!groups[period]) groups[period] = {};
-      if (!groups[period][routeKey]) groups[period][routeKey] = [];
+    
+    filteredRequests
+      .sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime())
+      .forEach(req => {
+        const hour = req.requested_time.getHours();
+        const period = `${hour}:00-${hour + 1}:00`;
+        const routeKey = req.fixed_route_id || 'other';
+        
+        if (!groups[period]) groups[period] = {};
+        if (!groups[period][routeKey]) groups[period][routeKey] = [];
 
-      // 找到当前路线的最后一个组
-      let lastGroup = groups[period][routeKey][groups[period][routeKey].length - 1];
-
-      // 如果没有组或最后一个组已满4人，创建新组
-      if (!lastGroup || lastGroup.length >= 4) {
-        lastGroup = [];
-        groups[period][routeKey].push(lastGroup);
-      }
-      lastGroup.push(req);
-    });
+        let lastGroup = groups[period][routeKey][groups[period][routeKey].length - 1];
+        if (!lastGroup || lastGroup.length >= 4) {
+          lastGroup = [];
+          groups[period][routeKey].push(lastGroup);
+        }
+        lastGroup.push(req);
+      });
+    
     return groups;
   };
+
   const groupedRequests = getGroupedRequests();
+
   if (loading) {
-    return <div className="container mx-auto px-4 py-8">
+    return (
+      <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <Car className="h-12 w-12 text-green-600 mx-auto mb-4 animate-spin" />
           <p className="text-gray-600">加载中...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="container mx-auto px-4 py-8">
+
+  return (
+    <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">乘客服务</h1>
@@ -222,8 +360,8 @@ const PassengerService: React.FC = () => {
 
       {/* 用车需求列表 */}
       <div className="space-y-8">
-        {/* 各个时段需求 */}
-        {selectedDestination && Object.keys(groupedRequests).length > 0 && <div>
+        {selectedDestination && Object.keys(groupedRequests).length > 0 && (
+          <div>
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-semibold text-gray-800">快速组队出发</h2>
               <Badge variant="outline" className="bg-blue-100 text-blue-700">
@@ -231,28 +369,44 @@ const PassengerService: React.FC = () => {
               </Badge>
             </div>
             <div className="space-y-6">
-              {Object.entries(groupedRequests).sort(([a], [b]) => a.localeCompare(b)).map(([period, routeGroups]) => <div key={period} className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    {period}
-                  </h3>
-                  <div className="space-y-4">
-                    {Object.entries(routeGroups).map(([routeKey, groups]) => <div key={routeKey} className="space-y-3">
-                        {groups.map((group, groupIndex) => <div key={groupIndex} className="border rounded-lg p-3 bg-white">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="bg-green-100 text-green-700">
-                                第{groupIndex + 1}组 ({group.length}/4人)
-                              </Badge>
+              {Object.entries(groupedRequests)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([period, routeGroups]) => (
+                  <div key={period} className="border rounded-lg p-4 bg-gray-50">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                      {period}
+                    </h3>
+                    <div className="space-y-4">
+                      {Object.entries(routeGroups).map(([routeKey, groups]) => (
+                        <div key={routeKey} className="space-y-3">
+                          {groups.map((group, groupIndex) => (
+                            <div key={groupIndex} className="border rounded-lg p-3 bg-white">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="bg-green-100 text-green-700">
+                                  第{groupIndex + 1}组 ({group.length}/4人)
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {group.map(request => (
+                                  <RideRequestCard 
+                                    key={request.id} 
+                                    request={request} 
+                                    onComplete={completeRequest}
+                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                  />
+                                ))}
+                              </div>
                             </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                              {group.map(request => <RideRequestCard key={request.id} request={request} onComplete={completeRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} />)}
-                            </div>
-                          </div>)}
-                      </div>)}
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>)}
+                ))}
             </div>
-          </div>}
+          </div>
+        )}
 
         {/* 空状态 */}
         {!selectedDestination && <Card className="text-center py-12">
@@ -280,6 +434,20 @@ const PassengerService: React.FC = () => {
 
       {/* 司机钱包地址弹窗 */}
       <DriverWalletDialog open={showDriverWalletDialog} onOpenChange={setShowDriverWalletDialog} selectedNetwork={paymentInfo.network} selectedCurrency={paymentInfo.currency} walletAddresses={driverWalletAddresses} />
-    </div>;
+
+      {/* 组队确认弹窗 */}
+      {selectedGroup && currentRequest && (
+        <GroupConfirmDialog
+          open={showGroupConfirmDialog}
+          onOpenChange={setShowGroupConfirmDialog}
+          group={selectedGroup}
+          currentRequest={currentRequest}
+          onConfirm={handleGroupConfirm}
+          onCancel={() => setShowGroupConfirmDialog(false)}
+        />
+      )}
+    </div>
+  );
 };
+
 export default PassengerService;

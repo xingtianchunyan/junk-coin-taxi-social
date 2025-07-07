@@ -1,18 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator } from 'lucide-react';
+import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator, Users } from 'lucide-react';
 import { RideRequest, FixedRoute } from '@/types/RideRequest';
+import { LuggageItem } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
+import { vehicleService } from '@/services/vehicleService';
 import { useToast } from '@/hooks/use-toast';
 import { validateRideRequestData, globalRateLimiter } from '@/utils/inputValidation';
+import LuggageSettings from '@/components/LuggageSettings';
 
 interface Destination {
   id: string;
@@ -22,7 +23,7 @@ interface Destination {
 }
 
 interface RideRequestFormProps {
-  onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => void;
+  onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, luggage: Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]) => void;
   selectedDestination?: Destination | null;
 }
 
@@ -39,14 +40,15 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     payment_currency: 'USDT',
     payment_blockchain: 'Ethereum',
     sender_wallet_address: '',
-    fixed_route_id: ''
+    fixed_route_id: '',
+    passenger_count: 1
   });
   
+  const [luggage, setLuggage] = useState<Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]>([]);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coinPrices, setCoinPrices] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   // 支持的区块链网络和币种
@@ -72,7 +74,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     'ARB': 6.5
   };
 
-  // 加载固定路线
   useEffect(() => {
     loadFixedRoutes();
   }, [selectedDestination]);
@@ -80,7 +81,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
   const loadFixedRoutes = async () => {
     try {
       const routes = await rideRequestService.getFixedRoutes();
-      // 如果选择了目的地，只显示相关路线
       if (selectedDestination) {
         const filteredRoutes = routes.filter(route => 
           route.end_location.includes(selectedDestination.name) || 
@@ -99,13 +99,11 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     e.preventDefault();
     setValidationErrors([]);
     
-    // Rate limiting check
     if (!globalRateLimiter.isAllowed('form_submission', 3, 60000)) {
       setValidationErrors(['提交过于频繁，请稍后再试']);
       return;
     }
     
-    // Validate form data
     const validation = validateRideRequestData({
       ...formData,
       requested_time: formData.requested_time
@@ -130,10 +128,11 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         payment_amount: formData.payment_required ? formData.payment_amount : undefined,
         payment_currency: formData.payment_required ? formData.payment_currency : undefined,
         sender_wallet_address: formData.payment_required ? formData.sender_wallet_address : undefined,
-        fixed_route_id: formData.fixed_route_id
+        fixed_route_id: formData.fixed_route_id,
+        passenger_count: formData.passenger_count
       };
       
-      await onSubmit(submitData);
+      await onSubmit(submitData, luggage);
 
       // Reset form after successful submission
       setFormData({
@@ -148,8 +147,10 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         payment_currency: 'USDT',
         payment_blockchain: 'Ethereum',
         sender_wallet_address: '',
-        fixed_route_id: ''
+        fixed_route_id: '',
+        passenger_count: 1
       });
+      setLuggage([]);
     } catch (error) {
       setValidationErrors(['提交失败，请重试']);
     } finally {
@@ -161,14 +162,12 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
-      // 当选择固定路线时，自动填充起点终点和价格
       if (field === 'fixed_route_id' && value) {
         const selectedRoute = fixedRoutes.find(route => route.id === value);
         if (selectedRoute) {
           newData.start_location = selectedRoute.start_location;
           newData.end_location = selectedRoute.end_location;
           newData.payment_required = true;
-          // 计算加密货币价格
           const cnyPrice = selectedRoute.our_price || 0;
           const usdtRate = averagePrices['USDT'] || 7.2;
           newData.payment_amount = Number((cnyPrice / usdtRate).toFixed(4));
@@ -176,7 +175,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         }
       }
       
-      // 当选择区块链网络时，更新可用币种
       if (field === 'payment_blockchain' && value) {
         const network = blockchainNetworks.find(n => n.name === value);
         if (network && !network.currencies.includes(newData.payment_currency)) {
@@ -184,7 +182,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         }
       }
 
-      // 当选择币种时，自动计算数量
       if (field === 'payment_currency' && value && newData.payment_amount > 0) {
         const selectedRoute = fixedRoutes.find(route => route.id === newData.fixed_route_id);
         if (selectedRoute) {
@@ -271,6 +268,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               </AlertDescription>
             </Alert>
           )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="friend_name" className="flex items-center gap-2">
@@ -297,6 +295,29 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                 placeholder="电话或微信"
               />
             </div>
+          </div>
+
+          {/* 人数设置 */}
+          <div className="space-y-2">
+            <Label htmlFor="passenger_count" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              出行人数
+            </Label>
+            <Select
+              value={formData.passenger_count.toString()}
+              onValueChange={(value) => handleInputChange('passenger_count', parseInt(value))}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6].map(num => (
+                  <SelectItem key={num} value={num.toString()}>
+                    {num}人
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 固定路线选择 */}
@@ -329,6 +350,9 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               )}
             </div>
           </div>
+
+          {/* 行李设置 */}
+          <LuggageSettings luggage={luggage} onChange={setLuggage} />
 
           <div className="space-y-2">
             <Label htmlFor="requested_time" className="flex items-center gap-2">
