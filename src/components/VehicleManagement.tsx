@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,12 @@ const VehicleManagement: React.FC = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setVehicles(data || []);
+      const mappedVehicles = data?.map(item => ({
+        ...item,
+        created_at: new Date(item.created_at),
+        updated_at: new Date(item.updated_at)
+      })) || [];
+      setVehicles(mappedVehicles);
     } catch (error) {
       console.error('加载车辆失败:', error);
       toast({

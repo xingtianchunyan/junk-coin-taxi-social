@@ -12,7 +12,11 @@ export const vehicleService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
   },
 
   // 创建车辆
@@ -24,11 +28,15 @@ export const vehicleService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
   },
 
   // 更新车辆
-  async updateVehicle(id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> {
+  async updateVehicle(id: string, vehicleData: Partial<Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>>): Promise<Vehicle> {
     const { data, error } = await supabase
       .from('vehicles')
       .update(vehicleData)
@@ -37,7 +45,11 @@ export const vehicleService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
   },
 
   // 删除车辆（软删除）
@@ -63,7 +75,11 @@ export const vehicleService = {
       .select();
     
     if (error) throw error;
-    return data || [];
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at),
+      size_category: item.size_category as LuggageItem['size_category']
+    })) || [];
   },
 
   // 获取行李项目
@@ -74,7 +90,11 @@ export const vehicleService = {
       .eq('ride_request_id', rideRequestId);
     
     if (error) throw error;
-    return data || [];
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at),
+      size_category: item.size_category as LuggageItem['size_category']
+    })) || [];
   },
 
   // 计算行李总体积
@@ -123,19 +143,33 @@ export const vehicleService = {
       .single();
     
     if (error) return null;
-    return data;
+    return {
+      ...data,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
   },
 
   // 创建组队
   async createRideGroup(groupData: Omit<RideGroup, 'id' | 'created_at' | 'updated_at'>): Promise<RideGroup> {
+    const insertData = {
+      ...groupData,
+      requested_time: groupData.requested_time.toISOString()
+    };
+
     const { data, error } = await supabase
       .from('ride_groups')
-      .insert([groupData])
+      .insert([insertData])
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      requested_time: new Date(data.requested_time),
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
   },
 
   // 加入组队
@@ -171,6 +205,11 @@ export const vehicleService = {
       .eq('status', 'pending');
     
     if (error) throw error;
-    return data || [];
+    return data?.map(item => ({
+      ...item,
+      requested_time: new Date(item.requested_time),
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
   }
 };

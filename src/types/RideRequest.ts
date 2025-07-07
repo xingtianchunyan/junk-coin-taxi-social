@@ -1,4 +1,3 @@
-
 export interface RideRequest {
   id: string;
   access_code: string;
@@ -17,6 +16,7 @@ export interface RideRequest {
   payment_tx_hash?: string;
   sender_wallet_address?: string;
   fixed_route_id?: string;
+  passenger_count?: number;
   created_at: Date;
   updated_at: Date;
 }
