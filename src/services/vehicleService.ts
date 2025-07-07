@@ -168,7 +168,8 @@ export const vehicleService = {
       ...data,
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at)
+      updated_at: new Date(data.updated_at),
+      status: data.status as RideGroup['status']
     };
   },
 
@@ -209,7 +210,8 @@ export const vehicleService = {
       ...item,
       requested_time: new Date(item.requested_time),
       created_at: new Date(item.created_at),
-      updated_at: new Date(item.updated_at)
+      updated_at: new Date(item.updated_at),
+      status: item.status as RideGroup['status']
     })) || [];
   }
 };
