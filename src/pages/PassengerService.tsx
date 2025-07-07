@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -134,6 +135,11 @@ const PassengerService: React.FC = () => {
     }
   };
 
+  const handleDestinationSelected = (destination: Destination) => {
+    setSelectedDestination(destination);
+    setShowMandatoryDestinationDialog(false);
+  };
+
   // 根据访问权限过滤和处理数据
   const getFilteredRequests = () => {
     if (!selectedDestination) {
@@ -225,8 +231,6 @@ const PassengerService: React.FC = () => {
         </div>
       </div>
 
-      {/* 统计卡片已删除 */}
-
       {/* 添加需求按钮 */}
       <div className="flex justify-center mb-8">
         <Button onClick={() => setShowForm(!showForm)} size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg">
@@ -306,7 +310,7 @@ const PassengerService: React.FC = () => {
             <CardContent>
               <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">请选择目的地</h3>
-              <p className="text-gray-500 mb-6">点击上方"本次到访目的地"按钮选择您的目的地</p>
+              <p className="text-gray-500 mb-6">请先选择您的目的地以查看相关用车需求</p>
             </CardContent>
           </Card>
         )}
@@ -322,12 +326,19 @@ const PassengerService: React.FC = () => {
         )}
       </div>
 
-      {/* 目的地选择弹窗 */}
+      {/* 目的地选择弹窗 - 可选择性打开 */}
       <DestinationSelector
         open={showDestinationDialog}
         onOpenChange={setShowDestinationDialog}
         onSelect={setSelectedDestination}
         selectedDestination={selectedDestination}
+      />
+
+      {/* 强制目的地选择弹窗 - 进入页面时必须选择 */}
+      <DestinationSelectionDialog
+        open={showMandatoryDestinationDialog}
+        onOpenChange={setShowMandatoryDestinationDialog}
+        onDestinationSelected={handleDestinationSelected}
       />
 
       {/* 司机钱包地址弹窗 */}
