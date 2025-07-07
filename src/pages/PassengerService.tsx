@@ -45,7 +45,7 @@ const PassengerService: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const { toast } = useToast();
-  const { hasAccess, accessCode } = useAccessCode();
+  const { hasAccess, accessCode, clearAccessCode } = useAccessCode();
 
   useEffect(() => {
     loadRideRequests();
@@ -341,6 +341,9 @@ const PassengerService: React.FC = () => {
             {selectedDestination && <Badge variant="secondary" className="ml-1">
                 {selectedDestination.name}
               </Badge>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={clearAccessCode} className="flex items-center gap-2">
+            退出登录
           </Button>
         </div>
       </div>

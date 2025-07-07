@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wallet, Plus, Trash2, Route, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import { rideRequestService } from '@/services/rideRequestService';
 import { FixedRoute, WalletAddress } from '@/types/RideRequest';
 import VehicleManagement from '@/components/VehicleManagement';
@@ -31,6 +32,7 @@ const CommunityManagement: React.FC = () => {
     owner_type: 'system'
   });
   const { toast } = useToast();
+  const { clearAccessCode } = useAccessCode();
 
   useEffect(() => {
     loadRoutes();
@@ -106,7 +108,12 @@ const CommunityManagement: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
-        <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
+        <div className="flex items-center justify-center gap-4">
+          <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
+          <Button variant="outline" size="sm" onClick={clearAccessCode} className="flex items-center gap-2">
+            退出登录
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="vehicles" className="space-y-6">
