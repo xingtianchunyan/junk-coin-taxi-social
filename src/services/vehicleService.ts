@@ -211,7 +211,12 @@ export const vehicleService = {
       requested_time: new Date(item.requested_time),
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at),
-      status: item.status as RideGroup['status']
+      status: item.status as RideGroup['status'],
+      vehicle: item.vehicle ? {
+        ...item.vehicle,
+        created_at: new Date(item.vehicle.created_at),
+        updated_at: new Date(item.vehicle.updated_at)
+      } : undefined
     })) || [];
   }
 };
