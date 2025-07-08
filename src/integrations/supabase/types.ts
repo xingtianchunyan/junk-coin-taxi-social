@@ -531,6 +531,7 @@ export type Database = {
         Row: {
           created_at: string
           destination_id: string | null
+          discount_percentage: number | null
           driver_name: string
           driver_phone: string | null
           id: string
@@ -545,6 +546,7 @@ export type Database = {
         Insert: {
           created_at?: string
           destination_id?: string | null
+          discount_percentage?: number | null
           driver_name: string
           driver_phone?: string | null
           id?: string
@@ -559,6 +561,7 @@ export type Database = {
         Update: {
           created_at?: string
           destination_id?: string | null
+          discount_percentage?: number | null
           driver_name?: string
           driver_phone?: string | null
           id?: string
