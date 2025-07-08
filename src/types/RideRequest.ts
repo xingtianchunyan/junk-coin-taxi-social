@@ -32,6 +32,20 @@ export interface WalletAddress {
   is_active: boolean;
   created_at: Date;
   destination_id?: string;
+  route_id?: string;
+  vehicle_id?: string;
+  // 关联数据
+  route?: {
+    id: string;
+    name: string;
+    start_location: string;
+    end_location: string;
+  };
+  vehicle?: {
+    id: string;
+    driver_name: string;
+    license_plate: string;
+  };
 }
 
 export interface Payment {

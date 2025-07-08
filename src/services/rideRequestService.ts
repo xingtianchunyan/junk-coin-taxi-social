@@ -131,7 +131,10 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
-      created_at: new Date(item.created_at)
+      created_at: new Date(item.created_at),
+      // 暂时设为undefined，等数据库字段添加后再实现关联查询
+      route: undefined,
+      vehicle: undefined
     })) || [];
   }
 

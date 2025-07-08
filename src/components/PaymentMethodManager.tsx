@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, CreditCard } from 'lucide-react';
+import { CreditCard, Route, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PaymentMethod } from '@/types/RideRequest';
+import { WalletAddress } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 
 interface PaymentMethodManagerProps {
@@ -15,27 +13,19 @@ interface PaymentMethodManagerProps {
 }
 
 const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onClose }) => {
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'exchange_uid' as PaymentMethod['type'],
-    identifier: '',
-    description: ''
-  });
   const { toast } = useToast();
 
   useEffect(() => {
-    loadMethods();
+    loadWalletAddresses();
   }, []);
 
-  const loadMethods = async () => {
+  const loadWalletAddresses = async () => {
     try {
       setLoading(true);
-      const data = await rideRequestService.getAllPaymentMethods();
-      setMethods(data);
+      const data = await rideRequestService.getAllWalletAddresses();
+      setWalletAddresses(data);
     } catch (error) {
       console.error('加载支付途径失败:', error);
       toast({
@@ -48,55 +38,14 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onClose }) 
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingMethod) {
-        await rideRequestService.updatePaymentMethod(editingMethod.id, formData);
-        toast({
-          title: "更新成功",
-          description: "支付途径已更新",
-        });
-      } else {
-        await rideRequestService.createPaymentMethod(formData);
-        toast({
-          title: "添加成功",
-          description: "新支付途径已添加",
-        });
-      }
-      setFormData({ name: '', type: 'exchange_uid', identifier: '', description: '' });
-      setShowAddForm(false);
-      setEditingMethod(null);
-      loadMethods();
-    } catch (error) {
-      console.error('操作失败:', error);
-      toast({
-        title: "操作失败",
-        description: "无法保存支付途径",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEdit = (method: PaymentMethod) => {
-    setEditingMethod(method);
-    setFormData({
-      name: method.name,
-      type: method.type,
-      identifier: method.identifier,
-      description: method.description || ''
-    });
-    setShowAddForm(true);
-  };
-
   const handleToggleActive = async (id: string, isActive: boolean) => {
     try {
-      await rideRequestService.togglePaymentMethod(id, !isActive);
+      await rideRequestService.toggleWalletAddress(id, !isActive);
       toast({
         title: "状态已更新",
         description: `支付途径已${!isActive ? '启用' : '禁用'}`,
       });
-      loadMethods();
+      loadWalletAddresses();
     } catch (error) {
       console.error('更新状态失败:', error);
       toast({
@@ -104,6 +53,29 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onClose }) 
         description: "无法更新支付途径状态",
         variant: "destructive",
       });
+    }
+  };
+
+  const getPayWayText = (payWay: number) => {
+    switch (payWay) {
+      case 1: return '区块链支付';
+      case 2: return '交易所转账';
+      case 3: return '支付宝/微信';
+      case 4: return '现金支付';
+      case 5: return '免费';
+      default: return '未知类型';
+    }
+  };
+
+  const getChainNameText = (chainName: number) => {
+    switch (chainName) {
+      case 1: return 'BITCOIN';
+      case 2: return 'EVM-Compatible';
+      case 3: return 'SOLANA';
+      case 4: return 'TRON';
+      case 5: return 'TON';
+      case 6: return 'SUI';
+      default: return '未知链';
     }
   };
 
@@ -126,145 +98,91 @@ const PaymentMethodManager: React.FC<PaymentMethodManagerProps> = ({ onClose }) 
             <CreditCard className="h-5 w-5" />
             支付途径管理
           </CardTitle>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                setShowAddForm(!showAddForm);
-                if (!showAddForm) {
-                  setEditingMethod(null);
-                  setFormData({ name: '', type: 'exchange_uid', identifier: '', description: '' });
-                }
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {showAddForm ? '取消' : '添加支付途径'}
-            </Button>
-            <Button variant="outline" onClick={onClose}>
-              关闭
-            </Button>
-          </div>
+          <Button variant="outline" onClick={onClose}>
+            关闭
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {showAddForm && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{editingMethod ? '编辑' : '添加'}支付途径</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">支付途径名称</label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="例如: 币安交易所"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">类型</label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) => setFormData({...formData, type: e.target.value as PaymentMethod['type']})}
-                      className="w-full p-2 border rounded-md"
-                      required
-                    >
-                      <option value="exchange_uid">交易所UID</option>
-                      <option value="wallet_address">钱包地址</option>
-                      <option value="other">其他</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">标识符</label>
-                  <Input
-                    value={formData.identifier}
-                    onChange={(e) => setFormData({...formData, identifier: e.target.value})}
-                    placeholder="例如: binance_uid"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">描述 (可选)</label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="支付途径的详细描述"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit">
-                    {editingMethod ? '更新' : '添加'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setEditingMethod(null);
-                    }}
-                  >
-                    取消
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {methods.length > 0 ? (
+        {walletAddresses.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>标识符</TableHead>
+                <TableHead>支付信息</TableHead>
+                <TableHead>路线信息</TableHead>
+                <TableHead>司机信息</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {methods.map((method) => (
-                <TableRow key={method.id}>
+              {walletAddresses.map((wallet) => (
+                <TableRow key={wallet.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{method.name}</div>
-                      {method.description && (
-                        <div className="text-sm text-gray-500">{method.description}</div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          {getPayWayText(wallet.pay_way)}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {wallet.symbol}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {getChainNameText(wallet.chain_name)}
+                      </div>
+                      <div className="font-mono text-xs text-gray-500 max-w-[200px] truncate">
+                        {wallet.address}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      {wallet.route ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <Route className="h-3 w-3 text-blue-500" />
+                            <span className="font-medium text-sm">{wallet.route.name}</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {wallet.route.start_location} → {wallet.route.end_location}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">未关联路线</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">
-                      {method.type === 'exchange_uid' ? '交易所UID' : 
-                       method.type === 'wallet_address' ? '钱包地址' : '其他'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">{method.identifier}</TableCell>
-                  <TableCell>
-                    <Badge variant={method.is_active ? "default" : "secondary"}>
-                      {method.is_active ? '启用' : '禁用'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(method)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleToggleActive(method.id, method.is_active)}
-                      >
-                        {method.is_active ? '禁用' : '启用'}
-                      </Button>
+                    <div className="space-y-1">
+                      {wallet.vehicle ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <Car className="h-3 w-3 text-green-500" />
+                            <span className="font-medium text-sm">{wallet.vehicle.driver_name}</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {wallet.vehicle.license_plate}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">未关联司机</span>
+                      )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={wallet.is_active ? "default" : "secondary"}>
+                      {wallet.is_active ? '启用' : '禁用'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggleActive(wallet.id, wallet.is_active)}
+                    >
+                      {wallet.is_active ? '禁用' : '启用'}
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
