@@ -35,7 +35,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const clearAccessCode = () => {
     setAccessCodeState(null);
-    localStorage.clear();
+    localStorage.removeItem('userAccessCode');
   };
 
   const hasAccess = accessCode !== null;
