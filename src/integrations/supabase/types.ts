@@ -594,7 +594,9 @@ export type Database = {
           is_active: boolean | null
           pay_way: number
           qr_code_url: string | null
+          route_id: string | null
           symbol: string
+          vehicle_id: string | null
         }
         Insert: {
           address: string
@@ -606,7 +608,9 @@ export type Database = {
           is_active?: boolean | null
           pay_way?: number
           qr_code_url?: string | null
+          route_id?: string | null
           symbol: string
+          vehicle_id?: string | null
         }
         Update: {
           address?: string
@@ -618,7 +622,9 @@ export type Database = {
           is_active?: boolean | null
           pay_way?: number
           qr_code_url?: string | null
+          route_id?: string | null
           symbol?: string
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -626,6 +632,20 @@ export type Database = {
             columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_addresses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_addresses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]

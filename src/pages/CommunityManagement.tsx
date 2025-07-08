@@ -290,7 +290,9 @@ const CommunityManagement: React.FC = () => {
       const paymentData = {
         ...newPayment,
         symbol: newPayment.pay_way >= 3 ? 'CNY' : newPayment.symbol,
-        address: newPayment.pay_way >= 3 ? 'N/A' : newPayment.address
+        address: newPayment.pay_way >= 3 ? 'N/A' : newPayment.address,
+        route_id: selectedRouteId,
+        vehicle_id: selectedVehicleId
       };
 
       await rideRequestService.createDestinationWallet(paymentData, destination.id);
@@ -402,6 +404,15 @@ const CommunityManagement: React.FC = () => {
 
   const getSelectedVehicle = () => {
     return vehicles.find(vehicle => vehicle.id === selectedVehicleId);
+  };
+
+  // 根据wallet中的route_id和vehicle_id获取对应信息
+  const getWalletRoute = (routeId: string | undefined) => {
+    return routes.find(route => route.id === routeId);
+  };
+
+  const getWalletVehicle = (vehicleId: string | undefined) => {
+    return vehicles.find(vehicle => vehicle.id === vehicleId);
   };
 
   if (loading) {
@@ -777,37 +788,52 @@ const CommunityManagement: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                {walletAddresses.map((wallet) => (
-                  <div key={wallet.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{getPayWayLabel(wallet.pay_way)}</h4>
-                        {wallet.pay_way === 1 && (
-                          <p className="text-sm text-gray-600">
-                            网络: {getChainLabel(wallet.chain_name)} | 币种: {wallet.symbol}
-                          </p>
-                        )}
-                        {wallet.pay_way === 2 && wallet.exchange_name && (
-                          <p className="text-sm text-gray-600">
-                            交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
-                          </p>
-                        )}
-                        {wallet.address !== 'N/A' && (
-                          <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
-                            {wallet.address}
-                          </p>
-                        )}
+                {walletAddresses.map((wallet) => {
+                  const walletRoute = getWalletRoute(wallet.route_id);
+                  const walletVehicle = getWalletVehicle(wallet.vehicle_id);
+                  
+                  return (
+                    <div key={wallet.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{getPayWayLabel(wallet.pay_way)}</h4>
+                          
+                          {/* 显示关联的路线和车辆信息 */}
+                          <div className="mt-2 p-2 bg-blue-50 rounded">
+                            <p className="text-sm text-blue-700">
+                              <strong>路线:</strong> {walletRoute?.name || '未知路线'}<br/>
+                              <strong>司机:</strong> {walletVehicle?.driver_name || '未知司机'} 
+                              {walletVehicle?.license_plate && `(${walletVehicle.license_plate})`}
+                            </p>
+                          </div>
+                          
+                          {wallet.pay_way === 1 && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              网络: {getChainLabel(wallet.chain_name)} | 币种: {wallet.symbol}
+                            </p>
+                          )}
+                          {wallet.pay_way === 2 && wallet.exchange_name && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
+                            </p>
+                          )}
+                          {wallet.address !== 'N/A' && (
+                            <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
+                              {wallet.address}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeletePayment(wallet.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeletePayment(wallet.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <Dialog open={showAddPaymentDialog} onOpenChange={setShowAddPaymentDialog}>
