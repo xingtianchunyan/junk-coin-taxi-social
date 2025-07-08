@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,7 @@ const PassengerService: React.FC = () => {
 
   const { toast } = useToast();
   const { hasAccess, accessCode, clearAccessCode } = useAccessCode();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadRideRequests();
@@ -342,7 +344,7 @@ const PassengerService: React.FC = () => {
                 {selectedDestination.name}
               </Badge>}
           </Button>
-          <Button variant="outline" size="sm" onClick={clearAccessCode} className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => { clearAccessCode(); navigate('/'); }} className="flex items-center gap-2">
             退出登录
           </Button>
         </div>
