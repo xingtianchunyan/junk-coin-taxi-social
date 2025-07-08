@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, Car, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, MapPin, Car, CheckCircle, XCircle, Plus, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import DestinationSelector from '@/components/DestinationSelector';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +27,8 @@ const WorkSchedule: React.FC = () => {
     fee: '' // 费用
   });
   const { toast } = useToast();
+  const { clearAccessCode } = useAccessCode();
+  const navigate = useNavigate();
 
   // 加载固定路线
   const loadFixedRoutes = async () => {
@@ -144,6 +148,11 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    clearAccessCode();
+    navigate('/');
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
@@ -151,14 +160,20 @@ const WorkSchedule: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">工作安排</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">管理您的工作时间和订单安排</p>
-          <Button
-            variant="outline"
-            onClick={() => setShowDestinationSelector(true)}
-            className="flex items-center gap-2"
-          >
-            <MapPin className="h-4 w-4" />
-            服务目的地
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDestinationSelector(true)}
+              className="flex items-center gap-2"
+            >
+              <MapPin className="h-4 w-4" />
+              服务目的地
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </Button>
+          </div>
         </div>
         {selectedDestination && (
           <p className="text-sm text-green-600 mt-2">

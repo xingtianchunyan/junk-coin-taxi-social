@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wallet, Plus, Trash2, Route, Car } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
 import { FixedRoute, WalletAddress } from '@/types/RideRequest';
@@ -31,6 +33,8 @@ const CommunityManagement: React.FC = () => {
     owner_type: 'system'
   });
   const { toast } = useToast();
+  const { clearAccessCode } = useAccessCode();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadRoutes();
@@ -102,11 +106,22 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    clearAccessCode();
+    navigate('/');
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
-        <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
+        <div className="flex items-center justify-center gap-4">
+          <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            退出登录
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="vehicles" className="space-y-6">

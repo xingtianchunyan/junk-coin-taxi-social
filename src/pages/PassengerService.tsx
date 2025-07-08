@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Clock, MapPin, Car } from 'lucide-react';
+import { Plus, Clock, MapPin, Car, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import RideRequestForm from '@/components/RideRequestForm';
@@ -45,7 +46,8 @@ const PassengerService: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const { toast } = useToast();
-  const { hasAccess, accessCode } = useAccessCode();
+  const { hasAccess, accessCode, clearAccessCode } = useAccessCode();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadRideRequests();
@@ -271,6 +273,11 @@ const PassengerService: React.FC = () => {
     setShowMandatoryDestinationDialog(false);
   };
 
+  const handleLogout = () => {
+    clearAccessCode();
+    navigate('/');
+  };
+
   const getFilteredRequests = () => {
     if (!selectedDestination) {
       return [];
@@ -335,13 +342,19 @@ const PassengerService: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">乘客服务</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">便捷的用车服务，支持加密货币支付</p>
-          <Button variant="outline" size="sm" onClick={() => setShowDestinationDialog(true)} className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            本次到访目的地
-            {selectedDestination && <Badge variant="secondary" className="ml-1">
-                {selectedDestination.name}
-              </Badge>}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowDestinationDialog(true)} className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              本次到访目的地
+              {selectedDestination && <Badge variant="secondary" className="ml-1">
+                  {selectedDestination.name}
+                </Badge>}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </Button>
+          </div>
         </div>
       </div>
 
