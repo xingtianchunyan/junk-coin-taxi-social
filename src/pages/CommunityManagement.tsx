@@ -86,7 +86,6 @@ const CommunityManagement: React.FC = () => {
   const [showAddPaymentDialog, setShowAddPaymentDialog] = useState(false);
 
   const [newRoute, setNewRoute] = useState({
-    name: '',
     start_location: '',
     distance_km: '',
     estimated_duration_minutes: '',
@@ -210,8 +209,12 @@ const CommunityManagement: React.FC = () => {
     if (!destination) return;
 
     try {
+      // 自动生成路线名称
+      const routeName = `${newRoute.start_location}到${destination.name}`;
+      
       const routeData = {
-        ...newRoute,
+        name: routeName,
+        start_location: newRoute.start_location,
         end_location: destination.address,
         distance_km: parseFloat(newRoute.distance_km) || undefined,
         estimated_duration_minutes: parseInt(newRoute.estimated_duration_minutes) || undefined,
@@ -228,7 +231,6 @@ const CommunityManagement: React.FC = () => {
       });
       
       setNewRoute({ 
-        name: '', 
         start_location: '', 
         distance_km: '',
         estimated_duration_minutes: '',
@@ -555,15 +557,8 @@ const CommunityManagement: React.FC = () => {
                     <DialogTitle>添加新路线到 {destination.name}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleAddRoute} className="space-y-4">
-                    <div>
-                      <Label htmlFor="route_name">路线名称</Label>
-                      <Input
-                        id="route_name"
-                        value={newRoute.name}
-                        onChange={(e) => setNewRoute({...newRoute, name: e.target.value})}
-                        placeholder="例如: 合肥南站到DN黄山"
-                        required
-                      />
+                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                      路线名称将自动生成为：{newRoute.start_location ? `${newRoute.start_location}到${destination.name}` : `起点到${destination.name}`}
                     </div>
                     <div>
                       <Label htmlFor="start_location">起点</Label>
@@ -875,28 +870,17 @@ const CommunityManagement: React.FC = () => {
                           </Select>
                         </div>
                         <div>
-                          <Label>可用币种</Label>
-                          <div className="p-2 border rounded bg-gray-50 text-sm">
-                            {getAvailableCryptocurrencies(newPayment.chain_name).join(', ')}
+                          <Label htmlFor="symbol">币种符号</Label>
+                          <Input
+                            id="symbol"
+                            value={newPayment.symbol}
+                            onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
+                            placeholder="例如: BTC, ETH, USDT"
+                            required
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            常用币种：{getAvailableCryptocurrencies(newPayment.chain_name).join(', ')}
                           </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="symbol">选择币种</Label>
-                          <Select 
-                            value={newPayment.symbol} 
-                            onValueChange={(value) => setNewPayment({...newPayment, symbol: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择币种" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAvailableCryptocurrencies(newPayment.chain_name).map((symbol) => (
-                                <SelectItem key={symbol} value={symbol}>
-                                  {symbol}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
                         <div>
                           <Label htmlFor="address">输入地址</Label>
@@ -933,7 +917,7 @@ const CommunityManagement: React.FC = () => {
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="symbol">币种</Label>
+                          <Label htmlFor="symbol">币种符号</Label>
                           <Input
                             id="symbol"
                             value={newPayment.symbol}
