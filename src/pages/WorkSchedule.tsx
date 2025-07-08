@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, Clock, MapPin, Car, CheckCircle, XCircle, Plus } from 'lucide-react';
 import DestinationSelector from '@/components/DestinationSelector';
 import { useToast } from '@/hooks/use-toast';
-import { useAccessCode } from '@/components/AccessCodeProvider';
 import { supabase } from '@/integrations/supabase/client';
 
 const WorkSchedule: React.FC = () => {
@@ -26,7 +25,6 @@ const WorkSchedule: React.FC = () => {
     fee: '' // 费用
   });
   const { toast } = useToast();
-  const { clearAccessCode } = useAccessCode();
 
   // 加载固定路线
   const loadFixedRoutes = async () => {
@@ -160,9 +158,6 @@ const WorkSchedule: React.FC = () => {
           >
             <MapPin className="h-4 w-4" />
             服务目的地
-          </Button>
-          <Button variant="outline" onClick={clearAccessCode} className="flex items-center gap-2">
-            退出登录
           </Button>
         </div>
         {selectedDestination && (
