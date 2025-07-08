@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +33,6 @@ const CommunityManagement: React.FC = () => {
   });
   const { toast } = useToast();
   const { clearAccessCode } = useAccessCode();
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadRoutes();
@@ -112,7 +110,7 @@ const CommunityManagement: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
-          <Button variant="outline" size="sm" onClick={() => { clearAccessCode(); navigate('/'); }} className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={clearAccessCode} className="flex items-center gap-2">
             退出登录
           </Button>
         </div>

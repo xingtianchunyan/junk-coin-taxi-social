@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +27,6 @@ const WorkSchedule: React.FC = () => {
   });
   const { toast } = useToast();
   const { clearAccessCode } = useAccessCode();
-  const navigate = useNavigate();
 
   // 加载固定路线
   const loadFixedRoutes = async () => {
@@ -163,7 +161,7 @@ const WorkSchedule: React.FC = () => {
             <MapPin className="h-4 w-4" />
             服务目的地
           </Button>
-          <Button variant="outline" onClick={() => { clearAccessCode(); navigate('/'); }} className="flex items-center gap-2">
+          <Button variant="outline" onClick={clearAccessCode} className="flex items-center gap-2">
             退出登录
           </Button>
         </div>
