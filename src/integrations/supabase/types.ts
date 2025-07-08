@@ -167,6 +167,7 @@ export type Database = {
         Row: {
           created_at: string
           currency: string | null
+          destination_id: string | null
           distance_km: number | null
           driver_id: string | null
           end_location: string
@@ -183,6 +184,7 @@ export type Database = {
         Insert: {
           created_at?: string
           currency?: string | null
+          destination_id?: string | null
           distance_km?: number | null
           driver_id?: string | null
           end_location: string
@@ -199,6 +201,7 @@ export type Database = {
         Update: {
           created_at?: string
           currency?: string | null
+          destination_id?: string | null
           distance_km?: number | null
           driver_id?: string | null
           end_location?: string
@@ -213,6 +216,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fixed_routes_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fixed_routes_driver_id_fkey"
             columns: ["driver_id"]
@@ -343,6 +353,7 @@ export type Database = {
       preset_destinations: {
         Row: {
           address: string
+          admin_user_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -351,6 +362,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          admin_user_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -359,13 +371,22 @@ export type Database = {
         }
         Update: {
           address?: string
+          admin_user_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "preset_destinations_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_group_members: {
         Row: {
@@ -634,6 +655,7 @@ export type Database = {
       vehicles: {
         Row: {
           created_at: string
+          destination_id: string | null
           driver_name: string
           id: string
           is_active: boolean | null
@@ -646,6 +668,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          destination_id?: string | null
           driver_name: string
           id?: string
           is_active?: boolean | null
@@ -658,6 +681,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          destination_id?: string | null
           driver_name?: string
           id?: string
           is_active?: boolean | null
@@ -668,13 +692,22 @@ export type Database = {
           trunk_width_cm?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_addresses: {
         Row: {
           address: string
           chain_name: string
           created_at: string | null
+          destination_id: string | null
           driver_id: string | null
           id: string
           is_active: boolean | null
@@ -686,6 +719,7 @@ export type Database = {
           address: string
           chain_name: string
           created_at?: string | null
+          destination_id?: string | null
           driver_id?: string | null
           id?: string
           is_active?: boolean | null
@@ -697,6 +731,7 @@ export type Database = {
           address?: string
           chain_name?: string
           created_at?: string | null
+          destination_id?: string | null
           driver_id?: string | null
           id?: string
           is_active?: boolean | null
@@ -705,6 +740,13 @@ export type Database = {
           symbol?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wallet_addresses_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "wallet_addresses_driver_id_fkey"
             columns: ["driver_id"]

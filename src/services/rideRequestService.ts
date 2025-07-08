@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination, FixedRoute } from '@/types/RideRequest';
+import { RideRequest, WalletAddress, Payment, PaymentMethod, SupportedCoin, PresetDestination, FixedRoute, Vehicle } from '@/types/RideRequest';
 
 export class RideRequestService {
   // 获取所有用车需求（只显示基本信息）
@@ -528,6 +528,148 @@ export class RideRequestService {
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  // 社区管理员专用方法
+  async getCommunityDestination(accessCode: string): Promise<PresetDestination | null> {
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('access_code', accessCode)
+      .single();
+
+    if (userError || !user) return null;
+
+    const { data, error } = await supabase
+      .from('preset_destinations')
+      .select('*')
+      .eq('admin_user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (error) return null;
+
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      description: data.description ?? undefined,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  async getDestinationRoutes(destinationId: string): Promise<FixedRoute[]> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .select('*')
+      .eq('destination_id', destinationId)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      currency: item.currency ?? 'CNY',
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
+  }
+
+  async getDestinationVehicles(destinationId: string): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('destination_id', destinationId)
+      .eq('is_active', true)
+      .order('driver_name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
+  }
+
+  async getDestinationWallets(destinationId: string): Promise<WalletAddress[]> {
+    const { data, error } = await supabase
+      .from('wallet_addresses')
+      .select('*')
+      .eq('destination_id', destinationId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async createDestinationRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string): Promise<FixedRoute> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .insert([{
+        ...routeData,
+        destination_id: destinationId,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      currency: data.currency ?? 'CNY',
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
+  }
+
+  async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string): Promise<Vehicle> {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .insert([{
+        ...vehicleData,
+        destination_id: destinationId,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at)
+    };
+  }
+
+  async createDestinationWallet(walletData: Omit<WalletAddress, 'id' | 'created_at' | 'is_active'>, destinationId: string): Promise<WalletAddress> {
+    const { data, error } = await supabase
+      .from('wallet_addresses')
+      .insert([{
+        ...walletData,
+        destination_id: destinationId,
+        is_active: true
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      created_at: new Date(data.created_at)
+    };
   }
 }
 

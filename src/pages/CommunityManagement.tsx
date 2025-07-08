@@ -6,71 +6,159 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wallet, Plus, Trash2, Route, Car, LogOut } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
-import { FixedRoute, WalletAddress } from '@/types/RideRequest';
-import VehicleManagement from '@/components/VehicleManagement';
+import { FixedRoute, WalletAddress, PresetDestination, Vehicle } from '@/types/RideRequest';
+import { supabase } from '@/integrations/supabase/client';
 
 const CommunityManagement: React.FC = () => {
+  const [destination, setDestination] = useState<PresetDestination | null>(null);
   const [routes, setRoutes] = useState<FixedRoute[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // 创建目的地相关状态
+  const [showCreateDestinationDialog, setShowCreateDestinationDialog] = useState(false);
+  const [newDestination, setNewDestination] = useState({
+    name: '',
+    address: '',
+    description: ''
+  });
+
+  // 添加资源相关状态
   const [showAddRouteDialog, setShowAddRouteDialog] = useState(false);
+  const [showAddVehicleDialog, setShowAddVehicleDialog] = useState(false);
   const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
+
   const [newRoute, setNewRoute] = useState({
     name: '',
     start_location: '',
-    end_location: '',
     our_price: '',
     currency: 'USDT'
   });
+
+  const [newVehicle, setNewVehicle] = useState({
+    driver_name: '',
+    license_plate: '',
+    max_passengers: 4,
+    trunk_length_cm: 100,
+    trunk_width_cm: 80,
+    trunk_height_cm: 50
+  });
+
   const [newWallet, setNewWallet] = useState({
     chain_name: '',
     symbol: '',
-    address: '',
-    owner_type: 'system'
+    address: ''
   });
+
   const { toast } = useToast();
-  const { clearAccessCode } = useAccessCode();
+  const { accessCode, clearAccessCode } = useAccessCode();
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadRoutes();
-    loadWalletAddresses();
-  }, []);
+    if (accessCode) {
+      loadCommunityData();
+    }
+  }, [accessCode]);
 
-  const loadRoutes = async () => {
+  const loadCommunityData = async () => {
+    if (!accessCode) return;
+    
+    setLoading(true);
     try {
-      const routeData = await rideRequestService.getFixedRoutes();
-      setRoutes(routeData);
+      // 获取社区管理员管理的目的地
+      const communityDestination = await rideRequestService.getCommunityDestination(accessCode);
+      setDestination(communityDestination);
+
+      if (communityDestination) {
+        // 加载该目的地下的所有资源
+        const [routeData, vehicleData, walletData] = await Promise.all([
+          rideRequestService.getDestinationRoutes(communityDestination.id),
+          rideRequestService.getDestinationVehicles(communityDestination.id),
+          rideRequestService.getDestinationWallets(communityDestination.id)
+        ]);
+
+        setRoutes(routeData);
+        setVehicles(vehicleData);
+        setWalletAddresses(walletData);
+      }
     } catch (error) {
-      console.error('加载路线失败:', error);
+      console.error('加载社区数据失败:', error);
+      toast({
+        title: "加载失败",
+        description: "无法加载社区数据",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadWalletAddresses = async () => {
+  const handleCreateDestination = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessCode) return;
+
     try {
-      const addresses = await rideRequestService.getAllWalletAddresses();
-      setWalletAddresses(addresses);
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('access_code', accessCode)
+        .single();
+
+      if (!user) throw new Error('用户不存在');
+
+      const destinationData = {
+        ...newDestination,
+        admin_user_id: user.id
+      };
+
+      const newDest = await rideRequestService.createPresetDestination(destinationData);
+      setDestination(newDest);
+      setShowCreateDestinationDialog(false);
+      setNewDestination({ name: '', address: '', description: '' });
+      
+      toast({
+        title: "目的地已创建",
+        description: "您的社区目的地已成功创建",
+      });
     } catch (error) {
-      console.error('加载钱包地址失败:', error);
+      console.error('创建目的地失败:', error);
+      toast({
+        title: "创建失败",
+        description: "无法创建目的地，请检查输入信息",
+        variant: "destructive",
+      });
     }
   };
 
   const handleAddRoute = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!destination) return;
+
     try {
+      const routeData = {
+        ...newRoute,
+        end_location: destination.address,
+        our_price: parseFloat(newRoute.our_price) || 0
+      };
+
+      await rideRequestService.createDestinationRoute(routeData, destination.id);
+      
       toast({
         title: "路线已添加",
-        description: "新的路线已成功添加到系统",
+        description: "新的路线已成功添加到您的目的地",
       });
       
-      setNewRoute({ name: '', start_location: '', end_location: '', our_price: '', currency: 'USDT' });
+      setNewRoute({ name: '', start_location: '', our_price: '', currency: 'USDT' });
       setShowAddRouteDialog(false);
-      loadRoutes();
+      loadCommunityData();
     } catch (error) {
+      console.error('添加路线失败:', error);
       toast({
         title: "添加失败",
         description: "无法添加路线，请检查输入信息",
@@ -79,25 +167,55 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
+  const handleAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!destination) return;
+
+    try {
+      await rideRequestService.createDestinationVehicle(newVehicle, destination.id);
+      
+      toast({
+        title: "车辆已添加",
+        description: "新的车辆已成功添加到您的目的地",
+      });
+      
+      setNewVehicle({
+        driver_name: '',
+        license_plate: '',
+        max_passengers: 4,
+        trunk_length_cm: 100,
+        trunk_width_cm: 80,
+        trunk_height_cm: 50
+      });
+      setShowAddVehicleDialog(false);
+      loadCommunityData();
+    } catch (error) {
+      console.error('添加车辆失败:', error);
+      toast({
+        title: "添加失败",
+        description: "无法添加车辆，请检查输入信息",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddWallet = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!destination) return;
+
     try {
-      await rideRequestService.createWalletAddress({
-        chain_name: newWallet.chain_name,
-        symbol: newWallet.symbol,
-        address: newWallet.address,
-        qr_code_url: ''
-      });
+      await rideRequestService.createDestinationWallet(newWallet, destination.id);
       
       toast({
         title: "钱包地址已添加",
-        description: "新的钱包地址已成功添加到系统",
+        description: "新的钱包地址已成功添加到您的目的地",
       });
       
-      setNewWallet({ chain_name: '', symbol: '', address: '', owner_type: 'system' });
+      setNewWallet({ chain_name: '', symbol: '', address: '' });
       setShowAddWalletDialog(false);
-      loadWalletAddresses();
+      loadCommunityData();
     } catch (error) {
+      console.error('添加钱包失败:', error);
       toast({
         title: "添加失败",
         description: "无法添加钱包地址，请检查输入信息",
@@ -111,12 +229,93 @@ const CommunityManagement: React.FC = () => {
     navigate('/');
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-gray-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果没有关联的目的地，显示创建界面
+  if (!destination) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
+          <div className="flex items-center justify-center gap-4">
+            <p className="text-gray-600">欢迎使用社区管理系统</p>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </Button>
+          </div>
+        </div>
+
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              创建您的社区目的地
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-blue-50 rounded-lg mb-6">
+              <p className="text-sm text-blue-700">
+                您还没有关联的社区目的地。请先创建一个目的地，然后您就可以管理该目的地下的路线、车辆和收款信息。
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateDestination} className="space-y-4">
+              <div>
+                <Label htmlFor="dest_name">目的地名称</Label>
+                <Input
+                  id="dest_name"
+                  value={newDestination.name}
+                  onChange={(e) => setNewDestination({...newDestination, name: e.target.value})}
+                  placeholder="例如: DN黄山"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="dest_address">目的地地址</Label>
+                <Input
+                  id="dest_address"
+                  value={newDestination.address}
+                  onChange={(e) => setNewDestination({...newDestination, address: e.target.value})}
+                  placeholder="例如: 安徽省黄山市黄山风景区"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="dest_description">描述（可选）</Label>
+                <Input
+                  id="dest_description"
+                  value={newDestination.description}
+                  onChange={(e) => setNewDestination({...newDestination, description: e.target.value})}
+                  placeholder="目的地的详细描述"
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                <Building2 className="h-4 w-4 mr-2" />
+                创建目的地
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 显示目的地管理界面
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理 - {destination.name}</h1>
         <div className="flex items-center justify-center gap-4">
-          <p className="text-gray-600">管理固定路线、车辆信息和收款钱包地址</p>
+          <p className="text-gray-600">{destination.address}</p>
           <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
             <LogOut className="h-4 w-4" />
             退出登录
@@ -124,25 +323,21 @@ const CommunityManagement: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="vehicles" className="space-y-6">
+      <Tabs defaultValue="routes" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="vehicles" className="flex items-center gap-2">
-            <Car className="h-4 w-4" />
-            车辆管理
-          </TabsTrigger>
           <TabsTrigger value="routes" className="flex items-center gap-2">
             <Route className="h-4 w-4" />
-            路线管理
+            路线管理 ({routes.length})
+          </TabsTrigger>
+          <TabsTrigger value="vehicles" className="flex items-center gap-2">
+            <Car className="h-4 w-4" />
+            车辆管理 ({vehicles.length})
           </TabsTrigger>
           <TabsTrigger value="wallets" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
-            钱包管理
+            钱包管理 ({walletAddresses.length})
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="vehicles">
-          <VehicleManagement />
-        </TabsContent>
 
         <TabsContent value="routes">
           <Card>
@@ -153,7 +348,6 @@ const CommunityManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 路线列表 */}
               <div className="space-y-3">
                 {routes.map((route) => (
                   <div key={route.id} className="p-3 border rounded-lg">
@@ -161,10 +355,10 @@ const CommunityManagement: React.FC = () => {
                       <div>
                         <h4 className="font-semibold">{route.name}</h4>
                         <p className="text-sm text-gray-600">
-                          {route.start_location} → {route.end_location}
+                          {route.start_location} → {destination.name}
                         </p>
                         <p className="text-sm font-medium text-green-600">
-                          ¥{route.our_price || 0} {route.currency || 'USDT'}
+                          ¥{route.our_price || 0} {route.currency}
                         </p>
                       </div>
                       <Button
@@ -181,7 +375,6 @@ const CommunityManagement: React.FC = () => {
                 ))}
               </div>
 
-              {/* 添加路线按钮 */}
               <Dialog open={showAddRouteDialog} onOpenChange={setShowAddRouteDialog}>
                 <DialogTrigger asChild>
                   <Button className="w-full">
@@ -191,7 +384,7 @@ const CommunityManagement: React.FC = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>添加新路线</DialogTitle>
+                    <DialogTitle>添加新路线到 {destination.name}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleAddRoute} className="space-y-4">
                     <div>
@@ -200,7 +393,7 @@ const CommunityManagement: React.FC = () => {
                         id="route_name"
                         value={newRoute.name}
                         onChange={(e) => setNewRoute({...newRoute, name: e.target.value})}
-                        placeholder="例如: 机场快线"
+                        placeholder="例如: 合肥南站到DN黄山"
                         required
                       />
                     </div>
@@ -210,17 +403,7 @@ const CommunityManagement: React.FC = () => {
                         id="start_location"
                         value={newRoute.start_location}
                         onChange={(e) => setNewRoute({...newRoute, start_location: e.target.value})}
-                        placeholder="例如: 北京首都机场"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="end_location">终点</Label>
-                      <Input
-                        id="end_location"
-                        value={newRoute.end_location}
-                        onChange={(e) => setNewRoute({...newRoute, end_location: e.target.value})}
-                        placeholder="例如: 北京站"
+                        placeholder="例如: 合肥南站"
                         required
                       />
                     </div>
@@ -265,6 +448,126 @@ const CommunityManagement: React.FC = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="vehicles">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                车辆管理
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {vehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{vehicle.license_plate}</h4>
+                        <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
+                        <p className="text-sm text-gray-600">
+                          载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          // 可以添加删除功能
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Dialog open={showAddVehicleDialog} onOpenChange={setShowAddVehicleDialog}>
+                <DialogTrigger asChild>
+                  <Button className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    添加车辆
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>添加新车辆</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddVehicle} className="space-y-4">
+                    <div>
+                      <Label htmlFor="driver_name">司机姓名</Label>
+                      <Input
+                        id="driver_name"
+                        value={newVehicle.driver_name}
+                        onChange={(e) => setNewVehicle({...newVehicle, driver_name: e.target.value})}
+                        placeholder="司机姓名"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="license_plate">车牌号</Label>
+                      <Input
+                        id="license_plate"
+                        value={newVehicle.license_plate}
+                        onChange={(e) => setNewVehicle({...newVehicle, license_plate: e.target.value})}
+                        placeholder="皖A12345"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="max_passengers">最大载客数</Label>
+                      <Input
+                        id="max_passengers"
+                        type="number"
+                        value={newVehicle.max_passengers}
+                        onChange={(e) => setNewVehicle({...newVehicle, max_passengers: parseInt(e.target.value) || 4})}
+                        min="1"
+                        max="8"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label htmlFor="trunk_length">后备箱长(cm)</Label>
+                        <Input
+                          id="trunk_length"
+                          type="number"
+                          value={newVehicle.trunk_length_cm}
+                          onChange={(e) => setNewVehicle({...newVehicle, trunk_length_cm: parseInt(e.target.value) || 100})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="trunk_width">后备箱宽(cm)</Label>
+                        <Input
+                          id="trunk_width"
+                          type="number"
+                          value={newVehicle.trunk_width_cm}
+                          onChange={(e) => setNewVehicle({...newVehicle, trunk_width_cm: parseInt(e.target.value) || 80})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="trunk_height">后备箱高(cm)</Label>
+                        <Input
+                          id="trunk_height"
+                          type="number"
+                          value={newVehicle.trunk_height_cm}
+                          onChange={(e) => setNewVehicle({...newVehicle, trunk_height_cm: parseInt(e.target.value) || 50})}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit">添加</Button>
+                      <Button type="button" variant="outline" onClick={() => setShowAddVehicleDialog(false)}>
+                        取消
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="wallets">
           <Card>
             <CardHeader>
@@ -274,14 +577,12 @@ const CommunityManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 说明文字 */}
               <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
-                  管理社区收款钱包地址，支持为不同人员设置专属收款地址
+                  管理 {destination.name} 的收款钱包地址
                 </p>
               </div>
 
-              {/* 钱包地址列表 */}
               <div className="space-y-3">
                 {walletAddresses.map((wallet) => (
                   <div key={wallet.id} className="p-3 border rounded-lg">
@@ -289,9 +590,6 @@ const CommunityManagement: React.FC = () => {
                       <div>
                         <h4 className="font-semibold">{wallet.chain_name}</h4>
                         <p className="text-sm text-gray-600">{wallet.symbol}</p>
-                        <p className="text-xs text-gray-500">
-                          类型: {(wallet as any).owner_type === 'system' ? '系统' : '个人'}
-                        </p>
                       </div>
                       <Button
                         size="sm"
@@ -312,7 +610,6 @@ const CommunityManagement: React.FC = () => {
                 ))}
               </div>
 
-              {/* 添加钱包按钮 */}
               <Dialog open={showAddWalletDialog} onOpenChange={setShowAddWalletDialog}>
                 <DialogTrigger asChild>
                   <Button className="w-full">
@@ -357,18 +654,6 @@ const CommunityManagement: React.FC = () => {
                           <SelectItem value="TRX">TRX</SelectItem>
                           <SelectItem value="SOL">SOL</SelectItem>
                           <SelectItem value="ARB">ARB</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="owner_type">归属类型</Label>
-                      <Select value={newWallet.owner_type} onValueChange={(value) => setNewWallet({...newWallet, owner_type: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="system">系统收款</SelectItem>
-                          <SelectItem value="personal">个人收款</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

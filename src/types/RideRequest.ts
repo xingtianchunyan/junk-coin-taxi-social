@@ -29,6 +29,7 @@ export interface WalletAddress {
   qr_code_url?: string;
   is_active: boolean;
   created_at: Date;
+  destination_id?: string;
 }
 
 export interface Payment {
@@ -70,6 +71,7 @@ export interface PresetDestination {
   description?: string;
   is_active: boolean;
   created_at: Date;
+  admin_user_id?: string;
 }
 
 export interface FixedRoute {
@@ -85,4 +87,19 @@ export interface FixedRoute {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+  destination_id?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  driver_name: string;
+  license_plate: string;
+  max_passengers: number;
+  trunk_length_cm: number;
+  trunk_width_cm: number;
+  trunk_height_cm: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  destination_id?: string;
 }
