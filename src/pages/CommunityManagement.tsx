@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
@@ -89,9 +90,7 @@ const CommunityManagement: React.FC = () => {
     start_location: '',
     distance_km: '',
     estimated_duration_minutes: '',
-    market_price: '',
-    our_price: '',
-    pay_way: 1
+    market_price: ''
   });
 
   const [newVehicle, setNewVehicle] = useState({
@@ -101,8 +100,13 @@ const CommunityManagement: React.FC = () => {
     max_passengers: 4,
     trunk_length_cm: 100,
     trunk_width_cm: 80,
-    trunk_height_cm: 50
+    trunk_height_cm: 50,
+    discount_percentage: [50] // 愿意的折扣，默认50%
   });
+
+  // 支付管理新增状态
+  const [selectedRouteId, setSelectedRouteId] = useState<string>('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
 
   const [newPayment, setNewPayment] = useState({
     pay_way: 1,
@@ -121,18 +125,6 @@ const CommunityManagement: React.FC = () => {
       loadCommunityData();
     }
   }, [accessCode]);
-
-  // 根据支付方式自动调整价格
-  useEffect(() => {
-    const marketPrice = parseFloat(newRoute.market_price) || 0;
-    if (newRoute.pay_way === 3 || newRoute.pay_way === 4) {
-      // 支付宝/微信或现金支付：50%
-      setNewRoute(prev => ({ ...prev, our_price: (marketPrice * 0.5).toString() }));
-    } else if (newRoute.pay_way === 5) {
-      // 免费
-      setNewRoute(prev => ({ ...prev, our_price: '0' }));
-    }
-  }, [newRoute.pay_way, newRoute.market_price]);
 
   const loadCommunityData = async () => {
     if (!accessCode) return;
@@ -219,7 +211,7 @@ const CommunityManagement: React.FC = () => {
         distance_km: parseFloat(newRoute.distance_km) || undefined,
         estimated_duration_minutes: parseInt(newRoute.estimated_duration_minutes) || undefined,
         market_price: parseFloat(newRoute.market_price) || undefined,
-        our_price: parseFloat(newRoute.our_price) || 0,
+        our_price: 0, // 不再设置价格，由车辆管理设置
         currency: 'CNY'
       };
 
@@ -234,9 +226,7 @@ const CommunityManagement: React.FC = () => {
         start_location: '', 
         distance_km: '',
         estimated_duration_minutes: '',
-        market_price: '',
-        our_price: '', 
-        pay_way: 1 
+        market_price: ''
       });
       setShowAddRouteDialog(false);
       loadCommunityData();
@@ -269,7 +259,8 @@ const CommunityManagement: React.FC = () => {
         max_passengers: 4,
         trunk_length_cm: 100,
         trunk_width_cm: 80,
-        trunk_height_cm: 50
+        trunk_height_cm: 50,
+        discount_percentage: [50]
       });
       setShowAddVehicleDialog(false);
       loadCommunityData();
@@ -285,7 +276,14 @@ const CommunityManagement: React.FC = () => {
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!destination) return;
+    if (!destination || !selectedRouteId || !selectedVehicleId) {
+      toast({
+        title: "请选择路线和车辆",
+        description: "添加支付方式前需要先选择路线和车辆",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       // 对于非区块链、非交易所的支付方式，设置默认值
@@ -309,6 +307,8 @@ const CommunityManagement: React.FC = () => {
         symbol: '', 
         address: '' 
       });
+      setSelectedRouteId('');
+      setSelectedVehicleId('');
       setShowAddPaymentDialog(false);
       loadCommunityData();
     } catch (error) {
@@ -394,6 +394,14 @@ const CommunityManagement: React.FC = () => {
 
   const getExchangeLabel = (exchangeId: number) => {
     return EXCHANGE_OPTIONS.find(option => option.value === exchangeId)?.label || '未知';
+  };
+
+  const getSelectedRoute = () => {
+    return routes.find(route => route.id === selectedRouteId);
+  };
+
+  const getSelectedVehicle = () => {
+    return vehicles.find(vehicle => vehicle.id === selectedVehicleId);
   };
 
   if (loading) {
@@ -529,9 +537,6 @@ const CommunityManagement: React.FC = () => {
                           {route.estimated_duration_minutes && <span>预计时长: {route.estimated_duration_minutes}分钟</span>}
                           {route.market_price && <span>市场价: ¥{route.market_price}</span>}
                         </div>
-                        <p className="text-sm font-medium text-green-600">
-                          我们的价格: ¥{route.our_price || 0} {route.currency}
-                        </p>
                       </div>
                       <Button
                         size="sm"
@@ -593,46 +598,16 @@ const CommunityManagement: React.FC = () => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="market_price">市场价</Label>
-                        <Input
-                          id="market_price"
-                          value={newRoute.market_price}
-                          onChange={(e) => setNewRoute({...newRoute, market_price: e.target.value})}
-                          placeholder="150"
-                          type="number"
-                          step="0.01"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="our_price">我们的价格</Label>
-                        <Input
-                          id="our_price"
-                          value={newRoute.our_price}
-                          onChange={(e) => setNewRoute({...newRoute, our_price: e.target.value})}
-                          placeholder="100"
-                          type="number"
-                          step="0.01"
-                          required
-                          disabled={newRoute.pay_way === 5}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pay_way">支付方式</Label>
-                        <Select value={newRoute.pay_way.toString()} onValueChange={(value) => setNewRoute({...newRoute, pay_way: parseInt(value)})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PAY_WAY_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value.toString()}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div>
+                      <Label htmlFor="market_price">市场价</Label>
+                      <Input
+                        id="market_price"
+                        value={newRoute.market_price}
+                        onChange={(e) => setNewRoute({...newRoute, market_price: e.target.value})}
+                        placeholder="150"
+                        type="number"
+                        step="0.01"
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Button type="submit">添加</Button>
@@ -761,6 +736,24 @@ const CommunityManagement: React.FC = () => {
                         />
                       </div>
                     </div>
+                    <div>
+                      <Label>愿意的折扣: {newVehicle.discount_percentage[0]}%</Label>
+                      <div className="mt-2">
+                        <Slider
+                          value={newVehicle.discount_percentage}
+                          onValueChange={(value) => setNewVehicle({...newVehicle, discount_percentage: value})}
+                          max={80}
+                          min={0}
+                          step={5}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>0%</span>
+                          <span>40%</span>
+                          <span>80%</span>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button type="submit">添加</Button>
                       <Button type="button" variant="outline" onClick={() => setShowAddVehicleDialog(false)}>
@@ -829,6 +822,53 @@ const CommunityManagement: React.FC = () => {
                     <DialogTitle>添加支付方式到 {destination.name}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleAddPayment} className="space-y-4">
+                    {/* 选择路线和车辆 */}
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-700 mb-3">
+                        请先选择要为哪个路线和车辆添加支付方式：
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label htmlFor="route_select">选择路线</Label>
+                          <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择路线" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {routes.map((route) => (
+                                <SelectItem key={route.id} value={route.id}>
+                                  {route.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="vehicle_select">选择车辆</Label>
+                          <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择车辆" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vehicles.map((vehicle) => (
+                                <SelectItem key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.license_plate} - {vehicle.driver_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {selectedRouteId && selectedVehicleId && (
+                        <div className="mt-3 p-2 bg-white rounded border">
+                          <p className="text-sm">
+                            <strong>路线:</strong> {getSelectedRoute()?.name}<br/>
+                            <strong>车辆:</strong> {getSelectedVehicle()?.license_plate} - {getSelectedVehicle()?.driver_name}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <Label htmlFor="pay_way">支付方式</Label>
                       <Select 
@@ -941,15 +981,15 @@ const CommunityManagement: React.FC = () => {
 
                     {/* 其他支付方式不需要额外字段 */}
                     {newPayment.pay_way >= 3 && (
-                      <div className="p-4 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-blue-700">
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <p className="text-sm text-green-700">
                           该支付方式无需额外配置，点击添加即可。
                         </p>
                       </div>
                     )}
 
                     <div className="flex gap-2">
-                      <Button type="submit">添加</Button>
+                      <Button type="submit" disabled={!selectedRouteId || !selectedVehicleId}>添加</Button>
                       <Button type="button" variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
                         取消
                       </Button>
