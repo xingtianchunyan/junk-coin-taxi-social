@@ -6,11 +6,8 @@ export type UserRole = 'passenger' | 'driver' | 'owner' | 'admin';
 
 export interface UserProfile {
   id: string;
-  user_id: string;
-  display_name: string | null;
-  phone: string | null;
-  roles: UserRole[];
-  avatar_url: string | null;
+  access_code: string;
+  role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,9 +28,9 @@ export const useUserProfile = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('users')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found error is ok
@@ -55,9 +52,9 @@ export const useUserProfile = () => {
 
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('users')
         .upsert({
-          user_id: user.id,
+          id: user.id,
           ...updates,
           updated_at: new Date().toISOString(),
         })
@@ -75,7 +72,7 @@ export const useUserProfile = () => {
   };
 
   const hasRole = (role: UserRole): boolean => {
-    return profile?.roles?.includes(role) || false;
+    return profile?.role === role;
   };
 
   const isDriver = (): boolean => hasRole('driver');

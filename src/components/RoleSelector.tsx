@@ -42,45 +42,33 @@ const roleConfig = {
 };
 
 const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRoles = [] }) => {
-  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(currentRoles);
+  const [selectedRole, setSelectedRole] = useState<UserRole>(currentRoles[0] || 'passenger');
   const [isUpdating, setIsUpdating] = useState(false);
   const { user } = useAuth();
 
-  const toggleRole = (role: UserRole) => {
+  const selectRole = (role: UserRole) => {
     if (role === 'admin') return; // Admin role cannot be self-assigned
-    
-    setSelectedRoles(prev => {
-      const newRoles = prev.includes(role)
-        ? prev.filter(r => r !== role)
-        : [...prev, role];
-      
-      // Ensure passenger is always included if no other roles
-      if (newRoles.length === 0) {
-        return ['passenger'];
-      }
-      
-      return newRoles;
-    });
+    setSelectedRole(role);
   };
 
-  const handleSaveRoles = async () => {
+  const handleSaveRole = async () => {
     if (!user) return;
     
     setIsUpdating(true);
     try {
-      // Create or update user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
+      // Update user role
+      const { error: userError } = await supabase
+        .from('users')
         .upsert({
-          user_id: user.id,
-          roles: selectedRoles,
+          id: user.id,
+          role: selectedRole,
           updated_at: new Date().toISOString(),
         });
 
-      if (profileError) throw profileError;
+      if (userError) throw userError;
 
       // Create driver record if driver role is selected
-      if (selectedRoles.includes('driver')) {
+      if (selectedRole === 'driver') {
         const { error: driverError } = await supabase
           .from('drivers')
           .upsert({
@@ -99,7 +87,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
         description: '您的角色已更新',
       });
 
-      onRoleSelected(selectedRoles);
+      onRoleSelected([selectedRole]);
     } catch (error) {
       console.error('更新角色失败:', error);
       toast({
@@ -124,7 +112,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(roleConfig).map(([role, config]) => {
             const Icon = config.icon;
-            const isSelected = selectedRoles.includes(role as UserRole);
+            const isSelected = selectedRole === role;
             const isAdmin = role === 'admin';
             
             return (
@@ -135,7 +123,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
                     ? 'border-primary bg-primary/5' 
                     : 'border-border hover:border-muted-foreground'
                 } ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isAdmin && toggleRole(role as UserRole)}
+                onClick={() => !isAdmin && selectRole(role as UserRole)}
               >
                 <div className="flex items-start space-x-3">
                   <Icon className="h-6 w-6 mt-1 text-primary" />
@@ -165,21 +153,19 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
 
         <div className="flex items-center justify-center pt-4">
           <Button 
-            onClick={handleSaveRoles}
-            disabled={isUpdating || selectedRoles.length === 0}
+            onClick={handleSaveRole}
+            disabled={isUpdating}
             className="w-full max-w-xs"
           >
             {isUpdating ? '保存中...' : '保存角色设置'}
           </Button>
         </div>
 
-        {selectedRoles.length > 0 && (
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              已选择角色: {selectedRoles.map(role => roleConfig[role].title).join('、')}
-            </p>
-          </div>
-        )}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            当前选择: {roleConfig[selectedRole].title}
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

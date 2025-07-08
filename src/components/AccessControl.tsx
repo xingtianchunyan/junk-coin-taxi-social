@@ -122,7 +122,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
               <Button asChild variant="outline" size="sm">
                 <Link to="/profile" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  {profile?.display_name || '个人资料'}
+                  {profile?.role || '个人资料'}
                 </Link>
               </Button>
             )}

@@ -14,14 +14,14 @@ const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
   const { profile, loading, updateProfile, refetch } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.display_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   React.useEffect(() => {
     if (profile) {
-      setDisplayName(profile.display_name || '');
-      setPhone(profile.phone || '');
+      setDisplayName('');
+      setPhone('');
     }
   }, [profile]);
 
@@ -29,8 +29,7 @@ const Profile: React.FC = () => {
     setIsUpdating(true);
     try {
       await updateProfile({
-        display_name: displayName.trim() || null,
-        phone: phone.trim() || null,
+        role: profile?.role || 'passenger',
       });
       
       toast({
@@ -123,7 +122,7 @@ const Profile: React.FC = () => {
                   <div className="flex items-center space-x-2 mt-1">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {profile?.display_name || '未设置'}
+                      {profile?.role || '未设置'}
                     </span>
                   </div>
                 )}
@@ -142,7 +141,7 @@ const Profile: React.FC = () => {
                   <div className="flex items-center space-x-2 mt-1">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {profile?.phone || '未设置'}
+                      {profile?.access_code || '未设置'}
                     </span>
                   </div>
                 )}
@@ -156,8 +155,8 @@ const Profile: React.FC = () => {
                     variant="outline"
                     onClick={() => {
                       setIsEditing(false);
-                      setDisplayName(profile?.display_name || '');
-                      setPhone(profile?.phone || '');
+                      setDisplayName('');
+                      setPhone('');
                     }}
                   >
                     取消
@@ -180,7 +179,7 @@ const Profile: React.FC = () => {
 
         {/* Role Management */}
         <RoleSelector
-          currentRoles={profile?.roles || ['passenger']}
+          currentRoles={profile?.role ? [profile.role as any] : ['passenger']}
           onRoleSelected={handleRoleSelected}
         />
       </div>

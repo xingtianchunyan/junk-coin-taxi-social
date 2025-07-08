@@ -94,13 +94,21 @@ const WalletManagement = () => {
     e.preventDefault();
     try {
       if (editingWallet) {
-        await rideRequestService.updateWalletAddress(editingWallet.id, formData);
+        await rideRequestService.updateWalletAddress(editingWallet.id, {
+          ...formData,
+          chain_name: Number(formData.chain_name),
+          pay_way: editingWallet.pay_way
+        });
         toast({
           title: "更新成功",
           description: "钱包地址已更新",
         });
       } else {
-        await rideRequestService.createWalletAddress(formData);
+        await rideRequestService.createWalletAddress({
+          ...formData,
+          chain_name: Number(formData.chain_name),
+          pay_way: 1 // 默认为区块链支付
+        });
         toast({
           title: "添加成功",
           description: "新钱包地址已添加",
@@ -123,7 +131,7 @@ const WalletManagement = () => {
   const handleEdit = (wallet: WalletAddress) => {
     setEditingWallet(wallet);
     setFormData({
-      chain_name: wallet.chain_name,
+      chain_name: String(wallet.chain_name),
       symbol: wallet.symbol,
       address: wallet.address,
       qr_code_url: wallet.qr_code_url || ''
