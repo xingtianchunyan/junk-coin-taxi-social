@@ -23,7 +23,9 @@ export interface RideRequest {
 
 export interface WalletAddress {
   id: string;
-  chain_name: string;
+  pay_way: number; // 1=区块链支付, 2=交易所转账, 3=支付宝/微信, 4=现金, 5=免费
+  chain_name: number; // 1=BITCOIN, 2=EVM-Compatible, 3=SOLANA, 4=TRON, 5=TON, 6=SUI
+  exchange_name?: number; // 1=BINANCE, 2=OKX, 3=coinbase, 4=Bitget, 5=Gate, 6=Bybit, 7=KuCoin, 8=火币
   symbol: string;
   address: string;
   qr_code_url?: string;
@@ -93,6 +95,7 @@ export interface FixedRoute {
 export interface Vehicle {
   id: string;
   driver_name: string;
+  driver_phone?: string;
   license_plate: string;
   max_passengers: number;
   trunk_length_cm: number;

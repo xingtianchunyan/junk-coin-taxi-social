@@ -503,39 +503,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          display_name: string | null
-          id: string
-          phone: string | null
-          roles: Database["public"]["Enums"]["user_role"][] | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          id?: string
-          phone?: string | null
-          roles?: Database["public"]["Enums"]["user_role"][] | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          id?: string
-          phone?: string | null
-          roles?: Database["public"]["Enums"]["user_role"][] | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       users: {
         Row: {
           access_code: string
@@ -565,6 +532,7 @@ export type Database = {
           created_at: string
           destination_id: string | null
           driver_name: string
+          driver_phone: string | null
           id: string
           is_active: boolean | null
           license_plate: string
@@ -578,6 +546,7 @@ export type Database = {
           created_at?: string
           destination_id?: string | null
           driver_name: string
+          driver_phone?: string | null
           id?: string
           is_active?: boolean | null
           license_plate: string
@@ -591,6 +560,7 @@ export type Database = {
           created_at?: string
           destination_id?: string | null
           driver_name?: string
+          driver_phone?: string | null
           id?: string
           is_active?: boolean | null
           license_plate?: string
@@ -613,37 +583,37 @@ export type Database = {
       wallet_addresses: {
         Row: {
           address: string
-          chain_name: string
+          chain_name: number
           created_at: string | null
           destination_id: string | null
-          driver_id: string | null
+          exchange_name: number | null
           id: string
           is_active: boolean | null
-          owner_type: string | null
+          pay_way: number
           qr_code_url: string | null
           symbol: string
         }
         Insert: {
           address: string
-          chain_name: string
+          chain_name: number
           created_at?: string | null
           destination_id?: string | null
-          driver_id?: string | null
+          exchange_name?: number | null
           id?: string
           is_active?: boolean | null
-          owner_type?: string | null
+          pay_way?: number
           qr_code_url?: string | null
           symbol: string
         }
         Update: {
           address?: string
-          chain_name?: string
+          chain_name?: number
           created_at?: string | null
           destination_id?: string | null
-          driver_id?: string | null
+          exchange_name?: number | null
           id?: string
           is_active?: boolean | null
-          owner_type?: string | null
+          pay_way?: number
           qr_code_url?: string | null
           symbol?: string
         }
@@ -653,13 +623,6 @@ export type Database = {
             columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "preset_destinations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_addresses_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
         ]

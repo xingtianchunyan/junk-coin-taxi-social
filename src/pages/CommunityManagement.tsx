@@ -6,13 +6,64 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2 } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
 import { FixedRoute, WalletAddress, PresetDestination, Vehicle } from '@/types/RideRequest';
 import { supabase } from '@/integrations/supabase/client';
+
+// 支付方式选项
+const PAY_WAY_OPTIONS = [
+  { value: 1, label: '区块链支付' },
+  { value: 2, label: '交易所转账' },
+  { value: 3, label: '支付宝或微信' },
+  { value: 4, label: '现金支付' },
+  { value: 5, label: '免费' }
+];
+
+// 区块链网络选项
+const CHAIN_OPTIONS = [
+  { value: 1, label: 'BITCOIN' },
+  { value: 2, label: 'EVM-Compatible' },
+  { value: 3, label: 'SOLANA' },
+  { value: 4, label: 'TRON' },
+  { value: 5, label: 'TON' },
+  { value: 6, label: 'SUI' }
+];
+
+// 交易所选项
+const EXCHANGE_OPTIONS = [
+  { value: 1, label: 'BINANCE' },
+  { value: 2, label: 'OKX' },
+  { value: 3, label: 'coinbase' },
+  { value: 4, label: 'Bitget' },
+  { value: 5, label: 'Gate' },
+  { value: 6, label: 'Bybit' },
+  { value: 7, label: 'KuCoin' },
+  { value: 8, label: '火币' }
+];
+
+// 根据区块链网络显示可用币种
+const getAvailableCryptocurrencies = (chainId: number): string[] => {
+  switch (chainId) {
+    case 1: // BITCOIN
+      return ['BTC'];
+    case 2: // EVM-Compatible
+      return ['ETH', 'USDT', 'USDC', 'BNB', 'MATIC'];
+    case 3: // SOLANA
+      return ['SOL', 'USDT', 'USDC'];
+    case 4: // TRON
+      return ['TRX', 'USDT'];
+    case 5: // TON
+      return ['TON'];
+    case 6: // SUI
+      return ['SUI'];
+    default:
+      return [];
+  }
+};
 
 const CommunityManagement: React.FC = () => {
   const [destination, setDestination] = useState<PresetDestination | null>(null);
@@ -32,17 +83,21 @@ const CommunityManagement: React.FC = () => {
   // 添加资源相关状态
   const [showAddRouteDialog, setShowAddRouteDialog] = useState(false);
   const [showAddVehicleDialog, setShowAddVehicleDialog] = useState(false);
-  const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
+  const [showAddPaymentDialog, setShowAddPaymentDialog] = useState(false);
 
   const [newRoute, setNewRoute] = useState({
     name: '',
     start_location: '',
+    distance_km: '',
+    estimated_duration_minutes: '',
+    market_price: '',
     our_price: '',
     currency: 'USDT'
   });
 
   const [newVehicle, setNewVehicle] = useState({
     driver_name: '',
+    driver_phone: '',
     license_plate: '',
     max_passengers: 4,
     trunk_length_cm: 100,
@@ -50,8 +105,10 @@ const CommunityManagement: React.FC = () => {
     trunk_height_cm: 50
   });
 
-  const [newWallet, setNewWallet] = useState({
-    chain_name: '',
+  const [newPayment, setNewPayment] = useState({
+    pay_way: 1,
+    chain_name: 2,
+    exchange_name: 1,
     symbol: '',
     address: ''
   });
@@ -144,6 +201,9 @@ const CommunityManagement: React.FC = () => {
       const routeData = {
         ...newRoute,
         end_location: destination.address,
+        distance_km: parseFloat(newRoute.distance_km) || undefined,
+        estimated_duration_minutes: parseInt(newRoute.estimated_duration_minutes) || undefined,
+        market_price: parseFloat(newRoute.market_price) || undefined,
         our_price: parseFloat(newRoute.our_price) || 0
       };
 
@@ -154,7 +214,15 @@ const CommunityManagement: React.FC = () => {
         description: "新的路线已成功添加到您的目的地",
       });
       
-      setNewRoute({ name: '', start_location: '', our_price: '', currency: 'USDT' });
+      setNewRoute({ 
+        name: '', 
+        start_location: '', 
+        distance_km: '',
+        estimated_duration_minutes: '',
+        market_price: '',
+        our_price: '', 
+        currency: 'USDT' 
+      });
       setShowAddRouteDialog(false);
       loadCommunityData();
     } catch (error) {
@@ -181,6 +249,7 @@ const CommunityManagement: React.FC = () => {
       
       setNewVehicle({
         driver_name: '',
+        driver_phone: '',
         license_plate: '',
         max_passengers: 4,
         trunk_length_cm: 100,
@@ -199,26 +268,32 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
-  const handleAddWallet = async (e: React.FormEvent) => {
+  const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!destination) return;
 
     try {
-      await rideRequestService.createDestinationWallet(newWallet, destination.id);
+      await rideRequestService.createDestinationWallet(newPayment, destination.id);
       
       toast({
-        title: "钱包地址已添加",
-        description: "新的钱包地址已成功添加到您的目的地",
+        title: "支付方式已添加",
+        description: "新的支付方式已成功添加到您的目的地",
       });
       
-      setNewWallet({ chain_name: '', symbol: '', address: '' });
-      setShowAddWalletDialog(false);
+      setNewPayment({ 
+        pay_way: 1,
+        chain_name: 2,
+        exchange_name: 1,
+        symbol: '', 
+        address: '' 
+      });
+      setShowAddPaymentDialog(false);
       loadCommunityData();
     } catch (error) {
-      console.error('添加钱包失败:', error);
+      console.error('添加支付方式失败:', error);
       toast({
         title: "添加失败",
-        description: "无法添加钱包地址，请检查输入信息",
+        description: "无法添加支付方式，请检查输入信息",
         variant: "destructive",
       });
     }
@@ -227,6 +302,18 @@ const CommunityManagement: React.FC = () => {
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
+  };
+
+  const getPayWayLabel = (payWay: number) => {
+    return PAY_WAY_OPTIONS.find(option => option.value === payWay)?.label || '未知';
+  };
+
+  const getChainLabel = (chainId: number) => {
+    return CHAIN_OPTIONS.find(option => option.value === chainId)?.label || '未知';
+  };
+
+  const getExchangeLabel = (exchangeId: number) => {
+    return EXCHANGE_OPTIONS.find(option => option.value === exchangeId)?.label || '未知';
   };
 
   if (loading) {
@@ -333,9 +420,9 @@ const CommunityManagement: React.FC = () => {
             <Car className="h-4 w-4" />
             车辆管理 ({vehicles.length})
           </TabsTrigger>
-          <TabsTrigger value="wallets" className="flex items-center gap-2">
-            <Wallet className="h-4 w-4" />
-            钱包管理 ({walletAddresses.length})
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            支付管理 ({walletAddresses.length})
           </TabsTrigger>
         </TabsList>
 
@@ -357,8 +444,13 @@ const CommunityManagement: React.FC = () => {
                         <p className="text-sm text-gray-600">
                           {route.start_location} → {destination.name}
                         </p>
+                        <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                          {route.distance_km && <span>距离: {route.distance_km}km</span>}
+                          {route.estimated_duration_minutes && <span>预计时长: {route.estimated_duration_minutes}分钟</span>}
+                          {route.market_price && <span>市场价: ¥{route.market_price}</span>}
+                        </div>
                         <p className="text-sm font-medium text-green-600">
-                          ¥{route.our_price || 0} {route.currency}
+                          我们的价格: ¥{route.our_price || 0} {route.currency}
                         </p>
                       </div>
                       <Button
@@ -409,7 +501,41 @@ const CommunityManagement: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="our_price">价格</Label>
+                        <Label htmlFor="distance_km">距离 (km)</Label>
+                        <Input
+                          id="distance_km"
+                          value={newRoute.distance_km}
+                          onChange={(e) => setNewRoute({...newRoute, distance_km: e.target.value})}
+                          placeholder="150"
+                          type="number"
+                          step="0.1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="duration">预计时长 (分钟)</Label>
+                        <Input
+                          id="duration"
+                          value={newRoute.estimated_duration_minutes}
+                          onChange={(e) => setNewRoute({...newRoute, estimated_duration_minutes: e.target.value})}
+                          placeholder="120"
+                          type="number"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label htmlFor="market_price">市场价</Label>
+                        <Input
+                          id="market_price"
+                          value={newRoute.market_price}
+                          onChange={(e) => setNewRoute({...newRoute, market_price: e.target.value})}
+                          placeholder="150"
+                          type="number"
+                          step="0.01"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="our_price">我们的价格</Label>
                         <Input
                           id="our_price"
                           value={newRoute.our_price}
@@ -464,6 +590,12 @@ const CommunityManagement: React.FC = () => {
                       <div>
                         <h4 className="font-semibold">{vehicle.license_plate}</h4>
                         <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
+                        {vehicle.driver_phone && (
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {vehicle.driver_phone}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-600">
                           载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
                         </p>
@@ -491,7 +623,7 @@ const CommunityManagement: React.FC = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>添加新车辆</DialogTitle>
+                    <DialogTitle>添加新车辆到 {destination.name}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleAddVehicle} className="space-y-4">
                     <div>
@@ -500,8 +632,17 @@ const CommunityManagement: React.FC = () => {
                         id="driver_name"
                         value={newVehicle.driver_name}
                         onChange={(e) => setNewVehicle({...newVehicle, driver_name: e.target.value})}
-                        placeholder="司机姓名"
+                        placeholder="例如: 张师傅"
                         required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="driver_phone">司机电话</Label>
+                      <Input
+                        id="driver_phone"
+                        value={newVehicle.driver_phone}
+                        onChange={(e) => setNewVehicle({...newVehicle, driver_phone: e.target.value})}
+                        placeholder="例如: 13800138000"
                       />
                     </div>
                     <div>
@@ -510,7 +651,7 @@ const CommunityManagement: React.FC = () => {
                         id="license_plate"
                         value={newVehicle.license_plate}
                         onChange={(e) => setNewVehicle({...newVehicle, license_plate: e.target.value})}
-                        placeholder="皖A12345"
+                        placeholder="例如: 皖A12345"
                         required
                       />
                     </div>
@@ -518,40 +659,34 @@ const CommunityManagement: React.FC = () => {
                       <Label htmlFor="max_passengers">最大载客数</Label>
                       <Input
                         id="max_passengers"
-                        type="number"
                         value={newVehicle.max_passengers}
                         onChange={(e) => setNewVehicle({...newVehicle, max_passengers: parseInt(e.target.value) || 4})}
+                        type="number"
                         min="1"
                         max="8"
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="trunk_length">后备箱长(cm)</Label>
+                    <div>
+                      <Label>后备箱尺寸 (cm)</Label>
+                      <div className="grid grid-cols-3 gap-2">
                         <Input
-                          id="trunk_length"
-                          type="number"
+                          placeholder="长"
                           value={newVehicle.trunk_length_cm}
                           onChange={(e) => setNewVehicle({...newVehicle, trunk_length_cm: parseInt(e.target.value) || 100})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="trunk_width">后备箱宽(cm)</Label>
-                        <Input
-                          id="trunk_width"
                           type="number"
+                        />
+                        <Input
+                          placeholder="宽"
                           value={newVehicle.trunk_width_cm}
                           onChange={(e) => setNewVehicle({...newVehicle, trunk_width_cm: parseInt(e.target.value) || 80})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="trunk_height">后备箱高(cm)</Label>
-                        <Input
-                          id="trunk_height"
                           type="number"
+                        />
+                        <Input
+                          placeholder="高"
                           value={newVehicle.trunk_height_cm}
                           onChange={(e) => setNewVehicle({...newVehicle, trunk_height_cm: parseInt(e.target.value) || 50})}
+                          type="number"
                         />
                       </div>
                     </div>
@@ -568,28 +703,34 @@ const CommunityManagement: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="wallets">
+        <TabsContent value="payments">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Wallet className="h-5 w-5" />
-                钱包管理
+                <CreditCard className="h-5 w-5" />
+                支付管理
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  管理 {destination.name} 的收款钱包地址
-                </p>
-              </div>
-
               <div className="space-y-3">
                 {walletAddresses.map((wallet) => (
                   <div key={wallet.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-semibold">{wallet.chain_name}</h4>
-                        <p className="text-sm text-gray-600">{wallet.symbol}</p>
+                        <h4 className="font-semibold">{getPayWayLabel(wallet.pay_way)}</h4>
+                        {wallet.pay_way === 1 && (
+                          <p className="text-sm text-gray-600">
+                            网络: {getChainLabel(wallet.chain_name)} | 币种: {wallet.symbol}
+                          </p>
+                        )}
+                        {wallet.pay_way === 2 && wallet.exchange_name && (
+                          <p className="text-sm text-gray-600">
+                            交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
+                          </p>
+                        )}
+                        <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
+                          {wallet.address}
+                        </p>
                       </div>
                       <Button
                         size="sm"
@@ -601,76 +742,155 @@ const CommunityManagement: React.FC = () => {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500 font-mono break-all">
-                        {wallet.address}
-                      </p>
-                    </div>
                   </div>
                 ))}
               </div>
 
-              <Dialog open={showAddWalletDialog} onOpenChange={setShowAddWalletDialog}>
+              <Dialog open={showAddPaymentDialog} onOpenChange={setShowAddPaymentDialog}>
                 <DialogTrigger asChild>
                   <Button className="w-full">
                     <Plus className="h-4 w-4 mr-2" />
-                    添加钱包地址
+                    添加支付方式
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>添加钱包地址</DialogTitle>
+                    <DialogTitle>添加支付方式到 {destination.name}</DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleAddWallet} className="space-y-4">
+                  <form onSubmit={handleAddPayment} className="space-y-4">
                     <div>
-                      <Label htmlFor="chain_name">区块链网络</Label>
-                      <Select value={newWallet.chain_name} onValueChange={(value) => setNewWallet({...newWallet, chain_name: value})}>
+                      <Label htmlFor="pay_way">支付方式</Label>
+                      <Select 
+                        value={newPayment.pay_way.toString()} 
+                        onValueChange={(value) => setNewPayment({...newPayment, pay_way: parseInt(value)})}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="选择网络" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Ethereum">Ethereum</SelectItem>
-                          <SelectItem value="Binance Smart Chain">Binance Smart Chain</SelectItem>
-                          <SelectItem value="Polygon">Polygon</SelectItem>
-                          <SelectItem value="Tron">Tron</SelectItem>
-                          <SelectItem value="Bitcoin">Bitcoin</SelectItem>
-                          <SelectItem value="Solana">Solana</SelectItem>
-                          <SelectItem value="Arbitrum One">Arbitrum One</SelectItem>
+                          {PAY_WAY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value.toString()}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="symbol">币种</Label>
-                      <Select value={newWallet.symbol} onValueChange={(value) => setNewWallet({...newWallet, symbol: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择币种" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USDT">USDT</SelectItem>
-                          <SelectItem value="BTC">BTC</SelectItem>
-                          <SelectItem value="ETH">ETH</SelectItem>
-                          <SelectItem value="BNB">BNB</SelectItem>
-                          <SelectItem value="POL">POL</SelectItem>
-                          <SelectItem value="TRX">TRX</SelectItem>
-                          <SelectItem value="SOL">SOL</SelectItem>
-                          <SelectItem value="ARB">ARB</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="address">收款钱包地址</Label>
-                      <Input
-                        id="address"
-                        value={newWallet.address}
-                        onChange={(e) => setNewWallet({...newWallet, address: e.target.value})}
-                        placeholder="输入钱包地址"
-                        className="font-mono"
-                        required
-                      />
-                    </div>
+
+                    {/* 区块链支付 */}
+                    {newPayment.pay_way === 1 && (
+                      <>
+                        <div>
+                          <Label htmlFor="chain_name">设置网络</Label>
+                          <Select 
+                            value={newPayment.chain_name.toString()} 
+                            onValueChange={(value) => setNewPayment({...newPayment, chain_name: parseInt(value), symbol: ''})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CHAIN_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value.toString()}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>可用币种</Label>
+                          <div className="p-2 border rounded bg-gray-50 text-sm">
+                            {getAvailableCryptocurrencies(newPayment.chain_name).join(', ')}
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="symbol">选择币种</Label>
+                          <Select 
+                            value={newPayment.symbol} 
+                            onValueChange={(value) => setNewPayment({...newPayment, symbol: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择币种" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailableCryptocurrencies(newPayment.chain_name).map((symbol) => (
+                                <SelectItem key={symbol} value={symbol}>
+                                  {symbol}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="address">输入地址</Label>
+                          <Input
+                            id="address"
+                            value={newPayment.address}
+                            onChange={(e) => setNewPayment({...newPayment, address: e.target.value})}
+                            placeholder="钱包地址"
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* 交易所转账 */}
+                    {newPayment.pay_way === 2 && (
+                      <>
+                        <div>
+                          <Label htmlFor="exchange_name">选择交易所</Label>
+                          <Select 
+                            value={newPayment.exchange_name?.toString() || ''} 
+                            onValueChange={(value) => setNewPayment({...newPayment, exchange_name: parseInt(value)})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择交易所" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EXCHANGE_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value.toString()}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="symbol">币种</Label>
+                          <Input
+                            id="symbol"
+                            value={newPayment.symbol}
+                            onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
+                            placeholder="例如: USDT"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="address">输入交易所UID</Label>
+                          <Input
+                            id="address"
+                            value={newPayment.address}
+                            onChange={(e) => setNewPayment({...newPayment, address: e.target.value})}
+                            placeholder="交易所UID"
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* 其他支付方式不需要额外字段 */}
+                    {newPayment.pay_way >= 3 && (
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                          该支付方式无需额外配置，点击添加即可。
+                        </p>
+                      </div>
+                    )}
+
                     <div className="flex gap-2">
                       <Button type="submit">添加</Button>
-                      <Button type="button" variant="outline" onClick={() => setShowAddWalletDialog(false)}>
+                      <Button type="button" variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
                         取消
                       </Button>
                     </div>
