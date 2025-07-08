@@ -211,7 +211,7 @@ const CommunityManagement: React.FC = () => {
         distance_km: parseFloat(newRoute.distance_km) || undefined,
         estimated_duration_minutes: parseInt(newRoute.estimated_duration_minutes) || undefined,
         market_price: parseFloat(newRoute.market_price) || undefined,
-        our_price: 0, // 不再设置价格，由车辆管理设置
+        our_price: parseFloat(newRoute.market_price) || 0, // 默认设置为市场价，后续由车辆管理调整
         currency: 'CNY'
       };
 
