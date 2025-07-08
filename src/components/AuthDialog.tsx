@@ -258,8 +258,8 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} onPointerDownOutside={(e) => e.preventDefault()}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={e => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
             欢迎使用垃圾币打车
