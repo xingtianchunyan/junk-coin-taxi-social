@@ -30,12 +30,13 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setAccessCode = (code: string) => {
     setAccessCodeState(code);
-    localStorage.setItem('userAccessCode', code);
+    localStorage.clear();
   };
 
   const clearAccessCode = () => {
     setAccessCodeState(null);
     localStorage.removeItem('userAccessCode');
+    debugger
   };
 
   const hasAccess = accessCode !== null;
