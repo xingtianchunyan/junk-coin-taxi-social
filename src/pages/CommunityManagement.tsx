@@ -92,7 +92,7 @@ const CommunityManagement: React.FC = () => {
     estimated_duration_minutes: '',
     market_price: '',
     our_price: '',
-    currency: 'USDT'
+    pay_way: 1
   });
 
   const [newVehicle, setNewVehicle] = useState({
@@ -122,6 +122,18 @@ const CommunityManagement: React.FC = () => {
       loadCommunityData();
     }
   }, [accessCode]);
+
+  // 根据支付方式自动调整价格
+  useEffect(() => {
+    const marketPrice = parseFloat(newRoute.market_price) || 0;
+    if (newRoute.pay_way === 3 || newRoute.pay_way === 4) {
+      // 支付宝/微信或现金支付：50%
+      setNewRoute(prev => ({ ...prev, our_price: (marketPrice * 0.5).toString() }));
+    } else if (newRoute.pay_way === 5) {
+      // 免费
+      setNewRoute(prev => ({ ...prev, our_price: '0' }));
+    }
+  }, [newRoute.pay_way, newRoute.market_price]);
 
   const loadCommunityData = async () => {
     if (!accessCode) return;
@@ -204,7 +216,8 @@ const CommunityManagement: React.FC = () => {
         distance_km: parseFloat(newRoute.distance_km) || undefined,
         estimated_duration_minutes: parseInt(newRoute.estimated_duration_minutes) || undefined,
         market_price: parseFloat(newRoute.market_price) || undefined,
-        our_price: parseFloat(newRoute.our_price) || 0
+        our_price: parseFloat(newRoute.our_price) || 0,
+        currency: 'CNY'
       };
 
       await rideRequestService.createDestinationRoute(routeData, destination.id);
@@ -221,7 +234,7 @@ const CommunityManagement: React.FC = () => {
         estimated_duration_minutes: '',
         market_price: '',
         our_price: '', 
-        currency: 'USDT' 
+        pay_way: 1 
       });
       setShowAddRouteDialog(false);
       loadCommunityData();
@@ -273,7 +286,14 @@ const CommunityManagement: React.FC = () => {
     if (!destination) return;
 
     try {
-      await rideRequestService.createDestinationWallet(newPayment, destination.id);
+      // 对于非区块链、非交易所的支付方式，设置默认值
+      const paymentData = {
+        ...newPayment,
+        symbol: newPayment.pay_way >= 3 ? 'CNY' : newPayment.symbol,
+        address: newPayment.pay_way >= 3 ? 'N/A' : newPayment.address
+      };
+
+      await rideRequestService.createDestinationWallet(paymentData, destination.id);
       
       toast({
         title: "支付方式已添加",
@@ -294,6 +314,64 @@ const CommunityManagement: React.FC = () => {
       toast({
         title: "添加失败",
         description: "无法添加支付方式，请检查输入信息",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRoute = async (routeId: string) => {
+    try {
+      await rideRequestService.toggleFixedRoute(routeId, false);
+      toast({
+        title: "路线已删除",
+        description: "路线已成功删除",
+      });
+      loadCommunityData();
+    } catch (error) {
+      console.error('删除路线失败:', error);
+      toast({
+        title: "删除失败",
+        description: "无法删除路线",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    try {
+      await supabase
+        .from('vehicles')
+        .update({ is_active: false })
+        .eq('id', vehicleId);
+
+      toast({
+        title: "车辆已删除",
+        description: "车辆已成功删除",
+      });
+      loadCommunityData();
+    } catch (error) {
+      console.error('删除车辆失败:', error);
+      toast({
+        title: "删除失败",
+        description: "无法删除车辆",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePayment = async (walletId: string) => {
+    try {
+      await rideRequestService.toggleWalletAddress(walletId, false);
+      toast({
+        title: "支付方式已删除",
+        description: "支付方式已成功删除",
+      });
+      loadCommunityData();
+    } catch (error) {
+      console.error('删除支付方式失败:', error);
+      toast({
+        title: "删除失败",
+        description: "无法删除支付方式",
         variant: "destructive",
       });
     }
@@ -456,9 +534,7 @@ const CommunityManagement: React.FC = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          // 可以添加删除功能
-                        }}
+                        onClick={() => handleDeleteRoute(route.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -544,19 +620,21 @@ const CommunityManagement: React.FC = () => {
                           type="number"
                           step="0.01"
                           required
+                          disabled={newRoute.pay_way === 5}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="currency">币种</Label>
-                        <Select value={newRoute.currency} onValueChange={(value) => setNewRoute({...newRoute, currency: value})}>
+                        <Label htmlFor="pay_way">支付方式</Label>
+                        <Select value={newRoute.pay_way.toString()} onValueChange={(value) => setNewRoute({...newRoute, pay_way: parseInt(value)})}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="USDT">USDT</SelectItem>
-                            <SelectItem value="BTC">BTC</SelectItem>
-                            <SelectItem value="ETH">ETH</SelectItem>
-                            <SelectItem value="BNB">BNB</SelectItem>
+                            {PAY_WAY_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value.toString()}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -603,9 +681,7 @@ const CommunityManagement: React.FC = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          // 可以添加删除功能
-                        }}
+                        onClick={() => handleDeleteVehicle(vehicle.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -728,16 +804,16 @@ const CommunityManagement: React.FC = () => {
                             交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
                           </p>
                         )}
-                        <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
-                          {wallet.address}
-                        </p>
+                        {wallet.address !== 'N/A' && (
+                          <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
+                            {wallet.address}
+                          </p>
+                        )}
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          // 可以添加删除功能
-                        }}
+                        onClick={() => handleDeletePayment(wallet.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
