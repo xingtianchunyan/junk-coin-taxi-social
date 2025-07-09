@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Car, Plus, Edit, Trash2, Copy, Check } from 'lucide-react';
+import { Car, Plus, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Vehicle } from '@/types/Vehicle';
@@ -14,7 +14,6 @@ const VehicleManagement: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const [copiedAccessCode, setCopiedAccessCode] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     driver_name: '',
     license_plate: '',
@@ -31,21 +30,17 @@ const VehicleManagement: React.FC = () => {
 
   const loadVehicles = async () => {
     try {
-      const { data: vehiclesData, error: vehiclesError } = await supabase
+      const { data, error } = await supabase
         .from('vehicles')
-        .select(`
-          *,
-          users!vehicles_user_id_fkey(access_code)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       
-      if (vehiclesError) throw vehiclesError;
-      const mappedVehicles = vehiclesData?.map(item => ({
+      if (error) throw error;
+      const mappedVehicles = data?.map(item => ({
         ...item,
         created_at: new Date(item.created_at),
-        updated_at: new Date(item.updated_at),
-        access_code: item.users?.access_code
+        updated_at: new Date(item.updated_at)
       })) || [];
       setVehicles(mappedVehicles);
     } catch (error) {
@@ -134,26 +129,6 @@ const VehicleManagement: React.FC = () => {
     }
   };
 
-  const copyAccessCode = async (accessCode: string) => {
-    try {
-      await navigator.clipboard.writeText(accessCode);
-      setCopiedAccessCode(accessCode);
-      toast({
-        title: "复制成功",
-        description: "司机访问码已复制到剪贴板"
-      });
-      // 3秒后清除复制状态
-      setTimeout(() => setCopiedAccessCode(null), 3000);
-    } catch (error) {
-      console.error('复制失败:', error);
-      toast({
-        title: "复制失败",
-        description: "无法复制访问码，请手动复制",
-        variant: "destructive"
-      });
-    }
-  };
-
   const resetForm = () => {
     setFormData({
       driver_name: '',
@@ -178,7 +153,7 @@ const VehicleManagement: React.FC = () => {
       <CardContent className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            管理社区车辆信息，添加车辆时自动生成司机访问码
+            管理社区车辆信息，包括载客量和后备箱容量
           </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
@@ -282,7 +257,6 @@ const VehicleManagement: React.FC = () => {
                 <TableHead>车牌</TableHead>
                 <TableHead>载客量</TableHead>
                 <TableHead>后备箱(长×宽×高)</TableHead>
-                <TableHead>司机访问码</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -294,28 +268,6 @@ const VehicleManagement: React.FC = () => {
                   <TableCell>{vehicle.max_passengers}人</TableCell>
                   <TableCell>
                     {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {vehicle.access_code || '生成中...'}
-                      </code>
-                      {vehicle.access_code && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => copyAccessCode(vehicle.access_code)}
-                          className="p-1"
-                          title="复制访问码"
-                        >
-                          {copiedAccessCode === vehicle.access_code ? (
-                            <Check className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">

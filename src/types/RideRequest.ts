@@ -119,6 +119,4 @@ export interface Vehicle {
   created_at: Date;
   updated_at: Date;
   destination_id?: string;
-  user_id?: string;
-  access_code?: string;
 }
