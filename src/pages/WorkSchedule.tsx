@@ -173,7 +173,7 @@ const WorkSchedule: React.FC = () => {
           if (!canFitPeople) continue;
           
           // 检查所有行李是否能装下
-          const allLuggage = [...group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []), ...(Array.isArray(req.luggage) ? req.luggage : [])];
+          const allLuggage = [...group.flatMap(r => r.luggage || []), ...(req.luggage || [])];
           const canFitAllLuggage = canFitLuggage(allLuggage, {
             length: driverVehicle.trunk_length_cm,
             width: driverVehicle.trunk_width_cm,
@@ -307,18 +307,18 @@ const WorkSchedule: React.FC = () => {
                         <div key={routeKey} className="space-y-3">
                           {groups.map((group, groupIndex) => {
                             const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
-                            const allLuggage = group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []);
+                            const allLuggage = group.flatMap(r => r.luggage || []);
                             return (
                               <div key={groupIndex} className="border rounded-lg p-3 bg-white">
                                 <div className="flex items-center gap-2 mb-2">
                                   <Badge variant="outline" className="bg-green-100 text-green-700">
                                     第{groupIndex + 1}组 ({totalPassengers}/{driverVehicle.max_passengers}人)
                                   </Badge>
-                                   {allLuggage.length > 0 && (
-                                     <Badge variant="outline" className="bg-orange-100 text-orange-700">
-                                       行李{allLuggage.reduce((sum, item) => sum + (item?.quantity || 0), 0)}件
-                                     </Badge>
-                                   )}
+                                  {allLuggage.length > 0 && (
+                                    <Badge variant="outline" className="bg-orange-100 text-orange-700">
+                                      行李{allLuggage.reduce((sum, item) => sum + item.quantity, 0)}件
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                   {group.map(request => (
@@ -336,7 +336,7 @@ const WorkSchedule: React.FC = () => {
                                         <div>📍 {request.start_location} → {request.end_location}</div>
                                         <div>👥 {request.passenger_count || 1}人</div>
                                         <div>📞 {request.contact_info}</div>
-                                        {request.luggage && Array.isArray(request.luggage) && request.luggage.length > 0 && (
+                                        {request.luggage && request.luggage.length > 0 && (
                                           <div>🧳 行李: {request.luggage.map((item: any) => 
                                             `${item.length}×${item.width}×${item.height}cm×${item.quantity}件`
                                           ).join(', ')}</div>

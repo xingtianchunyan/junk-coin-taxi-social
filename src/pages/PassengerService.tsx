@@ -108,8 +108,7 @@ const PassengerService: React.FC = () => {
 
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
 
-      // 重新加载数据以获取最新的组队信息
-      await loadRideRequests();
+      setRequests(prev => [request, ...prev]);
       setShowForm(false);
 
       try {
@@ -190,7 +189,7 @@ const PassengerService: React.FC = () => {
 
   // 检查行李是否能装入车辆后备箱
   const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
-    if (!requestLuggage || !Array.isArray(requestLuggage) || requestLuggage.length === 0) return true;
+    if (!requestLuggage || requestLuggage.length === 0) return true;
     
     // 计算所有行李的总体积
     const totalVolume = requestLuggage.reduce((total, item) => {
