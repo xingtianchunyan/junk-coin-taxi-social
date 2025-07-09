@@ -10,6 +10,8 @@ import { Key, Eye, EyeOff, Shield, LogIn, User } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { sanitizeTextInput } from '@/utils/inputValidation';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface AccessControlProps {
   onAccessChange: (level: 'public' | 'private' | 'admin', accessCode?: string) => void;
@@ -22,6 +24,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   const [showPrivateAccess, setShowPrivateAccess] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
   const { profile } = useUserProfile();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Update access level based on authentication
@@ -49,6 +52,28 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
       const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sanitizedCode);
       
       if (isValid) {
+        // Check if this is a driver access code
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select(`
+            *,
+            vehicles!vehicles_user_id_fkey(*)
+          `)
+          .eq('access_code', sanitizedCode)
+          .eq('role', 'driver')
+          .maybeSingle();
+        
+        if (userError) throw userError;
+        
+        if (userData && userData.vehicles && userData.vehicles.length > 0) {
+          // This is a driver access code, redirect to work schedule
+          localStorage.setItem('rideAccessCode', sanitizedCode);
+          localStorage.setItem('driverVehicleId', userData.vehicles[0].id);
+          navigate('/work-schedule');
+          return;
+        }
+        
+        // Regular access code handling
         localStorage.setItem('rideAccessCode', sanitizedCode);
         onAccessChange('private', sanitizedCode);
       } else {

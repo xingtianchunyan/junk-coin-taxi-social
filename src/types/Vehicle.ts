@@ -8,6 +8,8 @@ export interface Vehicle {
   trunk_width_cm: number;
   trunk_height_cm: number;
   is_active: boolean;
+  user_id?: string;
+  access_code?: string;
   created_at: Date;
   updated_at: Date;
 }
