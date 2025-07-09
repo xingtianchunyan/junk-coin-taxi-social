@@ -198,7 +198,7 @@ const WorkSchedule: React.FC = () => {
           groups[period][routeKey].push([req]);
         }
       });
-    
+    debugger
     return groups;
   };
 
