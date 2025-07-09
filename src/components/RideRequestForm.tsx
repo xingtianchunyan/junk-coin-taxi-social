@@ -37,6 +37,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     payment_amount: 0,
     payment_currency: 'USDT',
     payment_blockchain: 'Ethereum',
+    sender_wallet_address: '',
     fixed_route_id: '',
     passenger_count: 1
   });
@@ -125,6 +126,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         requested_time: new Date(formData.requested_time),
         payment_amount: formData.payment_required ? formData.payment_amount : undefined,
         payment_currency: formData.payment_required ? formData.payment_currency : undefined,
+        sender_wallet_address: formData.payment_required ? formData.sender_wallet_address : undefined,
         fixed_route_id: formData.fixed_route_id,
         passenger_count: formData.passenger_count,
         luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0)
@@ -144,6 +146,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         payment_amount: 0,
         payment_currency: 'USDT',
         payment_blockchain: 'Ethereum',
+        sender_wallet_address: '',
         fixed_route_id: '',
         passenger_count: 1
       });
@@ -450,6 +453,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             </div>
           </div>
 
+
           <div className="space-y-2">
             <Label htmlFor="requested_time" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -541,6 +545,22 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                       约 ¥{(formData.payment_amount * averagePrices[formData.payment_currency]).toFixed(2)}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* 钱包地址 */}
+              <div className="space-y-2">
+                <Label htmlFor="sender_wallet_address">您的钱包地址 (用于自动检测支付)</Label>
+                <Input
+                  id="sender_wallet_address"
+                  value={formData.sender_wallet_address}
+                  onChange={(e) => handleInputChange('sender_wallet_address', e.target.value)}
+                  placeholder="输入您用于支付的钱包地址"
+                  className="font-mono text-xs"
+                  required
+                />
+                <div className="text-xs text-gray-500">
+                  💡 提供钱包地址后，系统可自动检测您的付款交易
                 </div>
               </div>
             </div>
