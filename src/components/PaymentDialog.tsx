@@ -15,6 +15,37 @@ interface PaymentDialogProps {
   request: RideRequest | null;
 }
 
+// 支付方式映射
+const PAY_WAY_MAP = {
+  1: '区块链支付',
+  2: '交易所转账',
+  3: '支付宝/微信',
+  4: '现金',
+  5: '免费'
+};
+
+// 区块链网络映射
+const CHAIN_NAME_MAP = {
+  1: 'Bitcoin',
+  2: 'Ethereum',
+  3: 'Solana',
+  4: 'Tron',
+  5: 'TON',
+  6: 'Sui'
+};
+
+// 交易所映射
+const EXCHANGE_NAME_MAP = {
+  1: 'Binance',
+  2: 'OKX',
+  3: 'Coinbase',
+  4: 'Bitget',
+  5: 'Gate',
+  6: 'Bybit',
+  7: 'KuCoin',
+  8: '火币'
+};
+
 const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, request }) => {
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletAddress | null>(null);
@@ -62,7 +93,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
         amount: request.payment_amount || 0,
         currency: request.payment_currency || selectedWallet.symbol,
         wallet_address: selectedWallet.address,
-        payment_method: `${selectedWallet.chain_name} - ${selectedWallet.symbol}`,
+        payment_method: getPaymentMethodDescription(selectedWallet),
         status: 'pending'
       });
 
@@ -82,6 +113,31 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
     } finally {
       setLoading(false);
     }
+  };
+
+  // 获取支付方式描述
+  const getPaymentMethodDescription = (wallet: WalletAddress) => {
+    const payWay = PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP] || '未知支付方式';
+    
+    if (wallet.pay_way === 1) { // 区块链支付
+      const chainName = CHAIN_NAME_MAP[wallet.chain_name as keyof typeof CHAIN_NAME_MAP] || '未知网络';
+      return `${payWay} - ${chainName} (${wallet.symbol})`;
+    } else if (wallet.pay_way === 2 && wallet.exchange_name) { // 交易所转账
+      const exchangeName = EXCHANGE_NAME_MAP[wallet.exchange_name as keyof typeof EXCHANGE_NAME_MAP] || '未知交易所';
+      return `${payWay} - ${exchangeName} (${wallet.symbol})`;
+    }
+    
+    return `${payWay} - ${wallet.symbol}`;
+  };
+
+  // 获取支付通道显示名称
+  const getPaymentChannelName = (wallet: WalletAddress) => {
+    if (wallet.pay_way === 1) { // 区块链支付
+      return CHAIN_NAME_MAP[wallet.chain_name as keyof typeof CHAIN_NAME_MAP] || '未知网络';
+    } else if (wallet.pay_way === 2 && wallet.exchange_name) { // 交易所转账
+      return EXCHANGE_NAME_MAP[wallet.exchange_name as keyof typeof EXCHANGE_NAME_MAP] || '未知交易所';
+    }
+    return PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP] || '未知支付方式';
   };
 
   if (!request || !request.payment_required) return null;
@@ -124,16 +180,26 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
           {walletAddresses.length > 0 && (
             <div className="space-y-3">
               <label className="text-sm font-medium">选择支付方式</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {walletAddresses.map((wallet) => (
                   <Button
                     key={wallet.id}
                     variant={selectedWallet?.id === wallet.id ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedWallet(wallet)}
-                    className="justify-start"
+                    className="justify-start h-auto p-3"
                   >
-                    <span className="text-xs">{wallet.symbol}</span>
+                    <div className="flex flex-col items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{wallet.symbol}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {getPaymentChannelName(wallet)}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1">
+                        {PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP]}
+                      </span>
+                    </div>
                   </Button>
                 ))}
               </div>
@@ -145,8 +211,15 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{selectedWallet.chain_name}</p>
-                    <p className="text-sm text-gray-600">{selectedWallet.symbol}</p>
+                    <p className="font-medium flex items-center gap-2">
+                      {getPaymentChannelName(selectedWallet)}
+                      <Badge variant="outline" className="text-xs">
+                        {selectedWallet.symbol}
+                      </Badge>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {PAY_WAY_MAP[selectedWallet.pay_way as keyof typeof PAY_WAY_MAP]}
+                    </p>
                   </div>
                   {selectedWallet.qr_code_url && (
                     <Button variant="outline" size="sm">
@@ -156,7 +229,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs text-gray-600">收款地址</label>
+                  <label className="text-xs text-gray-600">
+                    {selectedWallet.pay_way === 2 ? '交易所UID' : '收款地址'}
+                  </label>
                   <div className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm font-mono">
                     <span className="flex-1 truncate">{selectedWallet.address}</span>
                     <Button
@@ -170,7 +245,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                 </div>
 
                 <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                  请将 {request.payment_amount} {request.payment_currency} 转账到上述地址，完成后点击"我已转账"按钮
+                  💡 请将 {request.payment_amount} {request.payment_currency} 通过 
+                  <strong className="mx-1">{getPaymentChannelName(selectedWallet)}</strong>
+                  {selectedWallet.pay_way === 2 ? '转账到上述UID' : '转账到上述地址'}，完成后点击"我已转账"按钮
                 </div>
               </CardContent>
             </Card>
