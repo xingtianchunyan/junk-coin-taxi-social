@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { vehicleService } from '@/services/vehicleService';
 import { Vehicle } from '@/types/Vehicle';
+
 const WorkSchedule: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<any>(null);
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
@@ -23,22 +25,13 @@ const WorkSchedule: React.FC = () => {
   const [driverVehicle, setDriverVehicle] = useState<Vehicle | null>(null);
   const [newRoute, setNewRoute] = useState({
     hub: '',
-    // 交通枢纽
     destination: '',
-    // 目的地
     distance: '',
-    // 路程长度
     duration: '',
-    // 每趟时间
-    fee: '' // 费用
+    fee: ''
   });
-  const {
-    toast
-  } = useToast();
-  const {
-    clearAccessCode,
-    accessCode
-  } = useAccessCode();
+  const { toast } = useToast();
+  const { clearAccessCode, accessCode } = useAccessCode();
   const navigate = useNavigate();
 
   // 加载司机车辆信息
@@ -77,10 +70,12 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('fixed_routes').select('*').eq('is_active', true).ilike('end_location', `%${selectedDestination.name}%`);
+      const { data, error } = await supabase
+        .from('fixed_routes')
+        .select('*')
+        .eq('is_active', true)
+        .ilike('end_location', `%${selectedDestination.name}%`);
+      
       if (error) throw error;
       setFixedRoutes(data || []);
     } catch (error) {
@@ -100,14 +95,22 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('ride_requests').select('*').eq('status', 'pending').ilike('end_location', `%${selectedDestination.name}%`).order('requested_time', {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from('ride_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .ilike('end_location', `%${selectedDestination.name}%`)
+        .order('requested_time', { ascending: true });
+      
       if (error) throw error;
-      setRideRequests(data || []);
+      
+      // 过滤掉当前时间之前1小时之外的请求
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const filteredData = (data || []).filter(request => 
+        new Date(request.requested_time) > oneHourAgo
+      );
+      
+      setRideRequests(filteredData);
     } catch (error) {
       console.error('加载乘客需求失败:', error);
       toast({
@@ -135,7 +138,7 @@ const WorkSchedule: React.FC = () => {
 
   // 检查行李是否能装入车辆后备箱
   const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
-    if (!requestLuggage || requestLuggage.length === 0) return true;
+    if (!requestLuggage || !Array.isArray(requestLuggage) || requestLuggage.length === 0) return true;
     
     const totalVolume = requestLuggage.reduce((total, item) => {
       return total + (item.length * item.width * item.height * item.quantity);
@@ -173,7 +176,10 @@ const WorkSchedule: React.FC = () => {
           if (!canFitPeople) continue;
           
           // 检查所有行李是否能装下
-          const allLuggage = [...group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []), ...(Array.isArray(req.luggage) ? req.luggage : [])];
+          const allLuggage = [
+            ...group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []), 
+            ...(Array.isArray(req.luggage) ? req.luggage : [])
+          ];
           const canFitAllLuggage = canFitLuggage(allLuggage, {
             length: driverVehicle.trunk_length_cm,
             width: driverVehicle.trunk_width_cm,
@@ -195,6 +201,7 @@ const WorkSchedule: React.FC = () => {
     
     return groups;
   };
+
   const addFixedRoute = async () => {
     if (!selectedDestination) {
       toast({
@@ -214,19 +221,21 @@ const WorkSchedule: React.FC = () => {
     }
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('fixed_routes').insert({
-        name: `${newRoute.hub}-${selectedDestination.name}`,
-        start_location: newRoute.hub,
-        end_location: selectedDestination.name,
-        distance_km: parseFloat(newRoute.distance),
-        estimated_duration_minutes: parseInt(newRoute.duration),
-        our_price: parseFloat(newRoute.fee),
-        currency: 'USDT',
-        is_active: true
-      }).select().single();
+      const { data, error } = await supabase
+        .from('fixed_routes')
+        .insert({
+          name: `${newRoute.hub}-${selectedDestination.name}`,
+          start_location: newRoute.hub,
+          end_location: selectedDestination.name,
+          distance_km: parseFloat(newRoute.distance),
+          estimated_duration_minutes: parseInt(newRoute.duration),
+          our_price: parseFloat(newRoute.fee),
+          currency: 'USDT',
+          is_active: true
+        })
+        .select()
+        .single();
+      
       if (error) throw error;
       setFixedRoutes([...fixedRoutes, data]);
       setNewRoute({
@@ -251,11 +260,14 @@ const WorkSchedule: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
   };
-  return <div className="container mx-auto px-4 py-8">
+
+  return (
+    <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">工作安排</h1>
@@ -272,16 +284,17 @@ const WorkSchedule: React.FC = () => {
             </Button>
           </div>
         </div>
-        {selectedDestination && <p className="text-sm text-green-600 mt-2">
+        {selectedDestination && (
+          <p className="text-sm text-green-600 mt-2">
             当前目的地：{selectedDestination.name}
-          </p>}
-        {driverVehicle && <p className="text-sm text-blue-600 mt-1">
+          </p>
+        )}
+        {driverVehicle && (
+          <p className="text-sm text-blue-600 mt-1">
             当前车辆：{driverVehicle.license_plate} (载客{driverVehicle.max_passengers}人, 后备箱{driverVehicle.trunk_length_cm}×{driverVehicle.trunk_width_cm}×{driverVehicle.trunk_height_cm}cm)
-          </p>}
+          </p>
+        )}
       </div>
-
-
-      
 
       {/* 智能分组乘客列表 */}
       <div className="space-y-8">
@@ -314,11 +327,11 @@ const WorkSchedule: React.FC = () => {
                                   <Badge variant="outline" className="bg-green-100 text-green-700">
                                     第{groupIndex + 1}组 ({totalPassengers}/{driverVehicle.max_passengers}人)
                                   </Badge>
-                                   {allLuggage.length > 0 && (
-                                     <Badge variant="outline" className="bg-orange-100 text-orange-700">
-                                       行李{allLuggage.reduce((sum, item) => sum + (item?.quantity || 0), 0)}件
-                                     </Badge>
-                                   )}
+                                  {allLuggage.length > 0 && (
+                                    <Badge variant="outline" className="bg-orange-100 text-orange-700">
+                                      行李{allLuggage.reduce((sum, item) => sum + (item?.quantity || 0), 0)}件
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                   {group.map(request => (
@@ -337,9 +350,14 @@ const WorkSchedule: React.FC = () => {
                                         <div>👥 {request.passenger_count || 1}人</div>
                                         <div>📞 {request.contact_info}</div>
                                         {request.luggage && Array.isArray(request.luggage) && request.luggage.length > 0 && (
-                                          <div>🧳 行李: {request.luggage.map((item: any) => 
-                                            `${item.length}×${item.width}×${item.height}cm×${item.quantity}件`
-                                          ).join(', ')}</div>
+                                          <div className="bg-blue-50 p-2 rounded mt-2">
+                                            <div className="font-medium text-blue-800 mb-1">🧳 行李信息:</div>
+                                            {request.luggage.map((item: any, index: number) => (
+                                              <div key={index} className="text-blue-700 text-xs">
+                                                • {item.length}×{item.width}×{item.height}cm × {item.quantity}件
+                                              </div>
+                                            ))}
+                                          </div>
                                         )}
                                         {request.notes && <div>📝 {request.notes}</div>}
                                       </div>
@@ -390,7 +408,14 @@ const WorkSchedule: React.FC = () => {
         )}
       </div>
       
-      <DestinationSelector open={showDestinationSelector} onOpenChange={setShowDestinationSelector} onSelect={setSelectedDestination} selectedDestination={selectedDestination} />
-    </div>;
+      <DestinationSelector 
+        open={showDestinationSelector} 
+        onOpenChange={setShowDestinationSelector} 
+        onSelect={setSelectedDestination} 
+        selectedDestination={selectedDestination} 
+      />
+    </div>
+  );
 };
+
 export default WorkSchedule;
