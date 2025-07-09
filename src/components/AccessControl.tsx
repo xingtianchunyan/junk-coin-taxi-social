@@ -57,7 +57,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
           .from('users')
           .select(`
             *,
-            vehicles(*)
+            vehicles!vehicles_user_id_fkey(*)
           `)
           .eq('access_code', sanitizedCode)
           .eq('role', 'driver')

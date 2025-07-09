@@ -21,7 +21,7 @@ const RoleSelection: React.FC = () => {
 
   useEffect(() => {
     // 检查是否有存储的访问码
-    const storedAccessCode = localStorage.getItem('rideAccessCode') || localStorage.getItem('access_code');
+    const storedAccessCode = localStorage.getItem('access_code');
     if (storedAccessCode) {
       handleExistingAccessCode(storedAccessCode);
     }
@@ -32,12 +32,9 @@ const RoleSelection: React.FC = () => {
       // 检查访问码对应的用户信息
       const { data: user, error } = await supabase
         .from('users')
-        .select(`
-          *,
-          vehicles(*)
-        `)
+        .select('*')
         .eq('access_code', accessCode)
-        .maybeSingle();
+        .single();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -46,18 +43,9 @@ const RoleSelection: React.FC = () => {
       if (user) {
         setCurrentAccessCode(accessCode);
         setAccessCode(accessCode);
-        // 统一使用rideAccessCode
-        localStorage.setItem('rideAccessCode', accessCode);
-        localStorage.removeItem('access_code'); // 清除旧的key
         
-        if (user.role === 'driver' && user.vehicles && user.vehicles.length > 0) {
-          // 司机用户，跳转到工作安排
-          localStorage.setItem('driverVehicleId', user.vehicles[0].id);
-          setUserRole('driver');
-          navigateToRolePage('driver');
-          setShowAuthDialog(false);
-        } else if (user.role) {
-          // 其他角色用户，跳转到对应页面
+        if (user.role) {
+          // 用户已有角色，直接跳转
           setUserRole(user.role as UserRole);
           navigateToRolePage(user.role as UserRole);
           setShowAuthDialog(false);
@@ -69,15 +57,11 @@ const RoleSelection: React.FC = () => {
       } else {
         // 访问码无效，清除本地存储
         localStorage.removeItem('access_code');
-        localStorage.removeItem('rideAccessCode');
-        localStorage.removeItem('driverVehicleId');
         setShowAuthDialog(true);
       }
     } catch (error) {
       console.error('检查访问码失败:', error);
       localStorage.removeItem('access_code');
-      localStorage.removeItem('rideAccessCode');
-      localStorage.removeItem('driverVehicleId');
       setShowAuthDialog(true);
     }
   };
@@ -85,8 +69,7 @@ const RoleSelection: React.FC = () => {
   const handleAuthenticated = async (accessCode: string, role?: string) => {
     setCurrentAccessCode(accessCode);
     setAccessCode(accessCode);
-    localStorage.setItem('rideAccessCode', accessCode); // 统一使用rideAccessCode
-    localStorage.removeItem('access_code'); // 清除旧的key
+    localStorage.setItem('access_code', accessCode);
 
     if (role) {
       // 用户已有角色，直接跳转
