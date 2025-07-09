@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +72,7 @@ const CommunityManagement: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedAccessCode, setCopiedAccessCode] = useState<string | null>(null);
   
   // 创建目的地相关状态
   const [showCreateDestinationDialog, setShowCreateDestinationDialog] = useState(false);
@@ -137,14 +138,33 @@ const CommunityManagement: React.FC = () => {
 
       if (communityDestination) {
         // 加载该目的地下的所有资源
-        const [routeData, vehicleData, walletData] = await Promise.all([
+        const [routeData, walletData] = await Promise.all([
           rideRequestService.getDestinationRoutes(communityDestination.id),
-          rideRequestService.getDestinationVehicles(communityDestination.id),
           rideRequestService.getDestinationWallets(communityDestination.id)
         ]);
 
+        // 加载车辆数据，包含关联的司机访问码
+        const { data: vehicleData, error: vehicleError } = await supabase
+          .from('vehicles')
+          .select(`
+            *,
+            users!vehicles_user_id_fkey(access_code)
+          `)
+          .eq('destination_id', communityDestination.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        if (vehicleError) throw vehicleError;
+        
+        const mappedVehicles = vehicleData?.map(item => ({
+          ...item,
+          created_at: new Date(item.created_at),
+          updated_at: new Date(item.updated_at),
+          access_code: item.users?.access_code
+        })) || [];
+
         setRoutes(routeData);
-        setVehicles(vehicleData);
+        setVehicles(mappedVehicles);
         setWalletAddresses(walletData);
       }
     } catch (error) {
@@ -415,6 +435,26 @@ const CommunityManagement: React.FC = () => {
     return vehicles.find(vehicle => vehicle.id === vehicleId);
   };
 
+  const copyAccessCode = async (accessCode: string) => {
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setCopiedAccessCode(accessCode);
+      toast({
+        title: "复制成功",
+        description: "司机访问码已复制到剪贴板"
+      });
+      // 3秒后清除复制状态
+      setTimeout(() => setCopiedAccessCode(null), 3000);
+    } catch (error) {
+      console.error('复制失败:', error);
+      toast({
+        title: "复制失败",
+        description: "无法复制访问码，请手动复制",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -646,7 +686,7 @@ const CommunityManagement: React.FC = () => {
                 {vehicles.map((vehicle) => (
                   <div key={vehicle.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <h4 className="font-semibold">{vehicle.license_plate}</h4>
                         <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
                         {vehicle.driver_phone && (
@@ -658,6 +698,29 @@ const CommunityManagement: React.FC = () => {
                         <p className="text-sm text-gray-600">
                           载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
                         </p>
+                        <div className="mt-2 p-2 bg-blue-50 rounded">
+                          <p className="text-xs text-blue-700 mb-1">司机访问码:</p>
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-white px-2 py-1 rounded border">
+                              {vehicle.access_code || '生成中...'}
+                            </code>
+                            {vehicle.access_code && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyAccessCode(vehicle.access_code)}
+                                className="p-1 h-6"
+                                title="复制访问码"
+                              >
+                                {copiedAccessCode === vehicle.access_code ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <Button
                         size="sm"
