@@ -7,12 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
-import { FixedRoute, WalletAddress, PresetDestination, Vehicle } from '@/types/RideRequest';
+import { FixedRoute, WalletAddress, PresetDestination } from '@/types/RideRequest';
+import { Vehicle } from '@/types/Vehicle';
 import { supabase } from '@/integrations/supabase/client';
 
 // 支付方式选项
@@ -115,6 +116,9 @@ const CommunityManagement: React.FC = () => {
     symbol: '',
     address: ''
   });
+
+  // 复制访问码相关状态
+  const [copiedAccessCode, setCopiedAccessCode] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { accessCode, clearAccessCode } = useAccessCode();
@@ -343,14 +347,38 @@ const CommunityManagement: React.FC = () => {
 
   const handleDeleteVehicle = async (vehicleId: string) => {
     try {
-      await supabase
+      // 先获取车辆的user_id
+      const { data: vehicle, error: fetchError } = await supabase
+        .from('vehicles')
+        .select('user_id')
+        .eq('id', vehicleId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 删除车辆记录
+      const { error: vehicleError } = await supabase
         .from('vehicles')
         .update({ is_active: false })
         .eq('id', vehicleId);
 
+      if (vehicleError) throw vehicleError;
+
+      // 如果有关联的用户，也删除用户记录
+      if (vehicle?.user_id) {
+        const { error: userError } = await supabase
+          .from('users')
+          .delete()
+          .eq('id', vehicle.user_id);
+
+        if (userError) {
+          console.error('删除用户记录失败:', userError);
+        }
+      }
+
       toast({
         title: "车辆已删除",
-        description: "车辆已成功删除",
+        description: "车辆及司机账户已成功删除",
       });
       loadCommunityData();
     } catch (error) {
@@ -376,6 +404,33 @@ const CommunityManagement: React.FC = () => {
       toast({
         title: "删除失败",
         description: "无法删除支付方式",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyAccessCode = async (accessCode: string | undefined) => {
+    if (!accessCode) {
+      toast({
+        title: "复制失败",
+        description: "访问码不存在",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setCopiedAccessCode(accessCode);
+      setTimeout(() => setCopiedAccessCode(null), 2000);
+      toast({
+        title: "复制成功",
+        description: "司机访问码已复制到剪贴板",
+      });
+    } catch (error) {
+      toast({
+        title: "复制失败",
+        description: "无法复制访问码",
         variant: "destructive",
       });
     }
@@ -646,19 +701,40 @@ const CommunityManagement: React.FC = () => {
                 {vehicles.map((vehicle) => (
                   <div key={vehicle.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{vehicle.license_plate}</h4>
-                        <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
-                        {vehicle.driver_phone && (
-                          <p className="text-sm text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {vehicle.driver_phone}
+                       <div className="flex-1">
+                         <h4 className="font-semibold">{vehicle.license_plate}</h4>
+                         <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
+                         {vehicle.driver_phone && (
+                           <p className="text-sm text-gray-600 flex items-center gap-1">
+                             <Phone className="h-3 w-3" />
+                             {vehicle.driver_phone}
+                           </p>
+                         )}
+                          <p className="text-sm text-gray-600">
+                            载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
                           </p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
-                        </p>
-                      </div>
+                          {vehicle.access_code && (
+                            <div className="mt-2 p-2 bg-green-50 rounded flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-green-700 font-medium">司机访问码:</p>
+                                <p className="text-sm font-mono text-green-800">{vehicle.access_code}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyAccessCode(vehicle.access_code)}
+                                className="flex items-center gap-1"
+                              >
+                                {copiedAccessCode === vehicle.access_code ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                                {copiedAccessCode === vehicle.access_code ? '已复制' : '复制'}
+                              </Button>
+                            </div>
+                          )}
+                       </div>
                       <Button
                         size="sm"
                         variant="ghost"

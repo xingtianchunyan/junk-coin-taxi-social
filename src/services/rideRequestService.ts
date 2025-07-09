@@ -445,7 +445,10 @@ export class RideRequestService {
   async getDestinationVehicles(destinationId: string): Promise<Vehicle[]> {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('*')
+      .select(`
+        *,
+        users!vehicles_user_id_fkey(access_code)
+      `)
       .eq('destination_id', destinationId)
       .eq('is_active', true)
       .order('driver_name', { ascending: true });
@@ -454,6 +457,7 @@ export class RideRequestService {
 
     return data?.map(item => ({
       ...item,
+      access_code: item.users?.access_code,
       is_active: item.is_active ?? true,
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at)
