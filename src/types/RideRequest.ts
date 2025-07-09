@@ -1,4 +1,3 @@
-
 export interface LuggageItem {
   length: number;
   width: number;
@@ -22,6 +21,7 @@ export interface RideRequest {
   payment_blockchain?: string;
   payment_status: 'unpaid' | 'pending' | 'confirmed' | 'failed';
   payment_tx_hash?: string;
+  sender_wallet_address?: string;
   fixed_route_id?: string;
   passenger_count?: number;
   luggage: LuggageItem[];
