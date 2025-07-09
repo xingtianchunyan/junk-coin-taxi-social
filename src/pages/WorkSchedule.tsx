@@ -11,6 +11,8 @@ import { useAccessCode } from '@/components/AccessCodeProvider';
 import DestinationSelector from '@/components/DestinationSelector';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { vehicleService } from '@/services/vehicleService';
+import { Vehicle } from '@/types/Vehicle';
 const WorkSchedule: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<any>(null);
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
@@ -18,6 +20,7 @@ const WorkSchedule: React.FC = () => {
   const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
   const [rideRequests, setRideRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [driverVehicle, setDriverVehicle] = useState<Vehicle | null>(null);
   const [newRoute, setNewRoute] = useState({
     hub: '',
     // 交通枢纽
@@ -33,9 +36,41 @@ const WorkSchedule: React.FC = () => {
     toast
   } = useToast();
   const {
-    clearAccessCode
+    clearAccessCode,
+    accessCode
   } = useAccessCode();
   const navigate = useNavigate();
+
+  // 加载司机车辆信息
+  const loadDriverVehicle = async () => {
+    if (!accessCode) return;
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('access_code', accessCode)
+        .single();
+      
+      if (userError || !userData) return;
+
+      const { data: vehicleData, error: vehicleError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('user_id', userData.id)
+        .eq('is_active', true)
+        .single();
+      
+      if (vehicleError || !vehicleData) return;
+
+      setDriverVehicle({
+        ...vehicleData,
+        created_at: new Date(vehicleData.created_at),
+        updated_at: new Date(vehicleData.updated_at)
+      });
+    } catch (error) {
+      console.error('加载司机车辆信息失败:', error);
+    }
+  };
 
   // 加载固定路线
   const loadFixedRoutes = async () => {
@@ -85,6 +120,11 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 页面加载时获取司机车辆信息
+  useEffect(() => {
+    loadDriverVehicle();
+  }, [accessCode]);
+
   // 当目的地改变时重新加载数据
   useEffect(() => {
     if (selectedDestination) {
@@ -103,6 +143,57 @@ const WorkSchedule: React.FC = () => {
     
     const trunkVolume = vehicleTrunk.length * vehicleTrunk.width * vehicleTrunk.height;
     return totalVolume <= trunkVolume * 0.8;
+  };
+
+  // 智能分组函数 - 根据司机车辆容量进行分组
+  const getDriverGroupedRequests = () => {
+    if (!driverVehicle) return {};
+    
+    const groups: Record<string, Record<string, any[][]>> = {};
+    
+    rideRequests
+      .sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime())
+      .forEach(req => {
+        const hour = new Date(req.requested_time).getHours();
+        const period = `${hour}:00-${hour + 1}:00`;
+        const routeKey = req.fixed_route_id || 'other';
+        
+        if (!groups[period]) groups[period] = {};
+        if (!groups[period][routeKey]) groups[period][routeKey] = [];
+
+        // 查找合适的分组
+        let addedToGroup = false;
+        for (const group of groups[period][routeKey]) {
+          // 检查该组的总人数和行李
+          const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
+          const currentPassengers = req.passenger_count || 1;
+          
+          // 检查能否容纳这些乘客和行李
+          const canFitPeople = totalPassengers + currentPassengers <= driverVehicle.max_passengers;
+          if (!canFitPeople) continue;
+          
+          // 检查所有行李是否能装下
+          const allLuggage = [...group.flatMap(r => r.luggage || []), ...(req.luggage || [])];
+          const canFitAllLuggage = canFitLuggage(allLuggage, {
+            length: driverVehicle.trunk_length_cm,
+            width: driverVehicle.trunk_width_cm,
+            height: driverVehicle.trunk_height_cm
+          });
+
+          if (canFitAllLuggage) {
+            group.push(req);
+            addedToGroup = true;
+            break;
+          }
+        }
+
+        // 如果没有合适的现有组，创建新组
+        if (!addedToGroup) {
+          groups[period][routeKey].push([req]);
+        }
+      });
+    
+    return groups;
   };
   const addFixedRoute = async () => {
     if (!selectedDestination) {
@@ -184,48 +275,120 @@ const WorkSchedule: React.FC = () => {
         {selectedDestination && <p className="text-sm text-green-600 mt-2">
             当前目的地：{selectedDestination.name}
           </p>}
+        {driverVehicle && <p className="text-sm text-blue-600 mt-1">
+            当前车辆：{driverVehicle.license_plate} (载客{driverVehicle.max_passengers}人, 后备箱{driverVehicle.trunk_length_cm}×{driverVehicle.trunk_width_cm}×{driverVehicle.trunk_height_cm}cm)
+          </p>}
       </div>
 
 
       
 
-      {/* 等待服务乘客列表 */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>等待服务乘客列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {loading ? <div className="text-center py-8">
-                <div className="text-muted-foreground">加载中...</div>
-              </div> : fixedRoutes.length === 0 ? <div className="text-center py-8">
-                <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">暂无路线</h3>
-                <p className="text-gray-500">请先添加固定路线</p>
-              </div> : fixedRoutes.sort((a, b) => (b.distance_km || 0) - (a.distance_km || 0)).map(route => {
-            const routeRequests = rideRequests.filter(request => request.start_location === route.start_location && request.end_location === route.end_location);
-            return <div key={route.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold text-lg">{route.name}</h4>
-                        <Badge variant="outline">{route.distance_km}km</Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {routeRequests.length === 0 ? <div className="text-sm text-gray-500 italic">暂无乘客需求</div> : routeRequests.sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime()).map(request => <div key={request.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                <span className="font-medium">{request.friend_name}</span>
-                                <span className="text-gray-600">
-                                  {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                                </span>
-                                <span className="font-medium">{request.contact_info}</span>
-                              </div>)}
-                      </div>
-                    </div>;
-          })}
+      {/* 智能分组乘客列表 */}
+      <div className="space-y-8">
+        {selectedDestination && driverVehicle && Object.keys(getDriverGroupedRequests()).length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-2xl font-semibold text-gray-800">智能分组安排</h2>
+              <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                {Object.keys(getDriverGroupedRequests()).length} 个时段
+              </Badge>
+            </div>
+            <div className="space-y-6">
+              {Object.entries(getDriverGroupedRequests())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([period, routeGroups]) => (
+                  <div key={period} className="border rounded-lg p-4 bg-gray-50">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                      {period}
+                    </h3>
+                    <div className="space-y-4">
+                      {Object.entries(routeGroups).map(([routeKey, groups]) => (
+                        <div key={routeKey} className="space-y-3">
+                          {groups.map((group, groupIndex) => {
+                            const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
+                            const allLuggage = group.flatMap(r => r.luggage || []);
+                            return (
+                              <div key={groupIndex} className="border rounded-lg p-3 bg-white">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="bg-green-100 text-green-700">
+                                    第{groupIndex + 1}组 ({totalPassengers}/{driverVehicle.max_passengers}人)
+                                  </Badge>
+                                  {allLuggage.length > 0 && (
+                                    <Badge variant="outline" className="bg-orange-100 text-orange-700">
+                                      行李{allLuggage.reduce((sum, item) => sum + item.quantity, 0)}件
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  {group.map(request => (
+                                    <div key={request.id} className="p-3 bg-gray-50 rounded-lg">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium">{request.friend_name}</span>
+                                        <span className="text-sm text-gray-600">
+                                          {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
+                                        </span>
+                                      </div>
+                                      <div className="text-sm text-gray-600 space-y-1">
+                                        <div>📍 {request.start_location} → {request.end_location}</div>
+                                        <div>👥 {request.passenger_count || 1}人</div>
+                                        <div>📞 {request.contact_info}</div>
+                                        {request.luggage && request.luggage.length > 0 && (
+                                          <div>🧳 行李: {request.luggage.map((item: any) => 
+                                            `${item.length}×${item.width}×${item.height}cm×${item.quantity}件`
+                                          ).join(', ')}</div>
+                                        )}
+                                        {request.notes && <div>📝 {request.notes}</div>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {/* 空状态 */}
+        {!selectedDestination && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">请选择目的地</h3>
+              <p className="text-gray-500 mb-6">请先选择您的服务目的地以查看乘客需求</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {!driverVehicle && selectedDestination && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">未找到车辆信息</h3>
+              <p className="text-gray-500 mb-6">请确保您的访问码已关联车辆</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedDestination && driverVehicle && rideRequests.length === 0 && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">暂无乘客需求</h3>
+              <p className="text-gray-500 mb-6">当前时段没有待服务的乘客</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
       
       <DestinationSelector open={showDestinationSelector} onOpenChange={setShowDestinationSelector} onSelect={setSelectedDestination} selectedDestination={selectedDestination} />
     </div>;
