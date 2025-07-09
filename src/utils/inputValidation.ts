@@ -1,4 +1,3 @@
-
 /**
  * Input validation and sanitization utilities
  */
@@ -42,15 +41,6 @@ export const validateWalletAddress = (address: string): boolean => {
   // Basic length and character validation
   const trimmed = address.trim();
   return trimmed.length >= 10 && trimmed.length <= 100 && /^[a-zA-Z0-9]+$/.test(trimmed);
-};
-
-// Validate exchange UID format - removed length restrictions
-export const validateExchangeUID = (uid: string): boolean => {
-  if (!uid) return false;
-  
-  const trimmed = uid.trim();
-  // Only check that it contains digits and basic characters, no length restriction
-  return /^[a-zA-Z0-9]+$/.test(trimmed);
 };
 
 // Validate cryptocurrency symbol
