@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator, Users } from 'lucide-react';
-import { RideRequest, FixedRoute } from '@/types/RideRequest';
+import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator, Users, Package, Plus, Minus } from 'lucide-react';
+import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,9 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     fixed_route_id: '',
     passenger_count: 1
   });
+  const [luggage, setLuggage] = useState<LuggageItem[]>([
+    { length: 0, width: 0, height: 0, quantity: 1 }
+  ]);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -125,7 +128,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         payment_currency: formData.payment_required ? formData.payment_currency : undefined,
         sender_wallet_address: formData.payment_required ? formData.sender_wallet_address : undefined,
         fixed_route_id: formData.fixed_route_id,
-        passenger_count: formData.passenger_count
+        passenger_count: formData.passenger_count,
+        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0)
       };
       
       await onSubmit(submitData);
@@ -146,6 +150,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         fixed_route_id: '',
         passenger_count: 1
       });
+      setLuggage([{ length: 0, width: 0, height: 0, quantity: 1 }]);
     } catch (error) {
       setValidationErrors(['提交失败，请重试']);
     } finally {
@@ -188,6 +193,23 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
       
       return newData;
     });
+  };
+
+  // 行李管理函数
+  const addLuggageItem = () => {
+    setLuggage(prev => [...prev, { length: 0, width: 0, height: 0, quantity: 1 }]);
+  };
+
+  const removeLuggageItem = (index: number) => {
+    if (luggage.length > 1) {
+      setLuggage(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateLuggageItem = (index: number, field: keyof LuggageItem, value: number) => {
+    setLuggage(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
   };
 
   // 计算自定义路线价格
@@ -313,6 +335,91 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* 行李管理 */}
+          <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2 text-base font-medium">
+                <Package className="h-4 w-4" />
+                携带行李信息
+              </Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={addLuggageItem}
+                className="flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                添加行李
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {luggage.map((item, index) => (
+                <div key={index} className="grid grid-cols-5 gap-2 items-end p-3 border rounded bg-white">
+                  <div className="space-y-1">
+                    <Label className="text-xs">长(cm)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={item.length}
+                      onChange={(e) => updateLuggageItem(index, 'length', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">宽(cm)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={item.width}
+                      onChange={(e) => updateLuggageItem(index, 'width', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">高(cm)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={item.height}
+                      onChange={(e) => updateLuggageItem(index, 'height', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">数量</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => updateLuggageItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                      placeholder="1"
+                      className="text-sm"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeLuggageItem(index)}
+                    disabled={luggage.length === 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="text-xs text-gray-600">
+              💡 如果没有行李，请将所有尺寸设为0。如有不同尺寸的行李，请分别添加。
+            </div>
           </div>
 
           {/* 固定路线选择 */}

@@ -18,7 +18,8 @@ export class RideRequestService {
       payment_status: (item.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(item.requested_time),
       created_at: new Date(item.created_at),
-      updated_at: new Date(item.updated_at)
+      updated_at: new Date(item.updated_at),
+      luggage: Array.isArray(item.luggage) ? item.luggage : (typeof item.luggage === 'string' ? JSON.parse(item.luggage) : [])
     })) || [];
   }
 
@@ -31,7 +32,8 @@ export class RideRequestService {
         access_code: accessCode,
         requested_time: requestData.requested_time.toISOString(),
         payment_required: requestData.payment_required || false,
-        payment_status: 'unpaid'
+        payment_status: 'unpaid',
+        luggage: JSON.stringify(requestData.luggage)
       }])
       .select()
       .single();
@@ -44,7 +46,8 @@ export class RideRequestService {
       payment_status: (data.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at)
+      updated_at: new Date(data.updated_at),
+      luggage: Array.isArray(data.luggage) ? data.luggage : (typeof data.luggage === 'string' ? JSON.parse(data.luggage) : [])
     };
 
     return request;
@@ -71,7 +74,8 @@ export class RideRequestService {
       payment_status: (data.payment_status as RideRequest['payment_status']) || 'unpaid',
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at)
+      updated_at: new Date(data.updated_at),
+      luggage: Array.isArray(data.luggage) ? data.luggage : (typeof data.luggage === 'string' ? JSON.parse(data.luggage) : [])
     };
   }
 

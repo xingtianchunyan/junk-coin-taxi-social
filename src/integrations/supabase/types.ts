@@ -213,6 +213,7 @@ export type Database = {
           friend_name: string
           id: string
           is_shared: boolean | null
+          luggage: Json | null
           notes: string | null
           passenger_count: number | null
           payment_amount: number | null
@@ -237,6 +238,7 @@ export type Database = {
           friend_name: string
           id?: string
           is_shared?: boolean | null
+          luggage?: Json | null
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null
@@ -261,6 +263,7 @@ export type Database = {
           friend_name?: string
           id?: string
           is_shared?: boolean | null
+          luggage?: Json | null
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null

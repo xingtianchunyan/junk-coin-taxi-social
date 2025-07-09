@@ -1,3 +1,10 @@
+export interface LuggageItem {
+  length: number;
+  width: number;
+  height: number;
+  quantity: number;
+}
+
 export interface RideRequest {
   id: string;
   access_code: string;
@@ -17,6 +24,7 @@ export interface RideRequest {
   sender_wallet_address?: string;
   fixed_route_id?: string;
   passenger_count?: number;
+  luggage: LuggageItem[];
   created_at: Date;
   updated_at: Date;
 }

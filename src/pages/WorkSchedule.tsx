@@ -92,6 +92,18 @@ const WorkSchedule: React.FC = () => {
       loadRideRequests();
     }
   }, [selectedDestination]);
+
+  // 检查行李是否能装入车辆后备箱
+  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
+    if (!requestLuggage || requestLuggage.length === 0) return true;
+    
+    const totalVolume = requestLuggage.reduce((total, item) => {
+      return total + (item.length * item.width * item.height * item.quantity);
+    }, 0);
+    
+    const trunkVolume = vehicleTrunk.length * vehicleTrunk.width * vehicleTrunk.height;
+    return totalVolume <= trunkVolume * 0.8;
+  };
   const addFixedRoute = async () => {
     if (!selectedDestination) {
       toast({

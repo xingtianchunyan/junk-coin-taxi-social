@@ -187,9 +187,29 @@ const PassengerService: React.FC = () => {
     });
   };
 
+  // 检查行李是否能装入车辆后备箱
+  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
+    if (!requestLuggage || requestLuggage.length === 0) return true;
+    
+    // 计算所有行李的总体积
+    const totalVolume = requestLuggage.reduce((total, item) => {
+      return total + (item.length * item.width * item.height * item.quantity);
+    }, 0);
+    
+    const trunkVolume = vehicleTrunk.length * vehicleTrunk.width * vehicleTrunk.height;
+    
+    // 简化的装箱算法：总体积不超过后备箱80%（考虑空间利用率）
+    return totalVolume <= trunkVolume * 0.8;
+  };
+
   const getGroupedRequests = () => {
     const filteredRequests = getFilteredRequests();
     const groups: Record<string, Record<string, RideRequest[][]>> = {};
+    
+    // 获取目的地车辆信息
+    const destinationVehicles = vehicles.filter(vehicle => 
+      vehicle.destination_id === selectedDestination?.id && vehicle.is_active
+    );
     
     filteredRequests
       .sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime())
@@ -201,12 +221,38 @@ const PassengerService: React.FC = () => {
         if (!groups[period]) groups[period] = {};
         if (!groups[period][routeKey]) groups[period][routeKey] = [];
 
-        let lastGroup = groups[period][routeKey][groups[period][routeKey].length - 1];
-        if (!lastGroup || lastGroup.length >= 4) {
-          lastGroup = [];
-          groups[period][routeKey].push(lastGroup);
+        // 查找合适的车辆进行分组
+        let addedToGroup = false;
+        for (const group of groups[period][routeKey]) {
+          // 检查该组的总人数和行李
+          const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
+          const currentPassengers = req.passenger_count || 1;
+          
+          // 找到能容纳这些乘客和行李的车辆
+          const suitableVehicle = destinationVehicles.find(vehicle => {
+            const canFitPeople = totalPassengers + currentPassengers <= vehicle.max_passengers;
+            if (!canFitPeople) return false;
+            
+            // 检查所有行李是否能装下
+            const allLuggage = [...group.flatMap(r => r.luggage || []), ...(req.luggage || [])];
+            return canFitLuggage(allLuggage, {
+              length: vehicle.trunk_length_cm,
+              width: vehicle.trunk_width_cm,
+              height: vehicle.trunk_height_cm
+            });
+          });
+
+          if (suitableVehicle) {
+            group.push(req);
+            addedToGroup = true;
+            break;
+          }
         }
-        lastGroup.push(req);
+
+        // 如果没有合适的现有组，创建新组
+        if (!addedToGroup) {
+          groups[period][routeKey].push([req]);
+        }
       });
     
     return groups;
