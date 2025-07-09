@@ -41,31 +41,22 @@ export type Database = {
       drivers: {
         Row: {
           created_at: string | null
-          experience_years: number | null
           id: string
           is_active: boolean | null
-          license_number: string | null
-          rating: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          experience_years?: number | null
           id?: string
           is_active?: boolean | null
-          license_number?: string | null
-          rating?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
-          experience_years?: number | null
           id?: string
           is_active?: boolean | null
-          license_number?: string | null
-          rating?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -77,13 +68,11 @@ export type Database = {
           currency: string | null
           destination_id: string | null
           distance_km: number | null
-          driver_id: string | null
           end_location: string
           estimated_duration_minutes: number | null
           id: string
           is_active: boolean | null
           market_price: number | null
-          max_passengers: number | null
           name: string
           our_price: number | null
           start_location: string
@@ -94,13 +83,11 @@ export type Database = {
           currency?: string | null
           destination_id?: string | null
           distance_km?: number | null
-          driver_id?: string | null
           end_location: string
           estimated_duration_minutes?: number | null
           id?: string
           is_active?: boolean | null
           market_price?: number | null
-          max_passengers?: number | null
           name: string
           our_price?: number | null
           start_location: string
@@ -111,13 +98,11 @@ export type Database = {
           currency?: string | null
           destination_id?: string | null
           distance_km?: number | null
-          driver_id?: string | null
           end_location?: string
           estimated_duration_minutes?: number | null
           id?: string
           is_active?: boolean | null
           market_price?: number | null
-          max_passengers?: number | null
           name?: string
           our_price?: number | null
           start_location?: string
@@ -131,85 +116,7 @@ export type Database = {
             referencedRelation: "preset_destinations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fixed_routes_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "drivers"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      luggage_items: {
-        Row: {
-          created_at: string
-          height_cm: number
-          id: string
-          length_cm: number
-          quantity: number
-          ride_request_id: string | null
-          size_category: string
-          width_cm: number
-        }
-        Insert: {
-          created_at?: string
-          height_cm: number
-          id?: string
-          length_cm: number
-          quantity?: number
-          ride_request_id?: string | null
-          size_category: string
-          width_cm: number
-        }
-        Update: {
-          created_at?: string
-          height_cm?: number
-          id?: string
-          length_cm?: number
-          quantity?: number
-          ride_request_id?: string | null
-          size_category?: string
-          width_cm?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "luggage_items_ride_request_id_fkey"
-            columns: ["ride_request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payment_methods: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          identifier: string
-          is_active: boolean | null
-          name: string
-          type: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          identifier: string
-          is_active?: boolean | null
-          name: string
-          type: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          identifier?: string
-          is_active?: boolean | null
-          name?: string
-          type?: string
-        }
-        Relationships: []
       }
       payments: {
         Row: {
@@ -296,99 +203,11 @@ export type Database = {
           },
         ]
       }
-      ride_group_members: {
-        Row: {
-          group_id: string | null
-          id: string
-          joined_at: string
-          ride_request_id: string | null
-        }
-        Insert: {
-          group_id?: string | null
-          id?: string
-          joined_at?: string
-          ride_request_id?: string | null
-        }
-        Update: {
-          group_id?: string | null
-          id?: string
-          joined_at?: string
-          ride_request_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ride_group_members_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "ride_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ride_group_members_ride_request_id_fkey"
-            columns: ["ride_request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ride_groups: {
-        Row: {
-          created_at: string
-          id: string
-          requested_time: string
-          route_id: string | null
-          status: string | null
-          total_luggage_volume: number | null
-          total_passengers: number | null
-          updated_at: string
-          vehicle_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          requested_time: string
-          route_id?: string | null
-          status?: string | null
-          total_luggage_volume?: number | null
-          total_passengers?: number | null
-          updated_at?: string
-          vehicle_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          requested_time?: string
-          route_id?: string | null
-          status?: string | null
-          total_luggage_volume?: number | null
-          total_passengers?: number | null
-          updated_at?: string
-          vehicle_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ride_groups_route_id_fkey"
-            columns: ["route_id"]
-            isOneToOne: false
-            referencedRelation: "fixed_routes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ride_groups_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ride_requests: {
         Row: {
           access_code: string
           contact_info: string | null
           created_at: string | null
-          driver_id: string | null
           end_location: string
           fixed_route_id: string | null
           friend_name: string
@@ -413,7 +232,6 @@ export type Database = {
           access_code?: string
           contact_info?: string | null
           created_at?: string | null
-          driver_id?: string | null
           end_location: string
           fixed_route_id?: string | null
           friend_name: string
@@ -438,7 +256,6 @@ export type Database = {
           access_code?: string
           contact_info?: string | null
           created_at?: string | null
-          driver_id?: string | null
           end_location?: string
           fixed_route_id?: string | null
           friend_name?: string
@@ -461,13 +278,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ride_requests_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "drivers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ride_requests_fixed_route_id_fkey"
             columns: ["fixed_route_id"]
             isOneToOne: false
@@ -475,33 +285,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      supported_coins: {
-        Row: {
-          created_at: string
-          exchange: string
-          id: string
-          is_active: boolean | null
-          name: string
-          symbol: string
-        }
-        Insert: {
-          created_at?: string
-          exchange: string
-          id?: string
-          is_active?: boolean | null
-          name: string
-          symbol: string
-        }
-        Update: {
-          created_at?: string
-          exchange?: string
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          symbol?: string
-        }
-        Relationships: []
       }
       users: {
         Row: {
@@ -542,6 +325,7 @@ export type Database = {
           trunk_length_cm: number
           trunk_width_cm: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -557,6 +341,7 @@ export type Database = {
           trunk_length_cm?: number
           trunk_width_cm?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -572,6 +357,7 @@ export type Database = {
           trunk_length_cm?: number
           trunk_width_cm?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -579,6 +365,13 @@ export type Database = {
             columns: ["destination_id"]
             isOneToOne: false
             referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

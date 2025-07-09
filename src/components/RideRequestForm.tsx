@@ -8,12 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator, Users } from 'lucide-react';
 import { RideRequest, FixedRoute } from '@/types/RideRequest';
-import { LuggageItem } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { useToast } from '@/hooks/use-toast';
 import { validateRideRequestData, globalRateLimiter } from '@/utils/inputValidation';
-import LuggageSettings from '@/components/LuggageSettings';
 
 interface Destination {
   id: string;
@@ -23,7 +21,7 @@ interface Destination {
 }
 
 interface RideRequestFormProps {
-  onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, luggage: Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]) => void;
+  onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => void;
   selectedDestination?: Destination | null;
 }
 
@@ -43,8 +41,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     fixed_route_id: '',
     passenger_count: 1
   });
-  
-  const [luggage, setLuggage] = useState<Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]>([]);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -132,7 +128,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         passenger_count: formData.passenger_count
       };
       
-      await onSubmit(submitData, luggage);
+      await onSubmit(submitData);
 
       // Reset form after successful submission
       setFormData({
@@ -150,7 +146,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         fixed_route_id: '',
         passenger_count: 1
       });
-      setLuggage([]);
     } catch (error) {
       setValidationErrors(['提交失败，请重试']);
     } finally {
@@ -351,8 +346,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             </div>
           </div>
 
-          {/* 行李设置 */}
-          <LuggageSettings luggage={luggage} onChange={setLuggage} />
 
           <div className="space-y-2">
             <Label htmlFor="requested_time" className="flex items-center gap-2">

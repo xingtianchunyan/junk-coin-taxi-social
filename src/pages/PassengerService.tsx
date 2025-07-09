@@ -11,9 +11,7 @@ import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
 import DestinationSelectionDialog from '@/components/DestinationSelectionDialog';
 import DriverWalletDialog from '@/components/DriverWalletDialog';
-import GroupConfirmDialog from '@/components/GroupConfirmDialog';
-import { RideRequest } from '@/types/RideRequest';
-import { LuggageItem, Vehicle, RideGroup } from '@/types/Vehicle';
+import { RideRequest, Vehicle } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 
@@ -40,9 +38,6 @@ const PassengerService: React.FC = () => {
     network: '',
     currency: ''
   });
-  const [showGroupConfirmDialog, setShowGroupConfirmDialog] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<any>(null);
-  const [currentRequest, setCurrentRequest] = useState<RideRequest | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const { toast } = useToast();
@@ -86,8 +81,7 @@ const PassengerService: React.FC = () => {
   };
 
   const addRequest = async (
-    requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, 
-    luggage: Omit<LuggageItem, 'id' | 'created_at' | 'ride_request_id'>[]
+    requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>
   ) => {
     try {
       if (!hasAccess || !accessCode) {
@@ -113,17 +107,9 @@ const PassengerService: React.FC = () => {
       }
 
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
-      
-      // 创建行李项目
-      if (luggage.length > 0) {
-        await vehicleService.createLuggageItems(request.id, luggage);
-      }
 
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
-
-      // 检查是否可以组队
-      await checkForGrouping(request);
 
       try {
         const walletAddresses = await rideRequestService.getWalletAddresses();
@@ -139,7 +125,7 @@ const PassengerService: React.FC = () => {
 
       toast({
         title: "用车需求已创建",
-        description: "需求已成功提交，正在检查组队可能性"
+        description: "需求已成功提交"
       });
     } catch (error) {
       console.error('创建用车需求失败:', error);
@@ -151,102 +137,6 @@ const PassengerService: React.FC = () => {
     }
   };
 
-  const checkForGrouping = async (newRequest: RideRequest) => {
-    try {
-      if (!newRequest.fixed_route_id) return;
-
-      // 查找同路线同时段的其他请求
-      const sameRouteRequests = requests.filter(req => 
-        req.fixed_route_id === newRequest.fixed_route_id &&
-        req.id !== newRequest.id &&
-        Math.abs(new Date(req.requested_time).getTime() - new Date(newRequest.requested_time).getTime()) <= 30 * 60 * 1000
-      );
-
-      if (sameRouteRequests.length === 0) return;
-
-      // 找到合适的车辆
-      const suitableVehicle = await findSuitableVehicle([...sameRouteRequests, newRequest]);
-      if (!suitableVehicle) return;
-
-      // 创建组队建议
-      const groupData = {
-        vehicle_id: suitableVehicle.id,
-        route_id: newRequest.fixed_route_id,
-        requested_time: newRequest.requested_time,
-        status: 'pending' as const,
-        total_passengers: sameRouteRequests.reduce((sum, req) => sum + (req.passenger_count || 1), 0) + (newRequest.passenger_count || 1),
-        total_luggage_volume: 0 // 会在后面计算
-      };
-
-      // 计算总行李体积
-      let totalLuggageVolume = 0;
-      for (const req of [...sameRouteRequests, newRequest]) {
-        const luggage = await vehicleService.getLuggageItems(req.id);
-        totalLuggageVolume += vehicleService.calculateLuggageVolume(luggage);
-      }
-      groupData.total_luggage_volume = totalLuggageVolume;
-
-      // 显示组队确认弹窗
-      setSelectedGroup({
-        ...groupData,
-        vehicle: suitableVehicle,
-        members: sameRouteRequests.map(req => ({ ride_request: req })),
-        route: {
-          name: '固定路线',
-          start_location: newRequest.start_location,
-          end_location: newRequest.end_location
-        }
-      });
-      setCurrentRequest(newRequest);
-      setShowGroupConfirmDialog(true);
-    } catch (error) {
-      console.error('检查组队失败:', error);
-    }
-  };
-
-  const findSuitableVehicle = async (requests: RideRequest[]): Promise<Vehicle | null> => {
-    const totalPassengers = requests.reduce((sum, req) => sum + (req.passenger_count || 1), 0);
-    
-    for (const vehicle of vehicles) {
-      if (vehicle.max_passengers >= totalPassengers) {
-        const canForm = await vehicleService.canFormGroup(requests, vehicle.id);
-        if (canForm.canForm) {
-          return vehicle;
-        }
-      }
-    }
-    return null;
-  };
-
-  const handleGroupConfirm = async () => {
-    try {
-      if (!selectedGroup || !currentRequest) return;
-
-      // 创建组队
-      const group = await vehicleService.createRideGroup(selectedGroup);
-      
-      // 添加所有成员到组队
-      for (const member of selectedGroup.members) {
-        await vehicleService.joinRideGroup(group.id, member.ride_request.id);
-      }
-      await vehicleService.joinRideGroup(group.id, currentRequest.id);
-
-      toast({
-        title: "组队成功",
-        description: "已成功加入组队，等待司机确认"
-      });
-
-      setShowGroupConfirmDialog(false);
-      loadRideRequests();
-    } catch (error) {
-      console.error('组队失败:', error);
-      toast({
-        title: "组队失败",
-        description: "无法创建组队，请重试",
-        variant: "destructive"
-      });
-    }
-  };
 
   const completeRequest = async (id: string) => {
     try {
@@ -448,17 +338,6 @@ const PassengerService: React.FC = () => {
       {/* 司机钱包地址弹窗 */}
       <DriverWalletDialog open={showDriverWalletDialog} onOpenChange={setShowDriverWalletDialog} selectedNetwork={paymentInfo.network} selectedCurrency={paymentInfo.currency} walletAddresses={driverWalletAddresses} />
 
-      {/* 组队确认弹窗 */}
-      {selectedGroup && currentRequest && (
-        <GroupConfirmDialog
-          open={showGroupConfirmDialog}
-          onOpenChange={setShowGroupConfirmDialog}
-          group={selectedGroup}
-          currentRequest={currentRequest}
-          onConfirm={handleGroupConfirm}
-          onCancel={() => setShowGroupConfirmDialog(false)}
-        />
-      )}
     </div>
   );
 };
