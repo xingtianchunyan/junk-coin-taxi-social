@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { vehicleService } from '@/services/vehicleService';
 import { Vehicle } from '@/types/Vehicle';
+import { LuggageItem } from '@/types/RideRequest';
 
 const WorkSchedule: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<any>(null);
@@ -33,6 +33,21 @@ const WorkSchedule: React.FC = () => {
   const { toast } = useToast();
   const { clearAccessCode, accessCode } = useAccessCode();
   const navigate = useNavigate();
+
+  // 安全解析行李数据的辅助函数
+  const parseLuggageData = (luggage: any): LuggageItem[] => {
+    if (!luggage) return [];
+    if (Array.isArray(luggage)) return luggage;
+    if (typeof luggage === 'string') {
+      try {
+        const parsed = JSON.parse(luggage);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
 
   // 加载司机车辆信息
   const loadDriverVehicle = async () => {
@@ -137,10 +152,11 @@ const WorkSchedule: React.FC = () => {
   }, [selectedDestination]);
 
   // 检查行李是否能装入车辆后备箱
-  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
-    if (!requestLuggage || !Array.isArray(requestLuggage) || requestLuggage.length === 0) return true;
+  const canFitLuggage = (requestLuggage: any, vehicleTrunk: { length: number; width: number; height: number }) => {
+    const luggageItems = parseLuggageData(requestLuggage);
+    if (luggageItems.length === 0) return true;
     
-    const totalVolume = requestLuggage.reduce((total, item) => {
+    const totalVolume = luggageItems.reduce((total, item) => {
       return total + (item.length * item.width * item.height * item.quantity);
     }, 0);
     
@@ -177,8 +193,8 @@ const WorkSchedule: React.FC = () => {
           
           // 检查所有行李是否能装下
           const allLuggage = [
-            ...group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []), 
-            ...(Array.isArray(req.luggage) ? req.luggage : [])
+            ...group.flatMap(r => parseLuggageData(r.luggage)), 
+            ...parseLuggageData(req.luggage)
           ];
           const canFitAllLuggage = canFitLuggage(allLuggage, {
             length: driverVehicle.trunk_length_cm,
@@ -198,7 +214,7 @@ const WorkSchedule: React.FC = () => {
           groups[period][routeKey].push([req]);
         }
       });
-    debugger
+    
     return groups;
   };
 
@@ -320,7 +336,7 @@ const WorkSchedule: React.FC = () => {
                         <div key={routeKey} className="space-y-3">
                           {groups.map((group, groupIndex) => {
                             const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
-                            const allLuggage = group.flatMap(r => Array.isArray(r.luggage) ? r.luggage : []);
+                            const allLuggage = group.flatMap(r => parseLuggageData(r.luggage));
                             return (
                               <div key={groupIndex} className="border rounded-lg p-3 bg-white">
                                 <div className="flex items-center gap-2 mb-2">
@@ -334,35 +350,38 @@ const WorkSchedule: React.FC = () => {
                                   )}
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                  {group.map(request => (
-                                    <div key={request.id} className="p-3 bg-gray-50 rounded-lg">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="font-medium">{request.friend_name}</span>
-                                        <span className="text-sm text-gray-600">
-                                          {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                          })}
-                                        </span>
+                                  {group.map(request => {
+                                    const luggageItems = parseLuggageData(request.luggage);
+                                    return (
+                                      <div key={request.id} className="p-3 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="font-medium">{request.friend_name}</span>
+                                          <span className="text-sm text-gray-600">
+                                            {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
+                                              hour: '2-digit',
+                                              minute: '2-digit'
+                                            })}
+                                          </span>
+                                        </div>
+                                        <div className="text-sm text-gray-600 space-y-1">
+                                          <div>📍 {request.start_location} → {request.end_location}</div>
+                                          <div>👥 {request.passenger_count || 1}人</div>
+                                          <div>📞 {request.contact_info}</div>
+                                          {luggageItems.length > 0 && (
+                                            <div className="bg-blue-50 p-2 rounded mt-2">
+                                              <div className="font-medium text-blue-800 mb-1">🧳 行李信息:</div>
+                                              {luggageItems.map((item: LuggageItem, index: number) => (
+                                                <div key={index} className="text-blue-700 text-xs">
+                                                  • {item.length}×{item.width}×{item.height}cm × {item.quantity}件
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                          {request.notes && <div>📝 {request.notes}</div>}
+                                        </div>
                                       </div>
-                                      <div className="text-sm text-gray-600 space-y-1">
-                                        <div>📍 {request.start_location} → {request.end_location}</div>
-                                        <div>👥 {request.passenger_count || 1}人</div>
-                                        <div>📞 {request.contact_info}</div>
-                                        {request.luggage && Array.isArray(request.luggage) && request.luggage.length > 0 && (
-                                          <div className="bg-blue-50 p-2 rounded mt-2">
-                                            <div className="font-medium text-blue-800 mb-1">🧳 行李信息:</div>
-                                            {request.luggage.map((item: any, index: number) => (
-                                              <div key={index} className="text-blue-700 text-xs">
-                                                • {item.length}×{item.width}×{item.height}cm × {item.quantity}件
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {request.notes && <div>📝 {request.notes}</div>}
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
