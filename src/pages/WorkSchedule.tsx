@@ -206,6 +206,7 @@ const WorkSchedule: React.FC = () => {
                       minute: '2-digit'
                     })}
                                 </span>
+                                <span className="font-medium">{request.contact_info}</span>
                               </div>)}
                       </div>
                     </div>;
