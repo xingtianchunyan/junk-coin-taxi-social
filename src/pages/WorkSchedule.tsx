@@ -30,7 +30,11 @@ const WorkSchedule: React.FC = () => {
           description: "请重新输入访问码",
           variant: "destructive",
         });
-        navigate('/');
+        // 避免无限循环 - 清除所有存储并只跳转一次
+        localStorage.removeItem('rideAccessCode');
+        localStorage.removeItem('driverVehicleId');
+        localStorage.removeItem('access_code');
+        window.location.href = '/';
         return;
       }
 
