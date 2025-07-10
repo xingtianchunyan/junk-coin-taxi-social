@@ -58,7 +58,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
                   即将到达
                 </Badge>
               )}
-              {request.payment_required && (
+              {request.payment_required && accessLevel === 'private' && (
                 <Badge variant="outline" className="bg-purple-100 text-purple-700">
                   <CreditCard className="h-3 w-3 mr-1" />
                   需付费
@@ -104,7 +104,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
             </div>
           )}
 
-          {request.payment_required && (
+          {request.payment_required && accessLevel === 'private' && (
             <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
