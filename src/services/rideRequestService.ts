@@ -208,6 +208,16 @@ export class RideRequestService {
     if (error) throw error;
   }
 
+  // 删除钱包地址
+  async deleteWalletAddress(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('wallet_addresses')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // 创建支付记录
   async createPayment(paymentData: Omit<Payment, 'id' | 'created_at' | 'confirmed_at'>): Promise<Payment> {
     const { data, error } = await supabase
@@ -422,6 +432,16 @@ export class RideRequestService {
     const { error } = await supabase
       .from('fixed_routes')
       .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 删除固定路线
+  async deleteFixedRoute(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('fixed_routes')
+      .delete()
       .eq('id', id);
 
     if (error) throw error;

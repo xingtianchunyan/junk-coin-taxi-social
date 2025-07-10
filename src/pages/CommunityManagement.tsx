@@ -400,7 +400,7 @@ const CommunityManagement: React.FC = () => {
 
   const handleDeleteRoute = async (routeId: string) => {
     try {
-      await rideRequestService.toggleFixedRoute(routeId, false);
+      await rideRequestService.deleteFixedRoute(routeId);
       toast({
         title: "路线已删除",
         description: "路线已成功删除",
@@ -427,10 +427,10 @@ const CommunityManagement: React.FC = () => {
 
       if (fetchError) throw fetchError;
 
-      // 删除车辆记录
+      // 删除车辆记录（真删除）
       const { error: vehicleError } = await supabase
         .from('vehicles')
-        .update({ is_active: false })
+        .delete()
         .eq('id', vehicleId);
 
       if (vehicleError) throw vehicleError;
@@ -464,7 +464,7 @@ const CommunityManagement: React.FC = () => {
 
   const handleDeletePayment = async (walletId: string) => {
     try {
-      await rideRequestService.toggleWalletAddress(walletId, false);
+      await rideRequestService.deleteWalletAddress(walletId);
       toast({
         title: "支付方式已删除",
         description: "支付方式已成功删除",
@@ -487,7 +487,7 @@ const CommunityManagement: React.FC = () => {
     try {
       await Promise.all(
         selectedRouteIdsForDelete.map(routeId => 
-          rideRequestService.toggleFixedRoute(routeId, false)
+          rideRequestService.deleteFixedRoute(routeId)
         )
       );
       toast({
@@ -513,7 +513,7 @@ const CommunityManagement: React.FC = () => {
     try {
       await Promise.all(
         selectedPaymentIdsForDelete.map(walletId => 
-          rideRequestService.toggleWalletAddress(walletId, false)
+          rideRequestService.deleteWalletAddress(walletId)
         )
       );
       toast({

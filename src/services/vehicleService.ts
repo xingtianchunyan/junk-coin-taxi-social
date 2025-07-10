@@ -53,10 +53,20 @@ export const vehicleService = {
   },
 
   // 删除车辆（软删除）
-  async deleteVehicle(id: string): Promise<void> {
+  async deactivateVehicle(id: string): Promise<void> {
     const { error } = await supabase
       .from('vehicles')
       .update({ is_active: false })
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  // 删除车辆（真删除）
+  async deleteVehicle(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
       .eq('id', id);
     
     if (error) throw error;
