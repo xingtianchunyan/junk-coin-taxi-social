@@ -4,13 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Copy, QrCode, CheckCircle, Clock, CreditCard, Zap } from 'lucide-react';
+import { Copy, QrCode, CheckCircle, Clock, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RideRequest, WalletAddress } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
-import { useAccessCode } from '@/components/AccessCodeProvider';
-import { ethers } from 'ethers';
-import contractConfig from '@/config/contract.json';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -53,9 +50,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletAddress | null>(null);
   const [loading, setLoading] = useState(false);
-  const [blockchainPaymentLoading, setBlockchainPaymentLoading] = useState(false);
   const { toast } = useToast();
-  const { user } = useAccessCode();
 
   useEffect(() => {
     if (open && request?.payment_required) {
@@ -144,113 +139,6 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
     }
     
     return `${payWay} - ${wallet.symbol}`;
-  };
-
-  // 区块链支付处理
-  const handleBlockchainPayment = async () => {
-    if (!selectedWallet || !request || !user?.wallet_address) {
-      toast({
-        title: "错误",
-        description: "请先连接钱包或选择支付方式",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setBlockchainPaymentLoading(true);
-    try {
-      // 检查是否有MetaMask
-      if (!window.ethereum) {
-        throw new Error('请安装MetaMask钱包');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      
-      // 验证网络是否为Sepolia
-      const network = await provider.getNetwork();
-      if (network.chainId !== 11155111n) { // Sepolia chainId
-        toast({
-          title: "网络错误",
-          description: "请切换到Sepolia测试网络",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 准备支付交易
-      const amountInWei = ethers.parseEther((request.payment_amount || 0).toString());
-      
-      // 发送ETH到司机地址
-      const tx = await signer.sendTransaction({
-        to: selectedWallet.address,
-        value: amountInWei,
-      });
-
-      toast({
-        title: "交易已发送",
-        description: `交易哈希: ${tx.hash}`,
-      });
-
-      // 等待交易确认
-      const receipt = await tx.wait();
-      
-      if (receipt && receipt.status === 1) {
-        // 创建支付记录
-        await rideRequestService.createPayment({
-          ride_request_id: request.id,
-          amount: request.payment_amount || 0,
-          currency: request.payment_currency || 'ETH',
-          wallet_address: selectedWallet.address,
-          payment_method: 'blockchain',
-          status: 'confirmed',
-          transaction_hash: tx.hash
-        });
-
-        // 调用智能合约铸造SBT徽章
-        try {
-          const contract = new ethers.Contract(
-            contractConfig.address,
-            contractConfig.abi,
-            signer
-          );
-
-          const mintTx = await contract.mintBadgesForPayment(
-            selectedWallet.address, // 司机地址
-            user.wallet_address,    // 乘客地址
-            tx.hash,                // 支付交易哈希
-            amountInWei            // 支付金额
-          );
-
-          await mintTx.wait();
-          
-          toast({
-            title: "支付成功 🎉",
-            description: "您和司机都已获得社区徽章！",
-          });
-        } catch (badgeError) {
-          console.error('徽章铸造失败:', badgeError);
-          // 即使徽章铸造失败，支付也是成功的
-          toast({
-            title: "支付成功",
-            description: "支付完成，但徽章铸造失败，请联系管理员",
-          });
-        }
-
-        onOpenChange(false);
-      } else {
-        throw new Error('交易失败');
-      }
-    } catch (error: any) {
-      console.error('区块链支付失败:', error);
-      toast({
-        title: "支付失败",
-        description: error.message || "区块链支付过程中出现错误",
-        variant: "destructive",
-      });
-    } finally {
-      setBlockchainPaymentLoading(false);
-    }
   };
 
   // 获取支付通道显示名称
@@ -380,32 +268,13 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               取消
             </Button>
-            {selectedWallet?.pay_way === 1 && user?.wallet_address ? (
-              // 区块链支付按钮（仅在选择区块链支付方式且用户已连接钱包时显示）
-              <Button 
-                onClick={handleBlockchainPayment}
-                disabled={blockchainPaymentLoading || !selectedWallet}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
-                {blockchainPaymentLoading ? (
-                  "支付中..."
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 mr-2" />
-                    区块链支付
-                  </>
-                )}
-              </Button>
-            ) : (
-              // 传统转账确认按钮
-              <Button 
-                onClick={handlePaymentSubmit}
-                disabled={loading || !selectedWallet}
-                className="flex-1"
-              >
-                {loading ? '处理中...' : '我已转账'}
-              </Button>
-            )}
+            <Button 
+              onClick={handlePaymentSubmit}
+              disabled={loading || !selectedWallet}
+              className="flex-1"
+            >
+              {loading ? '处理中...' : '我已转账'}
+            </Button>
           </div>
         </div>
       </DialogContent>
