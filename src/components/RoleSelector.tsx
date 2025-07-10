@@ -67,20 +67,8 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
 
       if (userError) throw userError;
 
-      // Create driver record if driver role is selected
-      if (selectedRole === 'driver') {
-        const { error: driverError } = await supabase
-          .from('drivers')
-          .upsert({
-            user_id: user.id,
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (driverError && !driverError.message.includes('duplicate')) {
-          throw driverError;
-        }
-      }
+      // Note: Driver data is managed through vehicles table when vehicles are created
+      // No need to create separate driver records here
 
       toast({
         title: '角色设置成功',

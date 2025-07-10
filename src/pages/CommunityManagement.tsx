@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -105,16 +106,16 @@ const CommunityManagement: React.FC = () => {
     discount_percentage: 50 // 愿意的折扣，默认50%
   });
 
-  // 支付管理新增状态
-  const [selectedRouteId, setSelectedRouteId] = useState<string>('');
+  // 支付管理新增状态 - 多选模式
+  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
-
+  const [selectedChainIds, setSelectedChainIds] = useState<number[]>([]);
+  const [selectedExchangeIds, setSelectedExchangeIds] = useState<number[]>([]);
+  const [blockchainAddresses, setBlockchainAddresses] = useState<Record<number, string>>({});
+  const [exchangeAddresses, setExchangeAddresses] = useState<Record<number, string>>({});
   const [newPayment, setNewPayment] = useState({
     pay_way: 1,
-    chain_name: 2,
-    exchange_name: 1,
-    symbol: '',
-    address: ''
+    symbol: ''
   });
 
   // 复制访问码相关状态
@@ -287,7 +288,7 @@ const CommunityManagement: React.FC = () => {
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!destination || !selectedRouteId || !selectedVehicleId) {
+    if (!destination || selectedRouteIds.length === 0 || !selectedVehicleId) {
       toast({
         title: "请选择路线和车辆",
         description: "添加支付方式前需要先选择路线和车辆",
@@ -297,31 +298,88 @@ const CommunityManagement: React.FC = () => {
     }
 
     try {
-      // 对于非区块链、非交易所的支付方式，设置默认值
-      const paymentData = {
-        ...newPayment,
-        symbol: newPayment.pay_way >= 3 ? 'CNY' : newPayment.symbol,
-        address: newPayment.pay_way >= 3 ? 'N/A' : newPayment.address,
-        route_id: selectedRouteId,
-        vehicle_id: selectedVehicleId
-      };
+      const createdWallets = [];
 
-      await rideRequestService.createDestinationWallet(paymentData, destination.id);
+      // 区块链支付
+      if (newPayment.pay_way === 1 && selectedChainIds.length > 0) {
+        for (const chainId of selectedChainIds) {
+          const address = blockchainAddresses[chainId];
+          if (!address) continue;
+
+          for (const routeId of selectedRouteIds) {
+            const walletData = {
+              pay_way: newPayment.pay_way,
+              chain_name: chainId,
+              exchange_name: 1, // 默认值
+              symbol: newPayment.symbol,
+              address: address,
+              route_id: routeId,
+              vehicle_id: selectedVehicleId
+            };
+
+            await rideRequestService.createDestinationWallet(walletData, destination.id);
+            createdWallets.push(walletData);
+          }
+        }
+      }
+      // 交易所转账
+      else if (newPayment.pay_way === 2 && selectedExchangeIds.length > 0) {
+        for (const exchangeId of selectedExchangeIds) {
+          const address = exchangeAddresses[exchangeId];
+          if (!address) continue;
+
+          for (const routeId of selectedRouteIds) {
+            const walletData = {
+              pay_way: newPayment.pay_way,
+              chain_name: 2, // 默认值
+              exchange_name: exchangeId,
+              symbol: newPayment.symbol,
+              address: address,
+              route_id: routeId,
+              vehicle_id: selectedVehicleId
+            };
+
+            await rideRequestService.createDestinationWallet(walletData, destination.id);
+            createdWallets.push(walletData);
+          }
+        }
+      }
+      // 其他支付方式
+      else if (newPayment.pay_way >= 3) {
+        for (const routeId of selectedRouteIds) {
+          const walletData = {
+            pay_way: newPayment.pay_way,
+            chain_name: 2, // 默认值
+            exchange_name: 1, // 默认值
+            symbol: 'CNY',
+            address: 'N/A',
+            route_id: routeId,
+            vehicle_id: selectedVehicleId
+          };
+
+          await rideRequestService.createDestinationWallet(walletData, destination.id);
+          createdWallets.push(walletData);
+        }
+      }
+
+      if (createdWallets.length > 0) {
+        toast({
+          title: "支付方式已批量添加",
+          description: `成功添加 ${createdWallets.length} 个支付方式配置`,
+        });
+      }
       
-      toast({
-        title: "支付方式已添加",
-        description: "新的支付方式已成功添加到您的目的地",
-      });
-      
+      // 重置表单
+      setSelectedRouteIds([]);
+      setSelectedVehicleId('');
+      setSelectedChainIds([]);
+      setSelectedExchangeIds([]);
+      setBlockchainAddresses({});
+      setExchangeAddresses({});
       setNewPayment({ 
         pay_way: 1,
-        chain_name: 2,
-        exchange_name: 1,
-        symbol: '', 
-        address: '' 
+        symbol: ''
       });
-      setSelectedRouteId('');
-      setSelectedVehicleId('');
       setShowAddPaymentDialog(false);
       loadCommunityData();
     } catch (error) {
@@ -526,10 +584,6 @@ const CommunityManagement: React.FC = () => {
     return EXCHANGE_OPTIONS.find(option => option.value === exchangeId)?.label || '未知';
   };
 
-  const getSelectedRoute = () => {
-    return routes.find(route => route.id === selectedRouteId);
-  };
-
   const getSelectedVehicle = () => {
     return vehicles.find(vehicle => vehicle.id === selectedVehicleId);
   };
@@ -541,6 +595,63 @@ const CommunityManagement: React.FC = () => {
 
   const getWalletVehicle = (vehicleId: string | undefined) => {
     return vehicles.find(vehicle => vehicle.id === vehicleId);
+  };
+
+  // 处理路线多选
+  const handleRouteSelection = (routeId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRouteIds(prev => [...prev, routeId]);
+    } else {
+      setSelectedRouteIds(prev => prev.filter(id => id !== routeId));
+    }
+  };
+
+  // 处理区块链网络多选
+  const handleChainSelection = (chainId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedChainIds(prev => [...prev, chainId]);
+      // 为新选择的链添加空地址
+      if (!blockchainAddresses[chainId]) {
+        setBlockchainAddresses(prev => ({ ...prev, [chainId]: '' }));
+      }
+    } else {
+      setSelectedChainIds(prev => prev.filter(id => id !== chainId));
+      // 移除对应的地址
+      setBlockchainAddresses(prev => {
+        const newAddresses = { ...prev };
+        delete newAddresses[chainId];
+        return newAddresses;
+      });
+    }
+  };
+
+  // 处理交易所多选
+  const handleExchangeSelection = (exchangeId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedExchangeIds(prev => [...prev, exchangeId]);
+      // 为新选择的交易所添加空地址
+      if (!exchangeAddresses[exchangeId]) {
+        setExchangeAddresses(prev => ({ ...prev, [exchangeId]: '' }));
+      }
+    } else {
+      setSelectedExchangeIds(prev => prev.filter(id => id !== exchangeId));
+      // 移除对应的地址
+      setExchangeAddresses(prev => {
+        const newAddresses = { ...prev };
+        delete newAddresses[exchangeId];
+        return newAddresses;
+      });
+    }
+  };
+
+  // 更新区块链地址
+  const updateBlockchainAddress = (chainId: number, address: string) => {
+    setBlockchainAddresses(prev => ({ ...prev, [chainId]: address }));
+  };
+
+  // 更新交易所地址
+  const updateExchangeAddress = (exchangeId: number, address: string) => {
+    setExchangeAddresses(prev => ({ ...prev, [exchangeId]: address }));
   };
 
   if (loading) {
@@ -1006,184 +1117,203 @@ const CommunityManagement: React.FC = () => {
                     添加支付方式
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-4xl max-h-[90vh]">
                   <DialogHeader>
-                    <DialogTitle>添加支付方式到 {destination.name}</DialogTitle>
+                    <DialogTitle>批量添加支付方式到 {destination.name}</DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleAddPayment} className="space-y-4">
-                    {/* 选择路线和车辆 */}
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-700 mb-3">
-                        请先选择要为哪个路线和车辆添加支付方式：
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor="route_select">选择路线</Label>
-                          <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择路线" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {routes.map((route) => (
-                                <SelectItem key={route.id} value={route.id}>
-                                  {route.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                  {/* 使用滚动容器 */}
+                  <div className="overflow-y-auto max-h-[calc(90vh-120px)] pr-2">
+                    <form onSubmit={handleAddPayment} className="space-y-6">
+                      {/* 选择路线 - 多选 */}
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <Label className="text-sm font-medium text-blue-700">选择路线（可多选）</Label>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                          {routes.map((route) => (
+                            <div key={route.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`route-${route.id}`}
+                                checked={selectedRouteIds.includes(route.id)}
+                                onCheckedChange={(checked) => handleRouteSelection(route.id, checked as boolean)}
+                              />
+                              <Label htmlFor={`route-${route.id}`} className="text-sm">
+                                {route.name}
+                              </Label>
+                            </div>
+                          ))}
                         </div>
-                        <div>
-                          <Label htmlFor="vehicle_select">选择车辆</Label>
-                          <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择车辆" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vehicles.map((vehicle) => (
-                                <SelectItem key={vehicle.id} value={vehicle.id}>
-                                  {vehicle.license_plate} - {vehicle.driver_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {selectedRouteIds.length > 0 && (
+                          <div className="mt-2 p-2 bg-white rounded border">
+                            <p className="text-sm">
+                              <strong>已选择 {selectedRouteIds.length} 条路线</strong>
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {selectedRouteId && selectedVehicleId && (
-                        <div className="mt-3 p-2 bg-white rounded border">
-                          <p className="text-sm">
-                            <strong>路线:</strong> {getSelectedRoute()?.name}<br/>
-                            <strong>车辆:</strong> {getSelectedVehicle()?.license_plate} - {getSelectedVehicle()?.driver_name}
+
+                      {/* 选择车辆 */}
+                      <div>
+                        <Label htmlFor="vehicle_select">选择车辆</Label>
+                        <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择车辆" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicles.map((vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.id}>
+                                {vehicle.license_plate} - {vehicle.driver_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 选择支付方式 */}
+                      <div>
+                        <Label htmlFor="pay_way">支付方式</Label>
+                        <Select 
+                          value={newPayment.pay_way.toString()} 
+                          onValueChange={(value) => setNewPayment({...newPayment, pay_way: parseInt(value)})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PAY_WAY_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value.toString()}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 区块链支付 - 多选网络 */}
+                      {newPayment.pay_way === 1 && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-green-50 rounded-lg">
+                            <Label className="text-sm font-medium text-green-700">选择区块链网络（可多选）</Label>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              {CHAIN_OPTIONS.map((chain) => (
+                                <div key={chain.value} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`chain-${chain.value}`}
+                                    checked={selectedChainIds.includes(chain.value)}
+                                    onCheckedChange={(checked) => handleChainSelection(chain.value, checked as boolean)}
+                                  />
+                                  <Label htmlFor={`chain-${chain.value}`} className="text-sm">
+                                    {chain.label}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 币种符号 */}
+                          <div>
+                            <Label htmlFor="symbol">币种符号</Label>
+                            <Input
+                              id="symbol"
+                              value={newPayment.symbol}
+                              onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
+                              placeholder="例如: BTC, ETH, USDT"
+                              required
+                            />
+                          </div>
+
+                          {/* 为每个选中的区块链网络显示地址输入框 */}
+                          {selectedChainIds.map((chainId) => {
+                            const chain = CHAIN_OPTIONS.find(c => c.value === chainId);
+                            return (
+                              <div key={chainId}>
+                                <Input
+                                  value={blockchainAddresses[chainId] || ''}
+                                  onChange={(e) => updateBlockchainAddress(chainId, e.target.value)}
+                                  placeholder={`输入${chain?.label}地址`}
+                                  required
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 交易所转账 - 多选交易所 */}
+                      {newPayment.pay_way === 2 && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-yellow-50 rounded-lg">
+                            <Label className="text-sm font-medium text-yellow-700">选择交易所（可多选）</Label>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              {EXCHANGE_OPTIONS.map((exchange) => (
+                                <div key={exchange.value} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`exchange-${exchange.value}`}
+                                    checked={selectedExchangeIds.includes(exchange.value)}
+                                    onCheckedChange={(checked) => handleExchangeSelection(exchange.value, checked as boolean)}
+                                  />
+                                  <Label htmlFor={`exchange-${exchange.value}`} className="text-sm">
+                                    {exchange.label}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 币种符号 */}
+                          <div>
+                            <Label htmlFor="symbol">币种符号</Label>
+                            <Input
+                              id="symbol"
+                              value={newPayment.symbol}
+                              onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
+                              placeholder="例如: USDT"
+                              required
+                            />
+                          </div>
+
+                          {/* 为每个选中的交易所显示UID输入框 */}
+                          {selectedExchangeIds.map((exchangeId) => {
+                            const exchange = EXCHANGE_OPTIONS.find(e => e.value === exchangeId);
+                            return (
+                              <div key={exchangeId}>
+                                <Input
+                                  value={exchangeAddresses[exchangeId] || ''}
+                                  onChange={(e) => updateExchangeAddress(exchangeId, e.target.value)}
+                                  placeholder={`输入${exchange?.label}UID`}
+                                  required
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 其他支付方式 */}
+                      {newPayment.pay_way >= 3 && (
+                        <div className="p-4 bg-green-50 rounded-lg">
+                          <p className="text-sm text-green-700">
+                            该支付方式无需额外配置，将为所有选中的路线创建支付方式。
                           </p>
                         </div>
                       )}
-                    </div>
 
-                    <div>
-                      <Label htmlFor="pay_way">支付方式</Label>
-                      <Select 
-                        value={newPayment.pay_way.toString()} 
-                        onValueChange={(value) => setNewPayment({...newPayment, pay_way: parseInt(value)})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAY_WAY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value.toString()}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* 区块链支付 */}
-                    {newPayment.pay_way === 1 && (
-                      <>
-                        <div>
-                          <Label htmlFor="chain_name">设置网络</Label>
-                          <Select 
-                            value={newPayment.chain_name.toString()} 
-                            onValueChange={(value) => setNewPayment({...newPayment, chain_name: parseInt(value), symbol: ''})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CHAIN_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value.toString()}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="symbol">币种符号</Label>
-                          <Input
-                            id="symbol"
-                            value={newPayment.symbol}
-                            onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
-                            placeholder="例如: BTC, ETH, USDT"
-                            required
-                          />
-                          <div className="text-xs text-gray-500 mt-1">
-                            常用币种：{getAvailableCryptocurrencies(newPayment.chain_name).join(', ')}
-                          </div>
-                        </div>
-                        <div>
-                          <Label htmlFor="address">输入地址</Label>
-                          <Input
-                            id="address"
-                            value={newPayment.address}
-                            onChange={(e) => setNewPayment({...newPayment, address: e.target.value})}
-                            placeholder="钱包地址"
-                            required
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* 交易所转账 */}
-                    {newPayment.pay_way === 2 && (
-                      <>
-                        <div>
-                          <Label htmlFor="exchange_name">选择交易所</Label>
-                          <Select 
-                            value={newPayment.exchange_name?.toString() || ''} 
-                            onValueChange={(value) => setNewPayment({...newPayment, exchange_name: parseInt(value)})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择交易所" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {EXCHANGE_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value.toString()}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="symbol">币种符号</Label>
-                          <Input
-                            id="symbol"
-                            value={newPayment.symbol}
-                            onChange={(e) => setNewPayment({...newPayment, symbol: e.target.value})}
-                            placeholder="例如: USDT"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="address">输入交易所UID</Label>
-                          <Input
-                            id="address"
-                            value={newPayment.address}
-                            onChange={(e) => setNewPayment({...newPayment, address: e.target.value})}
-                            placeholder="交易所UID"
-                            required
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* 其他支付方式不需要额外字段 */}
-                    {newPayment.pay_way >= 3 && (
-                      <div className="p-4 bg-green-50 rounded-lg">
-                        <p className="text-sm text-green-700">
-                          该支付方式无需额外配置，点击添加即可。
-                        </p>
+                      <div className="flex gap-2 pt-4">
+                        <Button 
+                          type="submit" 
+                          disabled={
+                            selectedRouteIds.length === 0 || 
+                            !selectedVehicleId ||
+                            (newPayment.pay_way === 1 && selectedChainIds.length === 0) ||
+                            (newPayment.pay_way === 2 && selectedExchangeIds.length === 0)
+                          }
+                        >
+                          批量添加
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
+                          取消
+                        </Button>
                       </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <Button type="submit" disabled={!selectedRouteId || !selectedVehicleId}>添加</Button>
-                      <Button type="button" variant="outline" onClick={() => setShowAddPaymentDialog(false)}>
-                        取消
-                      </Button>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </DialogContent>
               </Dialog>
             </CardContent>
