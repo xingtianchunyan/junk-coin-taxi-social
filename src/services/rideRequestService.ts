@@ -89,6 +89,16 @@ export class RideRequestService {
     if (error) throw error;
   }
 
+  // 删除用车需求
+  async deleteRideRequest(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('ride_requests')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // 更新支付状态
   async updatePaymentStatus(id: string, paymentStatus: RideRequest['payment_status'], txHash?: string): Promise<void> {
     const updateData: any = { 

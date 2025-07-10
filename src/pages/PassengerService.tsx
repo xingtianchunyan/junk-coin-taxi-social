@@ -128,21 +128,19 @@ const PassengerService: React.FC = () => {
   };
 
 
-  const completeRequest = async (id: string) => {
+  const deleteRequest = async (id: string) => {
     try {
-      await rideRequestService.updateRideRequestStatus(id, 'completed');
-      setRequests(prev => prev.map(req => 
-        req.id === id ? { ...req, status: 'completed' as const } : req
-      ));
+      await rideRequestService.deleteRideRequest(id);
+      setRequests(prev => prev.filter(req => req.id !== id));
       toast({
-        title: "状态已更新",
-        description: "用车需求已标记为完成"
+        title: "删除成功",
+        description: "用车需求已删除"
       });
     } catch (error) {
-      console.error('更新状态失败:', error);
+      console.error('删除需求失败:', error);
       toast({
-        title: "更新失败",
-        description: "无法更新状态，请重试",
+        title: "删除失败",
+        description: "无法删除需求，请重试",
         variant: "destructive"
       });
     }
@@ -331,7 +329,7 @@ const PassengerService: React.FC = () => {
                                   <RideRequestCard 
                                     key={request.id} 
                                     request={request} 
-                                    onComplete={completeRequest}
+                                    onDelete={deleteRequest}
                                     accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
                                   />
                                 ))}
