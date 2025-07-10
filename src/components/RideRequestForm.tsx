@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus } from 'lucide-react';
+import { CalendarIcon, Clock, MapPin, User, Phone, CreditCard, Route, Calculator, Users, Package, Plus, Minus } from 'lucide-react';
 import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
@@ -33,6 +33,11 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     requested_time: '',
     contact_info: '',
     notes: '',
+    payment_required: true,
+    payment_amount: 0,
+    payment_currency: 'USDT',
+    payment_blockchain: 'Ethereum',
+    sender_wallet_address: '',
     fixed_route_id: '',
     passenger_count: 1
   });
@@ -45,6 +50,28 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // 支持的区块链网络和币种
+  const blockchainNetworks = [
+    { name: 'Ethereum', currencies: ['USDT', 'ETH'] },
+    { name: 'Binance Smart Chain', currencies: ['USDT', 'BNB'] },
+    { name: 'Polygon', currencies: ['USDT', 'POL'] },
+    { name: 'Tron', currencies: ['USDT', 'TRX'] },
+    { name: 'Bitcoin', currencies: ['BTC'] },
+    { name: 'Solana', currencies: ['SOL'] },
+    { name: 'Arbitrum One', currencies: ['ARB'] }
+  ];
+
+  // 模拟30日平均币价数据
+  const averagePrices: Record<string, number> = {
+    'USDT': 7.2,
+    'BTC': 450000,
+    'ETH': 18500,
+    'BNB': 3200,
+    'POL': 4.8,
+    'TRX': 0.95,
+    'SOL': 980,
+    'ARB': 6.5
+  };
 
   useEffect(() => {
     loadFixedRoutes();
@@ -94,18 +121,15 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     setIsSubmitting(true);
     
     try {
-      // Get the selected route to determine payment info
-      const selectedRoute = fixedRoutes.find(route => route.id === formData.fixed_route_id);
-      
       const submitData = {
         ...validation.sanitizedData,
         requested_time: new Date(formData.requested_time),
+        payment_amount: formData.payment_required ? formData.payment_amount : undefined,
+        payment_currency: formData.payment_required ? formData.payment_currency : undefined,
+        sender_wallet_address: formData.payment_required ? formData.sender_wallet_address : undefined,
         fixed_route_id: formData.fixed_route_id,
         passenger_count: formData.passenger_count,
-        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
-        payment_required: selectedRoute ? selectedRoute.our_price > 0 : false,
-        payment_amount: selectedRoute?.our_price || 0,
-        payment_currency: selectedRoute?.currency || 'CNY'
+        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0)
       };
       
       await onSubmit(submitData);
@@ -118,6 +142,11 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         requested_time: '',
         contact_info: '',
         notes: '',
+        payment_required: true,
+        payment_amount: 0,
+        payment_currency: 'USDT',
+        payment_blockchain: 'Ethereum',
+        sender_wallet_address: '',
         fixed_route_id: '',
         passenger_count: 1
       });
@@ -138,6 +167,27 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         if (selectedRoute) {
           newData.start_location = selectedRoute.start_location;
           newData.end_location = selectedRoute.end_location;
+          newData.payment_required = true;
+          const cnyPrice = selectedRoute.our_price || 0;
+          const usdtRate = averagePrices['USDT'] || 7.2;
+          newData.payment_amount = Number((cnyPrice / usdtRate).toFixed(4));
+          newData.payment_currency = 'USDT';
+        }
+      }
+      
+      if (field === 'payment_blockchain' && value) {
+        const network = blockchainNetworks.find(n => n.name === value);
+        if (network && !network.currencies.includes(newData.payment_currency)) {
+          newData.payment_currency = network.currencies[0];
+        }
+      }
+
+      if (field === 'payment_currency' && value && newData.payment_amount > 0) {
+        const selectedRoute = fixedRoutes.find(route => route.id === newData.fixed_route_id);
+        if (selectedRoute) {
+          const cnyPrice = selectedRoute.our_price || 0;
+          const cryptoRate = averagePrices[value as string] || 1;
+          newData.payment_amount = Number((cnyPrice / cryptoRate).toFixed(6));
         }
       }
       
@@ -162,6 +212,57 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     ));
   };
 
+  // 计算自定义路线价格
+  const calculateCustomPrice = async () => {
+    if (!formData.start_location || !formData.end_location) {
+      toast({
+        title: "请先填写起点和终点",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCalculating(true);
+    try {
+      const response = await fetch('/functions/v1/calculate-route-price', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          start_location: formData.start_location,
+          end_location: formData.end_location
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        payment_required: true,
+        payment_amount: result.our_price_usdt,
+        payment_currency: 'USDT'
+      }));
+
+      toast({
+        title: "价格计算完成",
+        description: `市场价: ¥${result.market_price_cny}, 我们的价格: ¥${result.our_price_cny} (${result.our_price_usdt} USDT)`
+      });
+    } catch (error) {
+      console.error('价格计算失败:', error);
+      toast({
+        title: "价格计算失败",
+        description: "请手动输入价格",
+        variant: "destructive"
+      });
+    } finally {
+      setCalculating(false);
+    }
+  };
 
   return (
     <Card className="w-full max-w-2xl">
@@ -370,6 +471,100 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             </div>
           </div>
 
+          {/* 支付选项 */}
+          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="h-4 w-4" />
+              <Label className="text-base font-medium">支付车费</Label>
+            </div>
+            
+            <div className="space-y-4">
+              {/* 区块链网络选择 */}
+              <div className="space-y-2">
+                <Label htmlFor="payment_blockchain">选择区块链网络</Label>
+                <Select
+                  value={formData.payment_blockchain}
+                  onValueChange={(value) => handleInputChange('payment_blockchain', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择区块链网络" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {blockchainNetworks.map(network => (
+                      <SelectItem key={network.name} value={network.name}>
+                        {network.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 币种选择 */}
+                <div className="space-y-2">
+                  <Label htmlFor="payment_currency">选择币种</Label>
+                  <Select
+                    value={formData.payment_currency}
+                    onValueChange={(value) => handleInputChange('payment_currency', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择币种" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {blockchainNetworks
+                        .find(n => n.name === formData.payment_blockchain)
+                        ?.currencies.map(currency => (
+                          <SelectItem key={currency} value={currency}>
+                            {currency}
+                          </SelectItem>
+                        )) || []}
+                    </SelectContent>
+                  </Select>
+                  {/* 显示30日平均币价 */}
+                  {averagePrices[formData.payment_currency] && (
+                    <div className="text-xs text-blue-600">
+                      30日平均价: ¥{averagePrices[formData.payment_currency].toFixed(2)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 支付数量 */}
+                <div className="space-y-2">
+                  <Label htmlFor="payment_amount">支付数量</Label>
+                  <Input
+                    id="payment_amount"
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    value={formData.payment_amount}
+                    onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
+                    placeholder="0.000000"
+                  />
+                  {formData.payment_amount > 0 && averagePrices[formData.payment_currency] && (
+                    <div className="text-xs text-gray-600">
+                      约 ¥{(formData.payment_amount * averagePrices[formData.payment_currency]).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 钱包地址 */}
+              <div className="space-y-2">
+                <Label htmlFor="sender_wallet_address">您的钱包地址 (用于自动检测支付)</Label>
+                <Input
+                  id="sender_wallet_address"
+                  value={formData.sender_wallet_address}
+                  onChange={(e) => handleInputChange('sender_wallet_address', e.target.value)}
+                  placeholder="输入您用于支付的钱包地址"
+                  className="font-mono text-xs"
+                  required
+                />
+                <div className="text-xs text-gray-500">
+                  💡 提供钱包地址后，系统可自动检测您的付款交易
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">备注</Label>

@@ -235,7 +235,7 @@ const Index = () => {
                   <RideRequestCard 
                     key={request.id} 
                     request={request} 
-                    onDelete={completeRequest}
+                    onComplete={completeRequest}
                     accessLevel={accessLevel}
                   />
                 ))}
@@ -260,7 +260,7 @@ const Index = () => {
                     <RideRequestCard 
                       key={request.id} 
                       request={request} 
-                      onDelete={completeRequest}
+                      onComplete={completeRequest}
                       accessLevel={accessLevel}
                     />
                   ))}

@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard } from 'lucide-react';
+import { MapPin, Clock, User, Phone, CheckCircle, Calendar, CreditCard } from 'lucide-react';
 import { RideRequest } from '@/types/RideRequest';
 import PaymentDialog from './PaymentDialog';
 
 interface RideRequestCardProps {
   request: RideRequest;
-  onDelete: (id: string) => void;
+  onComplete: (id: string) => void;
   accessLevel: 'public' | 'private' | 'admin';
 }
 
-const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel }) => {
+const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onComplete, accessLevel }) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const formatDateTime = (date: Date) => {
@@ -104,7 +104,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
             </div>
           )}
 
-          {request.payment_required && (
+          {canShowDetails && request.payment_required && (
             <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
@@ -145,21 +145,21 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
             
             {request.status === 'pending' && (canShowDetails || canManage) && (
               <Button
-                onClick={() => {
-                  if (window.confirm('确定要删除这个用车需求吗？此操作不可撤销。')) {
-                    onDelete(request.id);
-                  }
-                }}
+                onClick={() => onComplete(request.id)}
                 size="sm"
-                variant="destructive"
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                删除需求
+                <CheckCircle className="h-4 w-4 mr-1" />
+                标记完成
               </Button>
             )}
           </div>
 
+          {!canShowDetails && (
+            <div className="text-center py-2 text-sm text-gray-500 bg-gray-50 rounded">
+              输入访问码查看详细信息
+            </div>
+          )}
         </CardContent>
       </Card>
 
