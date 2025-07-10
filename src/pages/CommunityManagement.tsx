@@ -125,6 +125,12 @@ const CommunityManagement: React.FC = () => {
   const [isCreatingReturnRoutes, setIsCreatingReturnRoutes] = useState(false);
   const [showReturnButton, setShowReturnButton] = useState(true);
 
+  // 路线多选删除相关状态
+  const [selectedRouteIdsForDelete, setSelectedRouteIdsForDelete] = useState<string[]>([]);
+  
+  // 支付方式多选删除相关状态
+  const [selectedPaymentIdsForDelete, setSelectedPaymentIdsForDelete] = useState<string[]>([]);
+
   const { toast } = useToast();
   const { accessCode, clearAccessCode } = useAccessCode();
   const navigate = useNavigate();
@@ -474,6 +480,94 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
+  // 路线多选删除功能
+  const handleBatchDeleteRoutes = async () => {
+    if (selectedRouteIdsForDelete.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedRouteIdsForDelete.map(routeId => 
+          rideRequestService.toggleFixedRoute(routeId, false)
+        )
+      );
+      toast({
+        title: "路线已批量删除",
+        description: `成功删除 ${selectedRouteIdsForDelete.length} 条路线`,
+      });
+      setSelectedRouteIdsForDelete([]);
+      loadCommunityData();
+    } catch (error) {
+      console.error('批量删除路线失败:', error);
+      toast({
+        title: "删除失败",
+        description: "无法删除路线",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 支付方式多选删除功能
+  const handleBatchDeletePayments = async () => {
+    if (selectedPaymentIdsForDelete.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedPaymentIdsForDelete.map(walletId => 
+          rideRequestService.toggleWalletAddress(walletId, false)
+        )
+      );
+      toast({
+        title: "支付方式已批量删除",
+        description: `成功删除 ${selectedPaymentIdsForDelete.length} 个支付方式`,
+      });
+      setSelectedPaymentIdsForDelete([]);
+      loadCommunityData();
+    } catch (error) {
+      console.error('批量删除支付方式失败:', error);
+      toast({
+        title: "删除失败",
+        description: "无法删除支付方式",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 路线选择处理
+  const handleRouteDeleteSelection = (routeId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRouteIdsForDelete(prev => [...prev, routeId]);
+    } else {
+      setSelectedRouteIdsForDelete(prev => prev.filter(id => id !== routeId));
+    }
+  };
+
+  // 路线全选/取消全选
+  const handleSelectAllRoutes = (checked: boolean) => {
+    if (checked) {
+      setSelectedRouteIdsForDelete(routes.map(route => route.id));
+    } else {
+      setSelectedRouteIdsForDelete([]);
+    }
+  };
+
+  // 支付方式选择处理
+  const handlePaymentDeleteSelection = (walletId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPaymentIdsForDelete(prev => [...prev, walletId]);
+    } else {
+      setSelectedPaymentIdsForDelete(prev => prev.filter(id => id !== walletId));
+    }
+  };
+
+  // 支付方式全选/取消全选
+  const handleSelectAllPayments = (checked: boolean) => {
+    if (checked) {
+      setSelectedPaymentIdsForDelete(walletAddresses.map(wallet => wallet.id));
+    } else {
+      setSelectedPaymentIdsForDelete([]);
+    }
+  };
+
   const handleCopyAccessCode = async (accessCode: string | undefined) => {
     if (!accessCode) {
       toast({
@@ -787,19 +881,53 @@ const CommunityManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* 批量操作控制栏 */}
+              {routes.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <Checkbox
+                      id="select-all-routes"
+                      checked={selectedRouteIdsForDelete.length === routes.length}
+                      onCheckedChange={handleSelectAllRoutes}
+                    />
+                    <Label htmlFor="select-all-routes" className="text-sm font-medium">
+                      全选 ({selectedRouteIdsForDelete.length}/{routes.length})
+                    </Label>
+                  </div>
+                  {selectedRouteIdsForDelete.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleBatchDeleteRoutes}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除选中 ({selectedRouteIdsForDelete.length})
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-3">
                 {routes.map((route) => (
                   <div key={route.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{route.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          {route.start_location} → {destination.name}
-                        </p>
-                        <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                          {route.distance_km && <span>距离: {route.distance_km}km</span>}
-                          {route.estimated_duration_minutes && <span>预计时长: {route.estimated_duration_minutes}分钟</span>}
-                          {route.market_price && <span>市场价: ¥{route.market_price}</span>}
+                      <div className="flex items-center space-x-3 flex-1">
+                        <Checkbox
+                          id={`route-delete-${route.id}`}
+                          checked={selectedRouteIdsForDelete.includes(route.id)}
+                          onCheckedChange={(checked) => handleRouteDeleteSelection(route.id, checked as boolean)}
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{route.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            {route.start_location} → {destination.name}
+                          </p>
+                          <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                            {route.distance_km && <span>距离: {route.distance_km}km</span>}
+                            {route.estimated_duration_minutes && <span>预计时长: {route.estimated_duration_minutes}分钟</span>}
+                            {route.market_price && <span>市场价: ¥{route.market_price}</span>}
+                          </div>
                         </div>
                       </div>
                       <Button
@@ -1061,6 +1189,33 @@ const CommunityManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* 批量操作控制栏 */}
+              {walletAddresses.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <Checkbox
+                      id="select-all-payments"
+                      checked={selectedPaymentIdsForDelete.length === walletAddresses.length}
+                      onCheckedChange={handleSelectAllPayments}
+                    />
+                    <Label htmlFor="select-all-payments" className="text-sm font-medium">
+                      全选 ({selectedPaymentIdsForDelete.length}/{walletAddresses.length})
+                    </Label>
+                  </div>
+                  {selectedPaymentIdsForDelete.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleBatchDeletePayments}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除选中 ({selectedPaymentIdsForDelete.length})
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-3">
                 {walletAddresses.map((wallet) => {
                   const walletRoute = getWalletRoute(wallet.route_id);
@@ -1069,33 +1224,40 @@ const CommunityManagement: React.FC = () => {
                   return (
                     <div key={wallet.id} className="p-3 border rounded-lg">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{getPayWayLabel(wallet.pay_way)}</h4>
-                          
-                          {/* 显示关联的路线和车辆信息 */}
-                          <div className="mt-2 p-2 bg-blue-50 rounded">
-                            <p className="text-sm text-blue-700">
-                              <strong>路线:</strong> {walletRoute?.name || '未知路线'}<br/>
-                              <strong>司机:</strong> {walletVehicle?.driver_name || '未知司机'} 
-                              {walletVehicle?.license_plate && `(${walletVehicle.license_plate})`}
-                            </p>
+                        <div className="flex items-center space-x-3 flex-1">
+                          <Checkbox
+                            id={`payment-delete-${wallet.id}`}
+                            checked={selectedPaymentIdsForDelete.includes(wallet.id)}
+                            onCheckedChange={(checked) => handlePaymentDeleteSelection(wallet.id, checked as boolean)}
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{getPayWayLabel(wallet.pay_way)}</h4>
+                            
+                            {/* 显示关联的路线和车辆信息 */}
+                            <div className="mt-2 p-2 bg-blue-50 rounded">
+                              <p className="text-sm text-blue-700">
+                                <strong>路线:</strong> {walletRoute?.name || '未知路线'}<br/>
+                                <strong>司机:</strong> {walletVehicle?.driver_name || '未知司机'} 
+                                {walletVehicle?.license_plate && `(${walletVehicle.license_plate})`}
+                              </p>
+                            </div>
+                            
+                            {wallet.pay_way === 1 && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                网络: {getChainLabel(wallet.chain_name)} | 币种: {wallet.symbol}
+                              </p>
+                            )}
+                            {wallet.pay_way === 2 && wallet.exchange_name && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
+                              </p>
+                            )}
+                            {wallet.address !== 'N/A' && (
+                              <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
+                                {wallet.address}
+                              </p>
+                            )}
                           </div>
-                          
-                          {wallet.pay_way === 1 && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              网络: {getChainLabel(wallet.chain_name)} | 币种: {wallet.symbol}
-                            </p>
-                          )}
-                          {wallet.pay_way === 2 && wallet.exchange_name && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              交易所: {getExchangeLabel(wallet.exchange_name)} | 币种: {wallet.symbol}
-                            </p>
-                          )}
-                          {wallet.address !== 'N/A' && (
-                            <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all">
-                              {wallet.address}
-                            </p>
-                          )}
                         </div>
                         <Button
                           size="sm"
