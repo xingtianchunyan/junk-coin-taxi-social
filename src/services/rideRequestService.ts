@@ -555,6 +555,69 @@ export class RideRequestService {
       created_at: new Date(data.created_at)
     };
   }
+
+  // 检查返程路线是否存在
+  async checkReturnRouteExists(destinationId: string, startLocation: string, endLocation: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .select('id')
+      .eq('destination_id', destinationId)
+      .eq('start_location', endLocation)
+      .eq('end_location', startLocation)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 是没有找到记录的错误码
+    
+    return !!data;
+  }
+
+  // 创建返程路线
+  async createReturnRoute(originalRoute: FixedRoute, destinationId: string): Promise<FixedRoute> {
+    const returnRouteName = `${originalRoute.end_location}到${originalRoute.start_location}`;
+    
+    const returnRouteData = {
+      name: returnRouteName,
+      start_location: originalRoute.end_location,
+      end_location: originalRoute.start_location,
+      distance_km: originalRoute.distance_km,
+      estimated_duration_minutes: originalRoute.estimated_duration_minutes,
+      market_price: originalRoute.market_price,
+      our_price: originalRoute.our_price,
+      currency: originalRoute.currency || 'CNY'
+    };
+
+    return await this.createDestinationRoute(returnRouteData, destinationId);
+  }
+
+  // 批量创建返程路线
+  async createReturnRoutesForDestination(destinationId: string): Promise<{ created: number; skipped: number }> {
+    const routes = await this.getDestinationRoutes(destinationId);
+    let created = 0;
+    let skipped = 0;
+
+    for (const route of routes) {
+      const returnExists = await this.checkReturnRouteExists(
+        destinationId,
+        route.start_location,
+        route.end_location
+      );
+
+      if (!returnExists) {
+        try {
+          await this.createReturnRoute(route, destinationId);
+          created++;
+        } catch (error) {
+          console.error(`创建返程路线失败: ${route.name}`, error);
+          skipped++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+
+    return { created, skipped };
+  }
 }
 
 export const rideRequestService = new RideRequestService();
