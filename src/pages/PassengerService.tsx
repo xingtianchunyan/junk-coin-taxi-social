@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -113,6 +112,7 @@ const PassengerService: React.FC = () => {
       await loadRideRequests();
       setShowForm(false);
 
+
       toast({
         title: "用车需求已创建",
         description: "需求已成功提交"
@@ -126,6 +126,7 @@ const PassengerService: React.FC = () => {
       });
     }
   };
+
 
   const deleteRequest = async (id: string) => {
     try {
@@ -159,8 +160,10 @@ const PassengerService: React.FC = () => {
     if (!selectedDestination) {
       return [];
     }
-    // 显示所有相关目的地的请求，但会在RideRequestCard中控制操作权限
-    return requests;
+    // Only show user's own requests
+    return requests.filter(req => 
+      hasAccess && accessCode && req.access_code === accessCode
+    );
   };
 
   // 检查行李是否能装入车辆后备箱
@@ -314,12 +317,12 @@ const PassengerService: React.FC = () => {
                               </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (
-                                  <RideRequestCard 
-                                    key={request.id} 
-                                    request={request} 
-                                    onDelete={deleteRequest}
-                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                  />
+                                <RideRequestCard 
+                                  key={request.id} 
+                                  request={request} 
+                                  onDelete={deleteRequest}
+                                  accessLevel="private"
+                                />
                                 ))}
                               </div>
                             </div>
