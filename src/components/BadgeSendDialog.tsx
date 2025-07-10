@@ -72,7 +72,7 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
       const metadata = JSON.stringify({
         name: BADGE_TYPES[selectedBadgeType].label,
         description: BADGE_TYPES[selectedBadgeType].description,
-        image: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(`
+        image: `data:image/svg+xml;base64,${btoa(`
           <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
             <rect width="200" height="200" fill="#f0f9ff"/>
             <circle cx="100" cy="80" r="40" fill="#3b82f6"/>
@@ -86,7 +86,7 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
               ${BADGE_TYPES[selectedBadgeType].description}
             </text>
           </svg>
-        `)))`,
+        `)}`,
         attributes: [
           {
             trait_type: "Badge Type",
@@ -99,7 +99,7 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
         ]
       });
 
-      const metadataUri = `data:application/json;base64,${btoa(unescape(encodeURIComponent(metadata)))}`;
+      const metadataUri = `data:application/json;base64,${btoa(metadata)}`;
 
       // 调用合约铸造徽章
       const tx = await contract.mintBadge(
