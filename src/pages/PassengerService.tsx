@@ -112,17 +112,6 @@ const PassengerService: React.FC = () => {
       await loadRideRequests();
       setShowForm(false);
 
-      try {
-        const walletAddresses = await rideRequestService.getWalletAddresses();
-        setDriverWalletAddresses(walletAddresses);
-        setPaymentInfo({
-          network: requestData.payment_blockchain || 'Ethereum',
-          currency: requestData.payment_currency || 'USDT'
-        });
-        setShowDriverWalletDialog(true);
-      } catch (error) {
-        console.error('获取司机钱包地址失败:', error);
-      }
 
       toast({
         title: "用车需求已创建",
