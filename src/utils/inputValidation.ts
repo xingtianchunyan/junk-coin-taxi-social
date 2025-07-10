@@ -104,7 +104,8 @@ export const validateRideRequestData = (data: any) => {
       requested_time: data.requested_time,
       payment_required: Boolean(data.payment_required),
       payment_amount: data.payment_amount ? Number(data.payment_amount) : null,
-      payment_currency: data.payment_currency ? sanitizeTextInput(data.payment_currency, 10) : null
+      payment_currency: data.payment_currency ? sanitizeTextInput(data.payment_currency, 10) : null,
+      sender_wallet_address: data.sender_wallet_address ? sanitizeTextInput(data.sender_wallet_address, 100) : null
     }
   };
 };
