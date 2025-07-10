@@ -112,17 +112,6 @@ const PassengerService: React.FC = () => {
       await loadRideRequests();
       setShowForm(false);
 
-      try {
-        const walletAddresses = await rideRequestService.getWalletAddresses();
-        setDriverWalletAddresses(walletAddresses);
-        setPaymentInfo({
-          network: requestData.payment_blockchain || 'Ethereum',
-          currency: requestData.payment_currency || 'USDT'
-        });
-        setShowDriverWalletDialog(true);
-      } catch (error) {
-        console.error('获取司机钱包地址失败:', error);
-      }
 
       toast({
         title: "用车需求已创建",
@@ -139,21 +128,19 @@ const PassengerService: React.FC = () => {
   };
 
 
-  const completeRequest = async (id: string) => {
+  const deleteRequest = async (id: string) => {
     try {
-      await rideRequestService.updateRideRequestStatus(id, 'completed');
-      setRequests(prev => prev.map(req => 
-        req.id === id ? { ...req, status: 'completed' as const } : req
-      ));
+      await rideRequestService.deleteRideRequest(id);
+      setRequests(prev => prev.filter(req => req.id !== id));
       toast({
-        title: "状态已更新",
-        description: "用车需求已标记为完成"
+        title: "删除成功",
+        description: "用车需求已删除"
       });
     } catch (error) {
-      console.error('更新状态失败:', error);
+      console.error('删除需求失败:', error);
       toast({
-        title: "更新失败",
-        description: "无法更新状态，请重试",
+        title: "删除失败",
+        description: "无法删除需求，请重试",
         variant: "destructive"
       });
     }
@@ -173,19 +160,10 @@ const PassengerService: React.FC = () => {
     if (!selectedDestination) {
       return [];
     }
-    return requests.map(req => {
-      if (hasAccess && accessCode && req.access_code === accessCode) {
-        return req;
-      }
-      return {
-        ...req,
-        friend_name: '***',
-        start_location: req.fixed_route_id ? req.start_location : '***',
-        end_location: req.fixed_route_id ? req.end_location : '***',
-        contact_info: '***',
-        notes: undefined
-      };
-    });
+    // Only show user's own requests
+    return requests.filter(req => 
+      hasAccess && accessCode && req.access_code === accessCode
+    );
   };
 
   // 检查行李是否能装入车辆后备箱
@@ -339,12 +317,12 @@ const PassengerService: React.FC = () => {
                               </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (
-                                  <RideRequestCard 
-                                    key={request.id} 
-                                    request={request} 
-                                    onComplete={completeRequest}
-                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                  />
+                                <RideRequestCard 
+                                  key={request.id} 
+                                  request={request} 
+                                  onDelete={deleteRequest}
+                                  accessLevel="private"
+                                />
                                 ))}
                               </div>
                             </div>

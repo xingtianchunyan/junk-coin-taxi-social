@@ -217,13 +217,11 @@ export type Database = {
           notes: string | null
           passenger_count: number | null
           payment_amount: number | null
-          payment_blockchain: string | null
           payment_currency: string | null
           payment_required: boolean | null
           payment_status: string | null
           payment_tx_hash: string | null
           requested_time: string
-          sender_wallet_address: string | null
           start_location: string
           status: string | null
           updated_at: string | null
@@ -242,13 +240,11 @@ export type Database = {
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null
-          payment_blockchain?: string | null
           payment_currency?: string | null
           payment_required?: boolean | null
           payment_status?: string | null
           payment_tx_hash?: string | null
           requested_time: string
-          sender_wallet_address?: string | null
           start_location: string
           status?: string | null
           updated_at?: string | null
@@ -267,13 +263,11 @@ export type Database = {
           notes?: string | null
           passenger_count?: number | null
           payment_amount?: number | null
-          payment_blockchain?: string | null
           payment_currency?: string | null
           payment_required?: boolean | null
           payment_status?: string | null
           payment_tx_hash?: string | null
           requested_time?: string
-          sender_wallet_address?: string | null
           start_location?: string
           status?: string | null
           updated_at?: string | null
