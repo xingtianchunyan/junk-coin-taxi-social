@@ -15,10 +15,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Wallet, User, LogOut, Coins, Image } from 'lucide-react';
+import { Wallet, User, LogOut, Coins, Image, Unlink } from 'lucide-react';
 import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi';
 import { formatEther } from 'viem';
 import { toast } from 'sonner';
+import { useAccessCode } from './AccessCodeProvider';
+import { localWalletBinding } from '@/utils/walletBinding';
 
 interface NFT {
   tokenId: string;
@@ -39,6 +41,7 @@ const Web3Wallet: React.FC = () => {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: balance } = useBalance({ address });
+  const { accessCode, bindWallet, unbindWallet, isWalletBound } = useAccessCode();
   
   const [showProfile, setShowProfile] = useState(false);
   const [nfts, setNfts] = useState<NFT[]>([]);
@@ -95,6 +98,27 @@ const Web3Wallet: React.FC = () => {
     }
   };
 
+  // 监听连接状态变化并自动绑定
+  useEffect(() => {
+    if (isConnected && address && accessCode) {
+      console.log('钱包已连接:', address);
+      
+      // 检查是否需要自动绑定
+      const currentBoundWallet = localWalletBinding.getBoundWallet(accessCode);
+      if (!currentBoundWallet) {
+        // 检查钱包是否被其他访问码绑定
+        if (!localWalletBinding.isWalletBoundToOther(address, accessCode)) {
+          // 自动绑定钱包
+          bindWallet(address).catch(error => {
+            console.error('自动绑定钱包失败:', error);
+          });
+        }
+      }
+    } else if (!isConnected) {
+      console.log('钱包已断开');
+    }
+  }, [isConnected, address, accessCode, bindWallet]);
+
   useEffect(() => {
     if (isConnected && showProfile) {
       fetchUserAssets();
@@ -108,11 +132,7 @@ const Web3Wallet: React.FC = () => {
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
-    setShowProfile(false);
-    toast.success('钱包已断开连接');
-  };
+
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -240,7 +260,23 @@ const Web3Wallet: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
-        <DropdownMenuItem onClick={handleDisconnect}>
+        {isWalletBound && (
+          <DropdownMenuItem
+            onClick={() => {
+              unbindWallet().catch(error => {
+                console.error('解绑钱包失败:', error);
+              });
+            }}
+            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+          >
+            <Unlink className="mr-2 h-4 w-4" />
+            解绑钱包
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onClick={() => disconnect()}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
           <LogOut className="mr-2 h-4 w-4" />
           断开连接
         </DropdownMenuItem>

@@ -12,6 +12,7 @@ import RoleSelection from "./pages/RoleSelection";
 import PassengerService from "./pages/PassengerService";
 import WorkSchedule from "./pages/WorkSchedule";
 import CommunityManagement from "./pages/CommunityManagement";
+import DbTest from "./pages/DbTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
                 <Route path="/passenger" element={<PassengerService />} />
                 <Route path="/work-schedule" element={<WorkSchedule />} />
                 <Route path="/community-management" element={<CommunityManagement />} />
+                <Route path="/db-test" element={<DbTest />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
