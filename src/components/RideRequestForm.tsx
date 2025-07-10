@@ -94,12 +94,18 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     setIsSubmitting(true);
     
     try {
+      // Get the selected route to determine payment info
+      const selectedRoute = fixedRoutes.find(route => route.id === formData.fixed_route_id);
+      
       const submitData = {
         ...validation.sanitizedData,
         requested_time: new Date(formData.requested_time),
         fixed_route_id: formData.fixed_route_id,
         passenger_count: formData.passenger_count,
-        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0)
+        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
+        payment_required: selectedRoute ? selectedRoute.our_price > 0 : false,
+        payment_amount: selectedRoute?.our_price || 0,
+        payment_currency: selectedRoute?.currency || 'CNY'
       };
       
       await onSubmit(submitData);
