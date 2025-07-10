@@ -36,7 +36,7 @@ contract CommunityBadge is ERC721, Ownable {
     event BadgeMinted(address indexed recipient, uint256 indexed tokenId, string badgeType);
     event PaymentProcessed(address indexed driver, address indexed passenger, uint256 amount, bytes32 paymentHash);
     
-    constructor() ERC721("Community Badge", "CBADGE") {}
+    constructor(string memory name, string memory symbol, address initialOwner) ERC721(name, symbol) Ownable(initialOwner) {}
     
     /**
      * @dev 为司机和乘客铸造徽章
@@ -97,18 +97,7 @@ contract CommunityBadge is ERC721, Ownable {
         return newTokenId;
     }
     
-    /**
-     * @dev 重写转账函数，阻止SBT转账
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal virtual override {
-        require(from == address(0) || to == address(0), "Soulbound tokens cannot be transferred");
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-    }
+    
     
     /**
      * @dev 获取地址拥有的所有徽章
@@ -132,16 +121,16 @@ contract CommunityBadge is ERC721, Ownable {
      * @dev 获取徽章详细信息
      */
     function getBadgeInfo(uint256 tokenId) external view returns (Badge memory) {
-        require(_exists(tokenId), "Badge does not exist");
-        return badges[tokenId];
+    require(ownerOf(tokenId) != address(0), "Badge does not exist");
+    return badges[tokenId];
     }
     
     /**
      * @dev 获取代币URI
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "URI query for nonexistent token");
-        return badges[tokenId].metadataURI;
+    require(ownerOf(tokenId) != address(0), "URI query for nonexistent token");
+    return badges[tokenId].metadataURI;
     }
     
     /**
