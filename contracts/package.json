@@ -1,0 +1,17 @@
+{
+  "name": "community-badge-contracts",
+  "version": "1.0.0",
+  "description": "Community Badge SBT Smart Contract",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network sepolia",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.17.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0"
+  }
+}

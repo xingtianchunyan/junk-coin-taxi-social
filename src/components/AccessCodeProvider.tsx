@@ -8,6 +8,7 @@ interface AccessCodeContextType {
   clearAccessCode: () => void;
   hasAccess: boolean;
   userProfile: Tables<'users'> | null;
+  user: Tables<'users'> | null;  // 添加user别名以保持兼容性
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -81,6 +82,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     clearAccessCode,
     hasAccess,
     userProfile,
+    user: userProfile,  // 添加user别名
     refreshUserProfile,
   };
 
