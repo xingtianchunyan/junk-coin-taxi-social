@@ -321,7 +321,7 @@ const PassengerService: React.FC = () => {
                                   key={request.id} 
                                   request={request} 
                                   onDelete={deleteRequest}
-                                  accessLevel="private"
+                                  accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
                                 />
                                 ))}
                               </div>
