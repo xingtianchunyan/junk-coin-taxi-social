@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -120,6 +120,10 @@ const CommunityManagement: React.FC = () => {
   // 复制访问码相关状态
   const [copiedAccessCode, setCopiedAccessCode] = useState<string | null>(null);
 
+  // 一键返程相关状态
+  const [isCreatingReturnRoutes, setIsCreatingReturnRoutes] = useState(false);
+  const [showReturnButton, setShowReturnButton] = useState(true);
+
   const { toast } = useToast();
   const { accessCode, clearAccessCode } = useAccessCode();
   const navigate = useNavigate();
@@ -150,6 +154,9 @@ const CommunityManagement: React.FC = () => {
         setRoutes(routeData);
         setVehicles(vehicleData);
         setWalletAddresses(walletData);
+
+        // 检查是否需要显示一键返程按钮
+        await checkReturnButtonVisibility(communityDestination.id, routeData);
       }
     } catch (error) {
       console.error('加载社区数据失败:', error);
@@ -436,6 +443,72 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
+  // 检查是否需要显示一键返程按钮
+  const checkReturnButtonVisibility = async (destinationId: string, routeData: FixedRoute[]) => {
+    if (routeData.length === 0) {
+      setShowReturnButton(false);
+      return;
+    }
+
+    try {
+      // 检查是否所有路线都已有对应的返程路线
+      let hasUnpairedRoute = false;
+      
+      for (const route of routeData) {
+        const returnExists = await rideRequestService.checkReturnRouteExists(
+          destinationId,
+          route.start_location,
+          route.end_location
+        );
+        
+        if (!returnExists) {
+          hasUnpairedRoute = true;
+          break;
+        }
+      }
+      
+      setShowReturnButton(hasUnpairedRoute);
+    } catch (error) {
+      console.error('检查返程路线失败:', error);
+      setShowReturnButton(true); // 出错时默认显示按钮
+    }
+  };
+
+  // 处理一键返程
+  const handleCreateReturnRoutes = async () => {
+    if (!destination) return;
+
+    setIsCreatingReturnRoutes(true);
+    try {
+      const result = await rideRequestService.createReturnRoutesForDestination(destination.id);
+      
+      if (result.created > 0) {
+        toast({
+          title: "返程路线创建成功",
+          description: `成功创建 ${result.created} 条返程路线${result.skipped > 0 ? `，跳过 ${result.skipped} 条已存在的路线` : ''}`,
+        });
+        
+        // 重新加载数据
+        await loadCommunityData();
+      } else {
+        toast({
+          title: "无需创建",
+          description: "所有路线的返程路线都已存在",
+        });
+        setShowReturnButton(false);
+      }
+    } catch (error) {
+      console.error('创建返程路线失败:', error);
+      toast({
+        title: "创建失败",
+        description: "创建返程路线时发生错误",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingReturnRoutes(false);
+    }
+  };
+
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
@@ -583,9 +656,23 @@ const CommunityManagement: React.FC = () => {
         <TabsContent value="routes">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Route className="h-5 w-5" />
-                路线管理
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Route className="h-5 w-5" />
+                  路线管理
+                </div>
+                {showReturnButton && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCreateReturnRoutes}
+                    disabled={isCreatingReturnRoutes}
+                    className="flex items-center gap-2"
+                  >
+                    <RotateCcw className={`h-4 w-4 ${isCreatingReturnRoutes ? 'animate-spin' : ''}`} />
+                    {isCreatingReturnRoutes ? '创建中...' : '一键返程'}
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
