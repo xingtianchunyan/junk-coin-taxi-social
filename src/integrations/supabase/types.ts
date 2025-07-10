@@ -266,6 +266,7 @@ export type Database = {
           id: string
           role: string | null
           updated_at: string
+          wallet_address: string | null
         }
         Insert: {
           access_code?: string
@@ -273,6 +274,7 @@ export type Database = {
           id?: string
           role?: string | null
           updated_at?: string
+          wallet_address?: string | null
         }
         Update: {
           access_code?: string
@@ -280,6 +282,7 @@ export type Database = {
           id?: string
           role?: string | null
           updated_at?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
