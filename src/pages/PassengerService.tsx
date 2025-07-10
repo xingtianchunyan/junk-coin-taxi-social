@@ -160,10 +160,19 @@ const PassengerService: React.FC = () => {
     if (!selectedDestination) {
       return [];
     }
-    // Only show user's own requests
-    return requests.filter(req => 
-      hasAccess && accessCode && req.access_code === accessCode
-    );
+    return requests.map(req => {
+      if (hasAccess && accessCode && req.access_code === accessCode) {
+        return req;
+      }
+      return {
+        ...req,
+        friend_name: '***',
+        start_location: req.fixed_route_id ? req.start_location : '***',
+        end_location: req.fixed_route_id ? req.end_location : '***',
+        contact_info: '***',
+        notes: undefined
+      };
+    });
   };
 
   // 检查行李是否能装入车辆后备箱
@@ -317,12 +326,12 @@ const PassengerService: React.FC = () => {
                               </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (
-                                <RideRequestCard 
-                                  key={request.id} 
-                                  request={request} 
-                                  onDelete={deleteRequest}
-                                  accessLevel="private"
-                                />
+                                  <RideRequestCard 
+                                    key={request.id} 
+                                    request={request} 
+                                    onDelete={deleteRequest}
+                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                  />
                                 ))}
                               </div>
                             </div>
