@@ -134,6 +134,23 @@ export class RideRequestService {
     })) || [];
   }
 
+  // 根据固定路线ID获取钱包地址
+  async getWalletAddressesByRoute(routeId: string): Promise<WalletAddress[]> {
+    const { data, error } = await supabase
+      .from('wallet_addresses')
+      .select('*')
+      .eq('route_id', routeId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
   // 获取所有钱包地址（包括禁用的）
   async getAllWalletAddresses(): Promise<WalletAddress[]> {
     const { data, error } = await supabase

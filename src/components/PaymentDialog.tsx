@@ -60,7 +60,18 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
 
   const loadWalletAddresses = async () => {
     try {
-      const addresses = await rideRequestService.getWalletAddresses();
+      let addresses: WalletAddress[] = [];
+      
+      // 如果有固定路线ID，优先获取该路线的支付方式
+      if (request?.fixed_route_id) {
+        addresses = await rideRequestService.getWalletAddressesByRoute(request.fixed_route_id);
+      }
+      
+      // 如果没有固定路线或该路线没有配置支付方式，则获取所有支付方式
+      if (addresses.length === 0) {
+        addresses = await rideRequestService.getWalletAddresses();
+      }
+      
       setWalletAddresses(addresses);
       if (addresses.length > 0) {
         setSelectedWallet(addresses[0]);
