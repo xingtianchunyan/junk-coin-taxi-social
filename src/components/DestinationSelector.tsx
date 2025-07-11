@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { MapPin, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,7 +61,7 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
@@ -77,40 +79,42 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
               <div className="text-muted-foreground">加载中...</div>
             </div>
           ) : (
-            <div className="grid gap-3 max-h-96 overflow-y-auto">
-              {destinations.map((destination) => (
-                <Card 
-                  key={destination.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedDestination?.id === destination.id 
-                      ? 'ring-2 ring-green-500 bg-green-50' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onClick={() => handleSelect(destination)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-lg">{destination.name}</h3>
-                          {selectedDestination?.id === destination.id && (
-                            <Check className="h-4 w-4 text-green-600" />
+            <ScrollArea className="h-96 w-full">
+              <div className="grid gap-3 pr-4">
+                {destinations.map((destination) => (
+                  <Card 
+                    key={destination.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      selectedDestination?.id === destination.id 
+                        ? 'ring-2 ring-green-500 bg-green-50' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleSelect(destination)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-lg">{destination.name}</h3>
+                            {selectedDestination?.id === destination.id && (
+                              <Check className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {destination.address}
+                          </p>
+                          {destination.description && (
+                            <p className="text-xs text-gray-500">
+                              {destination.description}
+                            </p>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {destination.address}
-                        </p>
-                        {destination.description && (
-                          <p className="text-xs text-gray-500">
-                            {destination.description}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
           )}
           
           <div className="flex justify-end gap-2 pt-4 border-t">
