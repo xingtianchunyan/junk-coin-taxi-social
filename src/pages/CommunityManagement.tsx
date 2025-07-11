@@ -778,7 +778,7 @@ const CommunityManagement: React.FC = () => {
 
   // 检查是否为管理员钱包地址
   const isAdminWallet = currentUserWalletAddress.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase();
-debugger
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
