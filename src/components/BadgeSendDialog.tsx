@@ -72,7 +72,7 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
       const metadata = JSON.stringify({
         name: BADGE_TYPES[selectedBadgeType].label,
         description: BADGE_TYPES[selectedBadgeType].description,
-        image: `https://api.dicebear.com/7.x/shapes/svg?seed=${badgeType}`,
+        image: `https://api.dicebear.com/7.x/shapes/svg?seed=${selectedBadgeType}`,
         attributes: [
           {
             trait_type: "Badge Type",
