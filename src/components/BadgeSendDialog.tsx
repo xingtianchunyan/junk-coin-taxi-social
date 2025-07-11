@@ -79,7 +79,7 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
             value: selectedBadgeType
           },
           {
-            trait_type: "Category",
+            trait_type: "Platform",
             value: "Community Contribution"
           }
         ]
