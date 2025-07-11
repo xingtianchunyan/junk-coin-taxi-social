@@ -5,7 +5,7 @@ export const CONTRACT_CONFIG = {
     chainId: 545,
     chainName: "Flow EVM Testnet",
     rpcUrl: "https://testnet.evm.nodes.onflow.org",
-    blockExplorer: "https://evm-testnet.flowscan.org",
+    blockExplorer: "https://evm-testnet.flowscan.io",
     nativeCurrency: {
       name: "Flow",
       symbol: "FLOW",
