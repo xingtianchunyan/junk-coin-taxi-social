@@ -160,7 +160,13 @@ const PassengerService: React.FC = () => {
     if (!selectedDestination) {
       return [];
     }
-    return requests.map(req => {
+    // 按目的地过滤请求：只显示与当前选定目的地相关的订单
+    const destinationFilteredRequests = requests.filter(req => {
+      return req.start_location.includes(selectedDestination.name) || 
+             req.end_location.includes(selectedDestination.name);
+    });
+    
+    return destinationFilteredRequests.map(req => {
       if (hasAccess && accessCode && req.access_code === accessCode) {
         return req;
       }
