@@ -110,11 +110,12 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
+  // 查询双向订单：既包括前往目的地的订单，也包括从目的地出发的订单
       const { data, error } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('status', 'pending')
-        .ilike('end_location', `%${selectedDestination.name}%`)
+        .or(`end_location.ilike.%${selectedDestination.name}%,start_location.ilike.%${selectedDestination.name}%`)
         .order('requested_time', { ascending: true });
       
       if (error) throw error;
@@ -173,13 +174,8 @@ const WorkSchedule: React.FC = () => {
     rideRequests
       .sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime())
       .forEach(req => {
-        const requestDate = new Date(req.requested_time);
-        const hour = requestDate.getHours();
-        const dateStr = requestDate.toLocaleDateString('zh-CN', { 
-          month: '2-digit', 
-          day: '2-digit' 
-        });
-        const period = `${dateStr} ${hour}:00-${hour + 1}:00`;
+        const hour = new Date(req.requested_time).getHours();
+        const period = `${hour}:00-${hour + 1}:00`;
         const routeKey = req.fixed_route_id || 'other';
         
         if (!groups[period]) groups[period] = {};
