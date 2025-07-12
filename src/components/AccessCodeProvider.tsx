@@ -28,7 +28,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     // 从 localStorage 恢复访问码
-    const savedCode = localStorage.getItem('userAccessCode');
+    const savedCode = localStorage.getItem('access_code');
     if (savedCode) {
       setAccessCodeState(savedCode);
     }
@@ -61,13 +61,16 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setAccessCode = (code: string) => {
     setAccessCodeState(code);
-    localStorage.setItem('userAccessCode', code);
+    localStorage.setItem('access_code', code);
   };
 
   const clearAccessCode = () => {
     setAccessCodeState(null);
     setUserProfile(null);
+    // 清除所有可能的访问码存储键名
+    localStorage.removeItem('access_code');
     localStorage.removeItem('userAccessCode');
+    localStorage.removeItem('rideAccessCode');
   };
 
   const refreshUserProfile = async () => {
