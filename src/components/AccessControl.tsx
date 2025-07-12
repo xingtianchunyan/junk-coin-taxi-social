@@ -31,7 +31,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
       onAccessChange('private');
     } else {
       // Check for saved access code only if not authenticated
-      const savedAccessCode = localStorage.getItem('rideAccessCode');
+      const savedAccessCode = localStorage.getItem('access_code');
       if (savedAccessCode && currentLevel === 'public') {
         setAccessCode(savedAccessCode);
         handlePrivateAccess(savedAccessCode);
@@ -49,7 +49,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
       const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sanitizedCode);
       
       if (isValid) {
-        localStorage.setItem('rideAccessCode', sanitizedCode);
+        localStorage.setItem('access_code', sanitizedCode);
         onAccessChange('private', sanitizedCode);
       } else {
         alert('无效的访问码格式');
@@ -63,6 +63,9 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   };
 
   const handleLogout = async () => {
+    // 清除所有可能的访问码存储键名
+    localStorage.removeItem('access_code');
+    localStorage.removeItem('userAccessCode');
     localStorage.removeItem('rideAccessCode');
     if (user) {
       await signOut();
