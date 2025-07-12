@@ -105,9 +105,11 @@ const CommunityManagement: React.FC = () => {
     trunk_length_cm: 100,
     trunk_width_cm: 80,
     trunk_height_cm: 50,
-    discount_percentage: 50, // 愿意的折扣，默认50%
-    enable_discount: false // 是否启用折扣功能，默认关闭
+    discount_percentage: 50 // 愿意的折扣，默认50%
   });
+  
+  // 单独管理折扣启用状态（UI状态，不存储到数据库）
+  const [enableDiscount, setEnableDiscount] = useState(false);
 
   // 支付管理新增状态 - 多选模式
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
@@ -300,9 +302,9 @@ const CommunityManagement: React.FC = () => {
         trunk_length_cm: 100,
         trunk_width_cm: 80,
         trunk_height_cm: 50,
-        discount_percentage: 50,
-        enable_discount: false
+        discount_percentage: 50
       });
+      setEnableDiscount(false);
       setShowAddVehicleDialog(false);
       loadCommunityData();
     } catch (error) {
@@ -1185,14 +1187,14 @@ const CommunityManagement: React.FC = () => {
                       <div className="flex items-center space-x-2 mb-3">
                         <Checkbox
                           id="enable_discount"
-                          checked={newVehicle.enable_discount}
-                          onCheckedChange={(checked) => setNewVehicle({...newVehicle, enable_discount: checked as boolean})}
+                          checked={enableDiscount}
+                          onCheckedChange={(checked) => setEnableDiscount(checked as boolean)}
                         />
                         <Label htmlFor="enable_discount" className="font-medium">
                           启用愿意的折扣功能
                         </Label>
                       </div>
-                      {newVehicle.enable_discount && (
+                      {enableDiscount && (
                         <div>
                           <Label>愿意的折扣: {newVehicle.discount_percentage}%</Label>
                           <div className="mt-2">
