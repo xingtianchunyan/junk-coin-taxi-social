@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Award, ExternalLink, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CONTRACT_CONFIG, CONTRACT_ABI, BADGE_TYPES, type BadgeType } from '@/config/badge-contract';
@@ -182,102 +181,100 @@ const BadgeSendDialog: React.FC<BadgeSendDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh] w-full">
-          <div className="space-y-4 pr-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>目标地址:</strong> 
-              </p>
-              <p className="text-xs font-mono text-blue-800 break-all mt-1">
-                {driverWalletAddress}
-              </p>
-            </div>
-
-            {!transactionHash ? (
-              <>
-                <div className="space-y-3">
-                  <label className="text-sm font-medium">选择徽章类型</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {(Object.keys(BADGE_TYPES) as BadgeType[]).map((badgeType) => (
-                      <Button
-                        key={badgeType}
-                        variant={selectedBadgeType === badgeType ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedBadgeType(badgeType)}
-                        className="justify-start h-auto p-3"
-                      >
-                        <div className="flex flex-col items-start">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{BADGE_TYPES[badgeType].icon}</span>
-                            <span className="font-medium">{BADGE_TYPES[badgeType].label}</span>
-                          </div>
-                          <span className="text-xs text-gray-500 mt-1">
-                            {BADGE_TYPES[badgeType].description}
-                          </span>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button variant="outline" onClick={handleClose} className="flex-1">
-                    取消
-                  </Button>
-                  <Button 
-                    onClick={handleSendBadge}
-                    disabled={isLoading || !selectedBadgeType}
-                    className="flex-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        发送中...
-                      </>
-                    ) : (
-                      '发送徽章'
-                    )}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <Card>
-                <CardContent className="p-4 text-center space-y-3">
-                  <div className="text-green-600 text-4xl">✅</div>
-                  <div>
-                    <p className="font-medium text-green-700">徽章发送成功！</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {BADGE_TYPES[selectedBadgeType!].label} 徽章已发送
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-600">交易哈希:</p>
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <span className="text-xs font-mono flex-1 truncate">
-                        {transactionHash}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(
-                          `${CONTRACT_CONFIG.FLOW_TESTNET.blockExplorer}/tx/${transactionHash}`,
-                          '_blank'
-                        )}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button onClick={handleClose} className="w-full">
-                    完成
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>目标地址:</strong> 
+            </p>
+            <p className="text-xs font-mono text-blue-800 break-all mt-1">
+              {driverWalletAddress}
+            </p>
           </div>
-        </ScrollArea>
+
+          {!transactionHash ? (
+            <>
+              <div className="space-y-3">
+                <label className="text-sm font-medium">选择徽章类型</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {(Object.keys(BADGE_TYPES) as BadgeType[]).map((badgeType) => (
+                    <Button
+                      key={badgeType}
+                      variant={selectedBadgeType === badgeType ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedBadgeType(badgeType)}
+                      className="justify-start h-auto p-3"
+                    >
+                      <div className="flex flex-col items-start">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{BADGE_TYPES[badgeType].icon}</span>
+                          <span className="font-medium">{BADGE_TYPES[badgeType].label}</span>
+                        </div>
+                        <span className="text-xs text-gray-500 mt-1">
+                          {BADGE_TYPES[badgeType].description}
+                        </span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={handleClose} className="flex-1">
+                  取消
+                </Button>
+                <Button 
+                  onClick={handleSendBadge}
+                  disabled={isLoading || !selectedBadgeType}
+                  className="flex-1"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      发送中...
+                    </>
+                  ) : (
+                    '发送徽章'
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-4 text-center space-y-3">
+                <div className="text-green-600 text-4xl">✅</div>
+                <div>
+                  <p className="font-medium text-green-700">徽章发送成功！</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {BADGE_TYPES[selectedBadgeType!].label} 徽章已发送
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-600">交易哈希:</p>
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                    <span className="text-xs font-mono flex-1 truncate">
+                      {transactionHash}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(
+                        `${CONTRACT_CONFIG.FLOW_TESTNET.blockExplorer}/tx/${transactionHash}`,
+                        '_blank'
+                      )}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                <Button onClick={handleClose} className="w-full">
+                  完成
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

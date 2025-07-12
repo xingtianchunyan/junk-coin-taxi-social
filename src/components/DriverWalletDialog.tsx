@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,7 +61,7 @@ const DriverWalletDialog: React.FC<DriverWalletDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 flex-wrap">
+          <DialogTitle className="flex items-center gap-2">
             司机钱包地址
             <Badge variant="outline" className="bg-green-100 text-green-700">
               {selectedNetwork} - {selectedCurrency}
@@ -77,36 +75,34 @@ const DriverWalletDialog: React.FC<DriverWalletDialogProps> = ({
           </div>
           
           {filteredAddresses.length > 0 ? (
-            <ScrollArea className="h-64 w-full">
-              <div className="space-y-3 pr-4">
-                {filteredAddresses.map((addr) => (
-                  <div key={addr.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium">
-                        {addr.chain_name} ({addr.symbol})
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-mono text-xs bg-white p-2 rounded border flex-1 break-all">
-                        {addr.address}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(addr.address, addr.id)}
-                        className="shrink-0"
-                      >
-                        {copiedAddress === addr.id ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
+            <div className="space-y-3">
+              {filteredAddresses.map((addr) => (
+                <div key={addr.id} className="border rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium">
+                      {addr.chain_name} ({addr.symbol})
                     </div>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <div className="font-mono text-xs bg-white p-2 rounded border flex-1 break-all">
+                      {addr.address}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(addr.address, addr.id)}
+                      className="shrink-0"
+                    >
+                      {copiedAddress === addr.id ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-6 text-gray-500">
               <div className="text-sm">暂无对应网络的钱包地址</div>
