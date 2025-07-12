@@ -204,17 +204,16 @@ const CommunityManagement: React.FC = () => {
     if (!accessCode) return;
 
     try {
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('access_code', accessCode)
-        .single();
+      // 使用函数获取或创建用户
+      const { data: userId, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
+        input_access_code: accessCode
+      });
 
-      if (!user) throw new Error('用户不存在');
+      if (userError) throw userError;
 
       const destinationData = {
         ...newDestination,
-        admin_user_id: user.id
+        admin_user_id: userId
       };
 
       const newDest = await rideRequestService.createPresetDestination(destinationData);

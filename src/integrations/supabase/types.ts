@@ -424,6 +424,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_or_create_user_by_access_code: {
+        Args: { input_access_code: string }
+        Returns: string
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean

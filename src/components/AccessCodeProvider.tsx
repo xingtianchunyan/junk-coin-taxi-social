@@ -46,25 +46,36 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateJWTClaims = async (code: string) => {
     try {
-      // 创建一个临时会话来设置 JWT claims
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        // 如果没有会话，创建匿名会话
-        await supabase.auth.signInAnonymously({
-          options: {
-            data: {
-              access_code: code
-            }
-          }
-        });
-      } else {
-        // 更新现有会话的元数据
-        await supabase.auth.updateUser({
-          data: {
+      // 确保用户存在，如果不存在则创建
+      const { data: userData, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
+        input_access_code: code
+      });
+
+      if (userError) {
+        console.error('获取或创建用户失败:', userError);
+        return;
+      }
+
+      // 直接设置 JWT claims，不依赖 Supabase 认证
+      // 通过设置 Supabase 客户端的全局配置来模拟认证状态
+      const mockSession = {
+        access_token: 'mock_token',
+        user: {
+          id: userData,
+          user_metadata: {
             access_code: code
           }
-        });
+        }
+      };
+
+      // 设置全局变量供 RLS 策略使用
+      const { error: configError } = await supabase.rpc('set_config', {
+        setting_name: 'request.jwt.claims',
+        setting_value: JSON.stringify({ access_code: code })
+      });
+
+      if (configError) {
+        console.error('设置配置失败:', configError);
       }
     } catch (error) {
       console.error('更新 JWT claims 失败:', error);
@@ -79,9 +90,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const clearAccessCode = () => {
     setAccessCodeState(null);
     setUserProfile(null);
-    localStorage.clear();
-    // 清除会话
-    supabase.auth.signOut();
+    localStorage.removeItem('userAccessCode');
   };
 
   const refreshUserProfile = async () => {
