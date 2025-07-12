@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -52,10 +53,15 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // 过滤出区块链和交易所支付方式
-  const onlinePaymentMethods = walletAddresses.filter(wallet => wallet.pay_way === 1 || wallet.pay_way === 2);
+  // 过滤出在线支付方式（区块链支付和交易所转账）
+  const onlinePaymentMethods = walletAddresses.filter(wallet => 
+    wallet.pay_way === 1 || wallet.pay_way === 2
+  );
+  
   // 检查是否有链下支付方式（支付宝/微信、现金）
-  const hasOfflinePayment = walletAddresses.some(wallet => wallet.pay_way === 3 || wallet.pay_way === 4);
+  const hasOfflinePayment = walletAddresses.some(wallet => 
+    wallet.pay_way === 3 || wallet.pay_way === 4
+  );
 
   useEffect(() => {
     if (open && request?.payment_required) {
@@ -65,21 +71,32 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
 
   const loadWalletAddresses = async () => {
     try {
+      console.log('开始加载钱包地址，request:', request);
       let addresses: WalletAddress[] = [];
       
       // 如果有固定路线ID，优先获取该路线的支付方式
       if (request?.fixed_route_id) {
+        console.log('根据固定路线ID获取支付方式:', request.fixed_route_id);
         addresses = await rideRequestService.getWalletAddressesByRoute(request.fixed_route_id);
+        console.log('路线特定的钱包地址:', addresses);
       }
       
       // 如果没有固定路线或该路线没有配置支付方式，则获取所有支付方式
       if (addresses.length === 0) {
+        console.log('获取所有钱包地址');
         addresses = await rideRequestService.getWalletAddresses();
+        console.log('所有钱包地址:', addresses);
       }
       
-      setWalletAddresses(addresses);
-      if (addresses.length > 0) {
-        setSelectedWallet(addresses[0]);
+      // 过滤出活跃的钱包地址
+      const activeAddresses = addresses.filter(addr => addr.is_active);
+      console.log('活跃的钱包地址:', activeAddresses);
+      
+      setWalletAddresses(activeAddresses);
+      if (activeAddresses.length > 0) {
+        // 优先选择区块链支付方式
+        const firstOnlineMethod = activeAddresses.find(addr => addr.pay_way === 1 || addr.pay_way === 2);
+        setSelectedWallet(firstOnlineMethod || activeAddresses[0]);
       }
     } catch (error) {
       console.error('加载钱包地址失败:', error);
@@ -169,6 +186,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
 
   if (!request || !request.payment_required) return null;
 
+  console.log('PaymentDialog渲染 - 钱包地址总数:', walletAddresses.length);
+  console.log('在线支付方式数量:', onlinePaymentMethods.length);
+  console.log('在线支付方式详情:', onlinePaymentMethods);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
@@ -233,13 +254,26 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                           <div className="text-sm font-mono bg-gray-100 px-2 py-1 rounded w-full truncate">
                             {wallet.address}
                           </div>
-
                         </div>
                       </Button>
                     ))}
                   </div>
                 </ScrollArea>
               </div>
+            )}
+
+            {onlinePaymentMethods.length === 0 && (
+              <Card className="border-yellow-200 bg-yellow-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-yellow-700">
+                    <Info className="h-5 w-5" />
+                    <span className="font-medium">暂无在线支付方式</span>
+                  </div>
+                  <p className="text-sm text-yellow-600 mt-2">
+                    管理员还未设置在线支付方式，请联系管理员或选择其他支付方式
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
             {hasOfflinePayment && (
