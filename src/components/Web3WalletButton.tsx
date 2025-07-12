@@ -103,8 +103,10 @@ export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
   };
 
   const logout = () => {
-    // 清除访问码，退出登录
+    // 清除所有可能的访问码存储键名
     localStorage.removeItem('access_code');
+    localStorage.removeItem('userAccessCode');
+    localStorage.removeItem('rideAccessCode');
     window.location.reload();
   };
 
