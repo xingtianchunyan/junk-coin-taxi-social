@@ -72,7 +72,6 @@ export const vehicleService = {
     if (error) throw error;
   },
 
-
   // 获取单个车辆
   async getVehicleById(id: string): Promise<Vehicle | null> {
     const { data, error } = await supabase
@@ -88,6 +87,5 @@ export const vehicleService = {
       created_at: new Date(data.created_at),
       updated_at: new Date(data.updated_at)
     };
-  },
-
+  }
 };

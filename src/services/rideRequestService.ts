@@ -163,7 +163,6 @@ export class RideRequestService {
     return data?.map(item => ({
       ...item,
       created_at: new Date(item.created_at),
-      // 暂时设为undefined，等数据库字段添加后再实现关联查询
       route: undefined,
       vehicle: undefined
     })) || [];
@@ -266,7 +265,6 @@ export class RideRequestService {
     };
   }
 
-
   // 预设目的地管理
   async getPresetDestinations(): Promise<PresetDestination[]> {
     const { data, error } = await supabase
@@ -319,29 +317,6 @@ export class RideRequestService {
       description: data.description ?? undefined,
       created_at: new Date(data.created_at)
     };
-  }
-
-  // 自动生成固定路线
-  async generateFixedRoutesForDestination(destinationName: string, destinationAddress: string): Promise<void> {
-    const response = await fetch(`https://gwfuygmhcfmbzkewiuuv.supabase.co/functions/v1/auto-generate-routes`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        destination_name: destinationName,
-        destination_address: destinationAddress
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('自动生成路线失败');
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || '自动生成路线失败');
-    }
   }
 
   async updatePresetDestination(id: string, destinationData: Partial<Omit<PresetDestination, 'id' | 'created_at'>>): Promise<void> {
