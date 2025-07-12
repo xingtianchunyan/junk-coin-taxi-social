@@ -189,6 +189,20 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   console.log('PaymentDialog渲染 - 钱包地址总数:', walletAddresses.length);
   console.log('在线支付方式数量:', onlinePaymentMethods.length);
   console.log('在线支付方式详情:', onlinePaymentMethods);
+  
+  // 调试每个钱包地址的详细信息
+  walletAddresses.forEach((wallet, index) => {
+    console.log(`钱包${index + 1}:`, {
+      id: wallet.id,
+      symbol: wallet.symbol,
+      pay_way: wallet.pay_way,
+      chain_name: wallet.chain_name,
+      exchange_name: wallet.exchange_name,
+      address: wallet.address,
+      is_active: wallet.is_active,
+      channelName: getPaymentChannelName(wallet)
+    });
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
