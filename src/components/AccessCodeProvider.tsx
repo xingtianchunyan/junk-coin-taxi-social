@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
@@ -36,10 +37,39 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (accessCode) {
       refreshUserProfile();
+      // 设置 JWT claims 以便数据库 RLS 策略可以访问 access_code
+      updateJWTClaims(accessCode);
     } else {
       setUserProfile(null);
     }
   }, [accessCode]);
+
+  const updateJWTClaims = async (code: string) => {
+    try {
+      // 创建一个临时会话来设置 JWT claims
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // 如果没有会话，创建匿名会话
+        await supabase.auth.signInAnonymously({
+          options: {
+            data: {
+              access_code: code
+            }
+          }
+        });
+      } else {
+        // 更新现有会话的元数据
+        await supabase.auth.updateUser({
+          data: {
+            access_code: code
+          }
+        });
+      }
+    } catch (error) {
+      console.error('更新 JWT claims 失败:', error);
+    }
+  };
 
   const setAccessCode = (code: string) => {
     setAccessCodeState(code);
@@ -50,6 +80,8 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAccessCodeState(null);
     setUserProfile(null);
     localStorage.clear();
+    // 清除会话
+    supabase.auth.signOut();
   };
 
   const refreshUserProfile = async () => {

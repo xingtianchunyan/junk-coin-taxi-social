@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/AuthProvider';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'passenger' | 'driver' | 'owner' | 'admin';
@@ -13,13 +14,25 @@ export interface UserProfile {
 }
 
 export const useUserProfile = () => {
-  const { user } = useAuth();
+  const { userProfile: accessCodeProfile, accessCode } = useAccessCode();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  useEffect(() => {
+    if (accessCodeProfile) {
+      setProfile(accessCodeProfile);
+      setLoading(false);
+    } else if (accessCode) {
+      fetchProfile();
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
+  }, [accessCodeProfile, accessCode]);
+
   const fetchProfile = async () => {
-    if (!user) {
+    if (!accessCode) {
       setProfile(null);
       setLoading(false);
       return;
@@ -30,10 +43,10 @@ export const useUserProfile = () => {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('access_code', accessCode)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // Not found error is ok
+      if (error) {
         throw error;
       }
 
@@ -48,13 +61,13 @@ export const useUserProfile = () => {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!accessCode || !profile) return;
 
     try {
       const { data, error } = await supabase
         .from('users')
         .upsert({
-          id: user.id,
+          ...profile,
           ...updates,
           updated_at: new Date().toISOString(),
         })
@@ -78,10 +91,6 @@ export const useUserProfile = () => {
   const isDriver = (): boolean => hasRole('driver');
   const isOwner = (): boolean => hasRole('owner');
   const isPassenger = (): boolean => hasRole('passenger');
-
-  useEffect(() => {
-    fetchProfile();
-  }, [user]);
 
   return {
     profile,
