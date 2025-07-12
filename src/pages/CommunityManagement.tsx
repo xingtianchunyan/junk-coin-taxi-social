@@ -105,7 +105,8 @@ const CommunityManagement: React.FC = () => {
     trunk_length_cm: 100,
     trunk_width_cm: 80,
     trunk_height_cm: 50,
-    discount_percentage: 50 // 愿意的折扣，默认50%
+    discount_percentage: 50, // 愿意的折扣，默认50%
+    enable_discount: false // 是否启用折扣功能，默认关闭
   });
 
   // 支付管理新增状态 - 多选模式
@@ -299,7 +300,8 @@ const CommunityManagement: React.FC = () => {
         trunk_length_cm: 100,
         trunk_width_cm: 80,
         trunk_height_cm: 50,
-        discount_percentage: 50
+        discount_percentage: 50,
+        enable_discount: false
       });
       setShowAddVehicleDialog(false);
       loadCommunityData();
@@ -1180,22 +1182,36 @@ const CommunityManagement: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <Label>愿意的折扣: {newVehicle.discount_percentage}%</Label>
-                      <div className="mt-2">
-                        <Slider
-                          value={[newVehicle.discount_percentage]}
-                          onValueChange={(value) => setNewVehicle({...newVehicle, discount_percentage: value[0]})}
-                          max={80}
-                          min={0}
-                          step={5}
-                          className="w-full"
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Checkbox
+                          id="enable_discount"
+                          checked={newVehicle.enable_discount}
+                          onCheckedChange={(checked) => setNewVehicle({...newVehicle, enable_discount: checked as boolean})}
                         />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>0%</span>
-                          <span>40%</span>
-                          <span>80%</span>
-                        </div>
+                        <Label htmlFor="enable_discount" className="font-medium">
+                          启用愿意的折扣功能
+                        </Label>
                       </div>
+                      {newVehicle.enable_discount && (
+                        <div>
+                          <Label>愿意的折扣: {newVehicle.discount_percentage}%</Label>
+                          <div className="mt-2">
+                            <Slider
+                              value={[newVehicle.discount_percentage]}
+                              onValueChange={(value) => setNewVehicle({...newVehicle, discount_percentage: value[0]})}
+                              max={80}
+                              min={0}
+                              step={5}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>0%</span>
+                              <span>40%</span>
+                              <span>80%</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button type="submit">添加</Button>
