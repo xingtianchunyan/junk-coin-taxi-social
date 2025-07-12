@@ -110,11 +110,12 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
+  // 查询双向订单：既包括前往目的地的订单，也包括从目的地出发的订单
       const { data, error } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('status', 'pending')
-        .ilike('end_location', `%${selectedDestination.name}%`)
+        .or(`end_location.ilike.%${selectedDestination.name}%,start_location.ilike.%${selectedDestination.name}%`)
         .order('requested_time', { ascending: true });
       
       if (error) throw error;
