@@ -53,32 +53,9 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (userError) {
         console.error('获取或创建用户失败:', userError);
-        return;
-      }
-
-      // 直接设置 JWT claims，不依赖 Supabase 认证
-      // 通过设置 Supabase 客户端的全局配置来模拟认证状态
-      const mockSession = {
-        access_token: 'mock_token',
-        user: {
-          id: userData,
-          user_metadata: {
-            access_code: code
-          }
-        }
-      };
-
-      // 设置全局变量供 RLS 策略使用
-      const { error: configError } = await supabase.rpc('set_config', {
-        setting_name: 'request.jwt.claims',
-        setting_value: JSON.stringify({ access_code: code })
-      });
-
-      if (configError) {
-        console.error('设置配置失败:', configError);
       }
     } catch (error) {
-      console.error('更新 JWT claims 失败:', error);
+      console.error('更新用户数据失败:', error);
     }
   };
 

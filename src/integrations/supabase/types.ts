@@ -432,6 +432,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      set_config: {
+        Args: { setting_name: string; setting_value: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "passenger" | "driver" | "owner" | "admin"
