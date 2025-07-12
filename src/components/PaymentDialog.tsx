@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, QrCode, CheckCircle, Clock, CreditCard } from 'lucide-react';
+import { Copy, CheckCircle, Clock, CreditCard, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RideRequest, WalletAddress } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
@@ -52,6 +52,11 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // 过滤出区块链和交易所支付方式
+  const onlinePaymentMethods = walletAddresses.filter(wallet => wallet.pay_way === 1 || wallet.pay_way === 2);
+  // 检查是否有链下支付方式（支付宝/微信、现金）
+  const hasOfflinePayment = walletAddresses.some(wallet => wallet.pay_way === 3 || wallet.pay_way === 4);
+
   useEffect(() => {
     if (open && request?.payment_required) {
       loadWalletAddresses();
@@ -91,6 +96,17 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
     toast({
       title: "已复制",
       description: "地址已复制到剪贴板",
+    });
+  };
+
+  // 处理支付选项点击，直接复制关键信息
+  const handlePaymentOptionClick = (wallet: WalletAddress) => {
+    setSelectedWallet(wallet);
+    copyToClipboard(wallet.address);
+    const infoType = wallet.pay_way === 2 ? '交易所UID' : '区块链地址';
+    toast({
+      title: "已复制",
+      description: `${infoType}已复制到剪贴板`,
     });
   };
 
@@ -155,7 +171,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh]">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -163,8 +179,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh] pr-4">
-          <div className="space-y-4">
+        <div className="flex-1 overflow-hidden">
+          <div className="space-y-4 h-full">
             <Card>
               <CardContent className="p-4">
                 <div className="flex justify-between items-center mb-2">
@@ -189,29 +205,35 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
               </CardContent>
             </Card>
 
-            {walletAddresses.length > 0 && (
+            {onlinePaymentMethods.length > 0 && (
               <div className="space-y-3">
                 <label className="text-sm font-medium">选择支付方式</label>
-                <ScrollArea className="max-h-48">
-                  <div className="grid grid-cols-1 gap-2 pr-2">
-                    {walletAddresses.map((wallet) => (
+                <ScrollArea className="max-h-60">
+                  <div className="grid grid-cols-1 gap-3 pr-2">
+                    {onlinePaymentMethods.map((wallet) => (
                       <Button
                         key={wallet.id}
                         variant={selectedWallet?.id === wallet.id ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedWallet(wallet)}
-                        className="justify-start h-auto p-3"
+                        onClick={() => handlePaymentOptionClick(wallet)}
+                        className="justify-start h-auto p-4 text-left"
                       >
-                        <div className="flex flex-col items-start">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{wallet.symbol}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {getPaymentChannelName(wallet)}
-                            </Badge>
+                        <div className="flex flex-col items-start w-full">
+                          <div className="flex items-center justify-between w-full mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{wallet.symbol}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {getPaymentChannelName(wallet)}
+                              </Badge>
+                            </div>
+                            <Copy className="h-4 w-4 text-gray-400" />
                           </div>
-                          <span className="text-xs text-gray-500 mt-1">
-                            {PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP]}
-                          </span>
+                          <div className="text-xs text-gray-600 mb-1">
+                            {wallet.pay_way === 2 ? '交易所UID:' : '区块链地址:'}
+                          </div>
+                          <div className="text-sm font-mono bg-gray-100 px-2 py-1 rounded w-full truncate">
+                            {wallet.address}
+                          </div>
+
                         </div>
                       </Button>
                     ))}
@@ -220,56 +242,23 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
               </div>
             )}
 
-            {selectedWallet && (
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium flex items-center gap-2">
-                        {getPaymentChannelName(selectedWallet)}
-                        <Badge variant="outline" className="text-xs">
-                          {selectedWallet.symbol}
-                        </Badge>
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {PAY_WAY_MAP[selectedWallet.pay_way as keyof typeof PAY_WAY_MAP]}
-                      </p>
-                    </div>
-                    {selectedWallet.qr_code_url && (
-                      <Button variant="outline" size="sm">
-                        <QrCode className="h-4 w-4" />
-                      </Button>
-                    )}
+            {hasOfflinePayment && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-orange-700">
+                    <Info className="h-5 w-5" />
+                    <span className="font-medium">支持链下支付</span>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-600">
-                      {selectedWallet.pay_way === 2 ? '交易所UID' : '收款地址'}
-                    </label>
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm font-mono">
-                      <span className="flex-1 truncate">{selectedWallet.address}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(selectedWallet.address)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                    💡 请将 {request.payment_amount} {request.payment_currency} 通过 
-                    <strong className="mx-1">{getPaymentChannelName(selectedWallet)}</strong>
-                    {selectedWallet.pay_way === 2 ? '转账到上述UID' : '转账到上述地址'}，完成后点击"我已转账"按钮
-                  </div>
+                  <p className="text-sm text-orange-600 mt-2">
+                    具体情况与司机沟通（支持支付宝、微信或现金支付）
+                  </p>
                 </CardContent>
               </Card>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="flex gap-2 pt-4 border-t">
+        <div className="flex gap-2 pt-4 border-t mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             取消
           </Button>
