@@ -109,25 +109,25 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
                 <div className="flex items-start gap-2">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold mt-0.5">1</div>
                   <div className="text-xs text-blue-600">
-                    <strong>选择目的地：</strong>选择您本次要前往的目的地
+                    <strong>选择目的地：</strong>首先选择您要前往或离开的社区（目的地）
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold mt-0.5">2</div>
                   <div className="text-xs text-blue-600">
-                    <strong>查看拼车：</strong>系统将显示同一目的地的其他乘客需求
+                    <strong>查看拼车：</strong>系统将显示同一目的地其他乘客的需求
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold mt-0.5">3</div>
                   <div className="text-xs text-blue-600">
-                    <strong>添加需求：</strong>发布您的用车需求，等待其他乘客拼车
+                    <strong>添加需求：</strong>选择您需要的固定路线，发布您的用车需求
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold mt-0.5">4</div>
                   <div className="text-xs text-blue-600">
-                    <strong>完成支付：</strong>通过加密货币完成车费支付
+                    <strong>完成支付：</strong>通过加密货币完成车费支付后与司机当面确认
                   </div>
                 </div>
               </CardContent>
@@ -137,7 +137,7 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
             <div className="space-y-3">
               <label className="text-sm font-medium flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                选择本次到访目的地 *
+                选择当前到访目的地 *
               </label>
               
               {loading ? (
@@ -147,7 +147,7 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
               ) : (
                 <Select value={selectedDestination} onValueChange={setSelectedDestination}>
                   <SelectTrigger className="h-12">
-                    <SelectValue placeholder="请选择您要前往或离开的社区" />
+                    <SelectValue placeholder="请选择您要前往的目的地" />
                   </SelectTrigger>
                   <SelectContent>
                     {destinations.map((destination) => (
