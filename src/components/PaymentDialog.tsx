@@ -208,8 +208,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
             {onlinePaymentMethods.length > 0 && (
               <div className="space-y-3">
                 <label className="text-sm font-medium">选择支付方式</label>
-                <ScrollArea className="max-h-60">
-                  <div className="grid grid-cols-1 gap-3 pr-2 max-h-[250px] overflow-y-auto">
+                <ScrollArea className="max-h-[250px] overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-3 pr-2">
                     {onlinePaymentMethods.map((wallet) => (
                       <Button
                         key={wallet.id}
