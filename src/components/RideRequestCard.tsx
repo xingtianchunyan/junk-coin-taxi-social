@@ -1,572 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus } from 'lucide-react';
-import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
-import { rideRequestService } from '@/services/rideRequestService';
-import { vehicleService } from '@/services/vehicleService';
-import { useToast } from '@/hooks/use-toast';
-import { validateRideRequestData, globalRateLimiter } from '@/utils/inputValidation';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard } from 'lucide-react';
+import { RideRequest } from '@/types/RideRequest';
+import PaymentDialog from './PaymentDialog';
 
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
+interface RideRequestCardProps {
+  request: RideRequest;
+  onDelete: (id: string) => void;
+  accessLevel: 'public' | 'private' | 'admin';
 }
 
-interface RideRequestFormProps {
-  onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => void;
-  selectedDestination?: Destination | null;
-}
+const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel }) => {
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
-// 预设行李选项
-const PRESET_LUGGAGE_OPTIONS = [
-  // 行李箱选项
-  { 
-    category: '行李箱', 
-    items: [
-      { id: '13inch', name: '13寸拉杆箱', dimensions: { length: 28, width: 40, height: 13 } },
-      { id: '16inch', name: '16寸拉杆箱', dimensions: { length: 31, width: 43, height: 13 } },
-      { id: '17inch', name: '17寸拉杆箱', dimensions: { length: 32, width: 45, height: 18 } },
-      { id: '18inch', name: '18寸拉杆箱', dimensions: { length: 34, width: 44, height: 20 } },
-      { id: '20inch-a', name: '20寸拉杆箱-A型', dimensions: { length: 34, width: 50, height: 20 } },
-      { id: '20inch-b', name: '20寸拉杆箱-B型', dimensions: { length: 50, width: 34, height: 19 } },
-      { id: '22inch-a', name: '22寸拉杆箱-A型', dimensions: { length: 39, width: 58, height: 24 } },
-      { id: '22inch-b', name: '22寸拉杆箱-B型', dimensions: { length: 52, width: 36, height: 26 } },
-      { id: '22inch-c', name: '22寸拉杆箱-C型', dimensions: { length: 55, width: 42, height: 23 } },
-      { id: '24inch-a', name: '24寸拉杆箱-A型', dimensions: { length: 42, width: 68, height: 26 } },
-      { id: '24inch-b', name: '24寸拉杆箱-B型', dimensions: { length: 60, width: 38, height: 28 } },
-      { id: '24inch-c', name: '24寸拉杆箱-C型', dimensions: { length: 64, width: 41, height: 26 } },
-      { id: '26inch-a', name: '26寸拉杆箱-A型', dimensions: { length: 45, width: 67, height: 28 } },
-      { id: '26inch-b', name: '26寸拉杆箱-B型', dimensions: { length: 68, width: 43, height: 26 } },
-      { id: '28inch-a', name: '28寸拉杆箱-A型', dimensions: { length: 47, width: 78, height: 28 } },
-      { id: '28inch-b', name: '28寸拉杆箱-B型', dimensions: { length: 70, width: 47, height: 27 } },
-      { id: '32inch', name: '32寸拉杆箱', dimensions: { length: 53, width: 88, height: 30 } },
-    ]
-  },
-  // 旅行背包选项
-  {
-    category: '旅行背包',
-    items: [
-      { id: 'backpack-20l', name: '20L以下背包', dimensions: { length: 44, width: 30, height: 12 } },
-      { id: 'backpack-30l', name: '30L左右背包', dimensions: { length: 45, width: 30, height: 25 } },
-      { id: 'backpack-40l', name: '40L左右背包', dimensions: { length: 55, width: 30, height: 20 } },
-      { id: 'backpack-50l', name: '50L左右背包', dimensions: { length: 40, width: 25, height: 25 } },
-      { id: 'backpack-60l', name: '60L以上背包', dimensions: { length: 60, width: 35, height: 25 } },
-    ]
-  }
-];
-
-const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDestination }) => {
-  const [formData, setFormData] = useState({
-    friend_name: '',
-    start_location: '',
-    end_location: '',
-    requested_time: '',
-    contact_info: '',
-    notes: '',
-    fixed_route_id: '',
-    passenger_count: 1
-  });
-  const [luggage, setLuggage] = useState<LuggageItem[]>([
-    { length: 0, width: 0, height: 0, quantity: 1 }
-  ]);
-  const [enableManualInput, setEnableManualInput] = useState(false);
-  const [selectedLuggageType, setSelectedLuggageType] = useState('');
-  const [selectedLuggageQuantity, setSelectedLuggageQuantity] = useState(1);
-  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
-  const [calculating, setCalculating] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    loadFixedRoutes();
-  }, [selectedDestination]);
-
-  const loadFixedRoutes = async () => {
-    try {
-      const routes = await rideRequestService.getFixedRoutes();
-      if (selectedDestination) {
-        const filteredRoutes = routes.filter(route => 
-          route.end_location.includes(selectedDestination.name) || 
-          route.start_location.includes(selectedDestination.name)
-        );
-        setFixedRoutes(filteredRoutes);
-      } else {
-        setFixedRoutes(routes);
-      }
-    } catch (error) {
-      console.error('加载固定路线失败:', error);
-    }
+  const formatDateTime = (date: Date) => {
+    return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setValidationErrors([]);
-    
-    if (!globalRateLimiter.isAllowed('form_submission', 3, 60000)) {
-      setValidationErrors(['提交过于频繁，请稍后再试']);
-      return;
-    }
-    
-    const validation = validateRideRequestData({
-      ...formData,
-      requested_time: formData.requested_time
-    });
-    
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      return;
-    }
-    
-    if (!formData.fixed_route_id) {
-      setValidationErrors(['请选择一个固定路线']);
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Get the selected route to determine payment info
-      const selectedRoute = fixedRoutes.find(route => route.id === formData.fixed_route_id);
-      
-      const submitData = {
-        ...validation.sanitizedData,
-        requested_time: new Date(formData.requested_time),
-        fixed_route_id: formData.fixed_route_id,
-        passenger_count: formData.passenger_count,
-        luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
-        payment_required: selectedRoute ? selectedRoute.our_price > 0 : false,
-        payment_amount: selectedRoute?.our_price || 0,
-        payment_currency: selectedRoute?.currency || 'CNY'
-      };
-      
-      await onSubmit(submitData);
-
-      // Reset form after successful submission
-      setFormData({
-        friend_name: '',
-        start_location: '',
-        end_location: '',
-        requested_time: '',
-        contact_info: '',
-        notes: '',
-        fixed_route_id: '',
-        passenger_count: 1
-      });
-      setLuggage([{ length: 0, width: 0, height: 0, quantity: 1 }]);
-    } catch (error) {
-      setValidationErrors(['提交失败，请重试']);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const isUpcoming = (date: Date) => {
+    const now = new Date();
+    const timeDiff = date.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600);
+    return hoursDiff <= 24 && hoursDiff > 0;
   };
 
-  const handleInputChange = (field: string, value: string | number | boolean) => {
-    setFormData(prev => {
-      const newData = { ...prev, [field]: value };
-      
-      if (field === 'fixed_route_id' && value) {
-        const selectedRoute = fixedRoutes.find(route => route.id === value);
-        if (selectedRoute) {
-          newData.start_location = selectedRoute.start_location;
-          newData.end_location = selectedRoute.end_location;
-        }
-      }
-      
-      return newData;
-    });
-  };
-
-  // 添加预设行李项目
-  const addPresetLuggageItem = (presetId: string, quantity: number = 1) => {
-    const preset = PRESET_LUGGAGE_OPTIONS
-      .flatMap(category => category.items)
-      .find(item => item.id === presetId);
-    
-    if (preset) {
-      const newItem: LuggageItem = {
-        ...preset.dimensions,
-        quantity: quantity
-      };
-      setLuggage(prev => [...prev, newItem]);
-    }
-  };
-
-  // 手动添加行李项目
-  const addManualLuggageItem = () => {
-    setLuggage(prev => [...prev, { length: 0, width: 0, height: 0, quantity: 1 }]);
-  };
-
-  const removeLuggageItem = (index: number) => {
-    if (luggage.length > 1) {
-      setLuggage(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateLuggageItem = (index: number, field: keyof LuggageItem, value: number) => {
-    setLuggage(prev => prev.map((item, i) => 
-      i === index ? { ...item, [field]: value } : item
-    ));
-  };
+  const canShowDetails = accessLevel !== 'public';
+  const canManage = accessLevel === 'admin';
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
-        <CardTitle className="flex items-center gap-2 text-green-700">
-          <MapPin className="h-5 w-5" />
-          添加用车需求
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {validationErrors.length > 0 && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                <ul className="list-disc list-inside">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
+    <>
+      <Card className={`transition-all duration-200 hover:shadow-md ${
+        request.status === 'completed' 
+          ? 'opacity-75 bg-gray-50' 
+          : isUpcoming(request.requested_time) 
+            ? 'border-orange-200 bg-orange-50' 
+            : 'bg-white'
+      }`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <User className="h-5 w-5 text-green-600" />
+              <h3 className="font-semibold text-lg">
+                {canShowDetails ? request.friend_name : '用户'}
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {isUpcoming(request.requested_time) && request.status === 'pending' && (
+                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
+                  即将到达
+                </Badge>
+              )}
+              {request.payment_required && accessLevel === 'private' && (
+                <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                  <CreditCard className="h-3 w-3 mr-1" />
+                  需付费
+                </Badge>
+              )}
+              <Badge 
+                variant={request.status === 'completed' ? 'secondary' : 'outline'}
+                className={request.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+              >
+                {request.status === 'completed' ? '已完成' : 
+                 request.status === 'confirmed' ? '已确认' : '待处理'}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <MapPin className="h-4 w-4" />
+            <span>
+              {canShowDetails 
+                ? `${request.start_location} → ${request.end_location}`
+                : '*** → ***'
+              }
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Clock className="h-4 w-4" />
+            <span>{formatDateTime(request.requested_time)}</span>
+          </div>
+          
+          {canShowDetails && request.contact_info && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Phone className="h-4 w-4" />
+              <span>{request.contact_info}</span>
+            </div>
           )}
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="friend_name" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                昵称
-              </Label>
-              <Input
-                id="friend_name"
-                value={formData.friend_name}
-                onChange={(e) => handleInputChange('friend_name', e.target.value)}
-                placeholder="请输入昵称"
-                required
-              />
+          {canShowDetails && request.notes && (
+            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+              <strong>备注：</strong>{request.notes}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact_info" className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                联系方式
-              </Label>
-              <Input
-                id="contact_info"
-                value={formData.contact_info}
-                onChange={(e) => handleInputChange('contact_info', e.target.value)}
-                placeholder="电话或微信"
-              />
-            </div>
-          </div>
+          )}
 
-          {/* 人数设置 */}
-          <div className="space-y-2">
-            <Label htmlFor="passenger_count" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              出行人数
-            </Label>
-            <Select
-              value={formData.passenger_count.toString()}
-              onValueChange={(value) => handleInputChange('passenger_count', parseInt(value))}
-            >
-              <SelectTrigger className="max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 6].map(num => (
-                  <SelectItem key={num} value={num.toString()}>
-                    {num}人
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 优化后的行李管理 */}
-          <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
-            <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2 text-base font-medium">
-                <Package className="h-4 w-4" />
-                携带行李信息
-              </Label>
-            </div>
-
-            {/* 预设行李选择 - 下拉菜单形式 */}
-            <div className="space-y-3">
-              <div className="text-sm font-medium text-gray-700">快速选择常见行李：</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">行李类型</Label>
-                  <select
-                    value={selectedLuggageType}
-                    onChange={(e) => setSelectedLuggageType(e.target.value)}
-                    className="w-full p-2 border rounded text-sm bg-white"
-                  >
-                    <option value="">请选择行李类型</option>
-                    {PRESET_LUGGAGE_OPTIONS.map(category => (
-                      <optgroup key={category.category} label={category.category}>
-                        {category.items.map(item => (
-                          <option key={item.id} value={item.id}>
-                            {item.name} ({item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}cm)
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">数量</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={selectedLuggageQuantity}
-                    onChange={(e) => setSelectedLuggageQuantity(parseInt(e.target.value) || 1)}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">&nbsp;</Label>
+          {request.payment_required && accessLevel === 'private' && (
+            <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
+              <div className="flex items-center gap-2 text-purple-700">
+                <CreditCard className="h-4 w-4" />
+                <span className="font-medium">支付信息</span>
+              </div>
+              <div className="mt-1 text-purple-600">
+                金额: {request.payment_amount} {request.payment_currency}
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <Badge className={
+                  request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                  request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }>
+                  {request.payment_status === 'unpaid' ? '未支付' :
+                   request.payment_status === 'pending' ? '待确认' :
+                   request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
+                </Badge>
+                {request.payment_status === 'unpaid' && (
                   <Button
-                    type="button"
+                    size="sm"
                     variant="outline"
-                    className="w-full"
-                    disabled={!selectedLuggageType}
-                    onClick={() => {
-                      if (selectedLuggageType) {
-                        addPresetLuggageItem(selectedLuggageType, selectedLuggageQuantity);
-                        setSelectedLuggageType('');
-                        setSelectedLuggageQuantity(1);
-                      }
-                    }}
+                    onClick={() => setShowPaymentDialog(true)}
+                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    添加行李
+                    去支付
                   </Button>
-                </div>
+                )}
               </div>
             </div>
+          )}
 
-            {/* 手动输入开关 */}
-            <div className="flex items-center space-x-2 pt-2 border-t">
-              <Checkbox
-                id="enable-manual"
-                checked={enableManualInput}
-                onCheckedChange={(checked) => setEnableManualInput(checked === true)}
-              />
-              <Label htmlFor="enable-manual" className="text-sm">
-                启用手动输入（适用于特殊尺寸行李）
-              </Label>
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Calendar className="h-3 w-3" />
+              创建于 {formatDateTime(request.created_at)}
             </div>
-
-            {/* 手动输入区域 */}
-            {enableManualInput && (
-              <div className="space-y-3 pt-2 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-gray-700">手动输入行李尺寸：</div>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={addManualLuggageItem}
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="h-3 w-3" />
-                    添加行李
-                  </Button>
-                </div>
-                
-                {/* 手动输入的行李项目 */}
-                <div className="space-y-3">
-                  {luggage.filter(item => 
-                    // 显示手动添加的空行李项目（用于输入）
-                    (item.length === 0 && item.width === 0 && item.height === 0) ||
-                    // 或者显示已经手动输入但不在预设列表中的行李
-                    (item.length > 0 || item.width > 0 || item.height > 0)
-                  ).map((item, originalIndex) => {
-                    const actualIndex = luggage.indexOf(item);
-                    return (
-                      <div key={actualIndex} className="grid grid-cols-5 gap-2 items-end p-3 border rounded bg-white">
-                        <div className="space-y-1">
-                          <Label className="text-xs">长(cm)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.length}
-                            onChange={(e) => updateLuggageItem(actualIndex, 'length', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">宽(cm)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.width}
-                            onChange={(e) => updateLuggageItem(actualIndex, 'width', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">高(cm)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.height}
-                            onChange={(e) => updateLuggageItem(actualIndex, 'height', parseInt(e.target.value) || 0)}
-                            placeholder="0"
-                            className="text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">数量</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => updateLuggageItem(actualIndex, 'quantity', parseInt(e.target.value) || 1)}
-                            placeholder="1"
-                            className="text-sm"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeLuggageItem(actualIndex)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  
-                  {luggage.filter(item => item.length === 0 && item.width === 0 && item.height === 0).length === 0 && (
-                    <div className="text-sm text-gray-500 text-center py-2">
-                      点击"添加行李"按钮来手动输入特殊尺寸行李
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 已选择的行李汇总 */}
-            {luggage.length > 0 && luggage.some(item => item.length > 0 || item.width > 0 || item.height > 0) && (
-              <div className="space-y-3 pt-2 border-t">
-                <div className="text-sm font-medium text-gray-700">已选择的行李汇总：</div>
-                <div className="space-y-2">
-                  {luggage.map((item, index) => {
-                    // 只显示有尺寸数据的行李
-                    if (item.length === 0 && item.width === 0 && item.height === 0) return null;
-                    
-                    return (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                        <span>
-                          {item.length}×{item.width}×{item.height}cm × {item.quantity}件
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeLuggageItem(index)}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
             
-            <div className="text-xs text-gray-600">
-              💡 如果没有行李，无需选择任何选项。优先从常见行李中快速选择，如需添加特殊尺寸行李可启用手动输入功能。
-            </div>
-          </div>
-
-          {/* 固定路线选择 */}
-          <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
-            <div className="space-y-2">
-              <Label htmlFor="fixed_route" className="flex items-center gap-2">
-                <Route className="h-4 w-4" />
-                选择固定路线
-              </Label>
-              <Select
-                value={formData.fixed_route_id}
-                onValueChange={(value) => handleInputChange('fixed_route_id', value)}
-                required
+            {request.status === 'pending' && (canShowDetails || canManage) && (
+              <Button
+                onClick={() => {
+                  if (window.confirm('确定要删除这个用车需求吗？此操作不可撤销。')) {
+                    onDelete(request.id);
+                  }
+                }}
+                size="sm"
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700 text-white"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="请选择预设路线" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fixedRoutes.map(route => (
-                    <SelectItem key={route.id} value={route.id}>
-                      {route.name} - ¥{route.our_price} ({route.distance_km}km)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formData.fixed_route_id && (
-                <div className="text-sm text-blue-600 mt-2">
-                  ✅ 已选择固定路线，价格和路径将自动设置
-                </div>
-              )}
-            </div>
+                <Trash2 className="h-4 w-4 mr-1" />
+                删除需求
+              </Button>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="requested_time" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              预计时段
-            </Label>
-            <Input
-              id="requested_time"
-              type="datetime-local"
-              value={formData.requested_time}
-              onChange={(e) => handleInputChange('requested_time', e.target.value)}
-              required
-            />
-            <div className="text-xs text-gray-500">
-              💡 请选择您希望的用车时段
-            </div>
-          </div>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">备注</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="其他需要说明的信息..."
-              rows={3}
-            />
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? '提交中...' : '添加用车需求'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      <PaymentDialog 
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        request={request}
+      />
+    </>
   );
 };
 
-export default RideRequestForm;
+export default RideRequestCard;
