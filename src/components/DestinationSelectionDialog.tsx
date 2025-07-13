@@ -147,7 +147,7 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
               ) : (
                 <Select value={selectedDestination} onValueChange={setSelectedDestination}>
                   <SelectTrigger className="h-12">
-                    <SelectValue placeholder="请选择您要前往的目的地" />
+                    <SelectValue placeholder="请选择您要前往或离开的社区" />
                   </SelectTrigger>
                   <SelectContent>
                     {destinations.map((destination) => (
