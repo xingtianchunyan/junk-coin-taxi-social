@@ -38,7 +38,7 @@ const PRESET_LUGGAGE_OPTIONS = [
       { id: '18inch', name: '18寸拉杆箱', dimensions: { length: 34, width: 44, height: 20 } },
       { id: '20inch', name: '20寸拉杆箱', dimensions: { length: 31, width: 56, height: 28 } },
       { id: '22inch', name: '22寸拉杆箱', dimensions: { length: 40, width: 60, height: 25 } },
-      { id: '24inch', name: '24寸拉杆箱', dimensions: { length: 44, width: 64, height: 31 } }
+      { id: '24inch', name: '24寸拉杆箱', dimensions: { length: 44, width: 64, height: 31 } },
       { id: '26inch', name: '26寸拉杆箱', dimensions: { length: 44, width: 69, height: 32 } },
       { id: '28inch', name: '28寸拉杆箱', dimensions: { length: 42, width: 74, height: 37 } },
       { id: '30inch', name: '30寸拉杆箱', dimensions: { length: 42, width: 78, height: 38 } },
