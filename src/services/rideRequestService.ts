@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { RideRequest, WalletAddress, Payment, PresetDestination, FixedRoute, Vehicle } from '@/types/RideRequest';
 
@@ -337,23 +336,47 @@ export class RideRequestService {
     if (error) throw error;
   }
 
-  // 固定路线管理
+  // 固定路线管理 - 增强版本，包含调试信息
   async getFixedRoutes(): Promise<FixedRoute[]> {
+    console.log('正在从数据库获取固定路线...');
+    
     const { data, error } = await supabase
       .from('fixed_routes')
       .select('*')
       .eq('is_active', true)
       .order('name', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('获取固定路线时发生错误:', error);
+      throw error;
+    }
 
-    return data?.map(item => ({
+    console.log('数据库返回的原始路线数据:', data);
+
+    const routes = data?.map(item => ({
       ...item,
       is_active: item.is_active ?? true,
       currency: item.currency ?? 'CNY',
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at)
     })) || [];
+
+    console.log('处理后的路线数据:', routes);
+    console.log(`共找到 ${routes.length} 条活跃路线`);
+    
+    // 打印所有路线的详细信息
+    routes.forEach((route, index) => {
+      console.log(`路线 ${index + 1}:`, {
+        id: route.id,
+        name: route.name,
+        start_location: route.start_location,
+        end_location: route.end_location,
+        is_active: route.is_active,
+        destination_id: route.destination_id
+      });
+    });
+
+    return routes;
   }
 
   async getAllFixedRoutes(): Promise<FixedRoute[]> {
