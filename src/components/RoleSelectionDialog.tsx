@@ -103,7 +103,7 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
             每个用户只能选择一个身份角色，选择后下次登录将直接进入对应页面
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg mx-auto">
             {Object.entries(roleConfig).map(([role, config]) => {
               const Icon = config.icon;
               const isSelected = selectedRole === role;
