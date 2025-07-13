@@ -65,13 +65,13 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
-            选择目的地
+            选择将要前往或离开的社区
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            请选择您要前往的数字游民社区目的地
+            请选择您要前往或离开的数字游民目的地
           </p>
           
           {loading ? (
