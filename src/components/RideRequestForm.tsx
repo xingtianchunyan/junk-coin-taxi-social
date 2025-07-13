@@ -79,6 +79,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     { length: 0, width: 0, height: 0, quantity: 1 }
   ]);
   const [enableManualInput, setEnableManualInput] = useState(false);
+  const [selectedLuggageType, setSelectedLuggageType] = useState('');
+  const [selectedLuggageQuantity, setSelectedLuggageQuantity] = useState(1);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -298,49 +300,60 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               </Label>
             </div>
 
-            {/* 预设行李选择 */}
+            {/* 预设行李选择 - 下拉菜单形式 */}
             <div className="space-y-3">
               <div className="text-sm font-medium text-gray-700">快速选择常见行李：</div>
-              {PRESET_LUGGAGE_OPTIONS.map(category => (
-                <div key={category.category} className="space-y-2">
-                  <div className="text-sm font-medium text-blue-600">{category.category}</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {category.items.map(item => (
-                      <div key={item.id} className="flex items-center gap-2 p-2 border rounded bg-white">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium">{item.name}</div>
-                          <div className="text-xs text-gray-500">
-                            {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}cm
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min="1"
-                            max="10"
-                            defaultValue="1"
-                            className="w-16 h-8 text-xs"
-                            id={`quantity-${item.id}`}
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2"
-                            onClick={() => {
-                              const quantityInput = document.getElementById(`quantity-${item.id}`) as HTMLInputElement;
-                              const quantity = parseInt(quantityInput.value) || 1;
-                              addPresetLuggageItem(item.id, quantity);
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">行李类型</Label>
+                  <select
+                    value={selectedLuggageType}
+                    onChange={(e) => setSelectedLuggageType(e.target.value)}
+                    className="w-full p-2 border rounded text-sm bg-white"
+                  >
+                    <option value="">请选择行李类型</option>
+                    {PRESET_LUGGAGE_OPTIONS.map(category => (
+                      <optgroup key={category.category} label={category.category}>
+                        {category.items.map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.name} ({item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}cm)
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
-                  </div>
+                  </select>
                 </div>
-              ))}
+                <div className="space-y-1">
+                  <Label className="text-xs">数量</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={selectedLuggageQuantity}
+                    onChange={(e) => setSelectedLuggageQuantity(parseInt(e.target.value) || 1)}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">&nbsp;</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={!selectedLuggageType}
+                    onClick={() => {
+                      if (selectedLuggageType) {
+                        addPresetLuggageItem(selectedLuggageType, selectedLuggageQuantity);
+                        setSelectedLuggageType('');
+                        setSelectedLuggageQuantity(1);
+                      }
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    添加行李
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* 手动输入开关 */}
@@ -348,7 +361,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               <Checkbox
                 id="enable-manual"
                 checked={enableManualInput}
-                onCheckedChange={setEnableManualInput}
+                onCheckedChange={(checked) => setEnableManualInput(checked === true)}
               />
               <Label htmlFor="enable-manual" className="text-sm">
                 启用手动输入（适用于特殊尺寸行李）
@@ -372,34 +385,24 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                   </Button>
                 </div>
                 
+                {/* 手动输入的行李项目 */}
                 <div className="space-y-3">
-                  {luggage.filter(item => item.length === 0 && item.width === 0 && item.height === 0).length === 0 && luggage.length === 0 && (
-                    <div className="text-sm text-gray-500 text-center py-2">
-                      点击"添加行李"按钮来手动输入特殊尺寸行李
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 已选择的行李列表 */}
-            {luggage.length > 0 && luggage.some(item => item.length > 0 || item.width > 0 || item.height > 0) && (
-              <div className="space-y-3 pt-2 border-t">
-                <div className="text-sm font-medium text-gray-700">已选择的行李：</div>
-                <div className="space-y-2">
-                  {luggage.map((item, index) => {
-                    // 只显示有尺寸数据的行李
-                    if (item.length === 0 && item.width === 0 && item.height === 0) return null;
-                    
+                  {luggage.filter(item => 
+                    // 显示手动添加的空行李项目（用于输入）
+                    (item.length === 0 && item.width === 0 && item.height === 0) ||
+                    // 或者显示已经手动输入但不在预设列表中的行李
+                    (item.length > 0 || item.width > 0 || item.height > 0)
+                  ).map((item, originalIndex) => {
+                    const actualIndex = luggage.indexOf(item);
                     return (
-                      <div key={index} className="grid grid-cols-5 gap-2 items-end p-3 border rounded bg-white">
+                      <div key={actualIndex} className="grid grid-cols-5 gap-2 items-end p-3 border rounded bg-white">
                         <div className="space-y-1">
                           <Label className="text-xs">长(cm)</Label>
                           <Input
                             type="number"
                             min="0"
                             value={item.length}
-                            onChange={(e) => updateLuggageItem(index, 'length', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateLuggageItem(actualIndex, 'length', parseInt(e.target.value) || 0)}
                             placeholder="0"
                             className="text-sm"
                           />
@@ -410,7 +413,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                             type="number"
                             min="0"
                             value={item.width}
-                            onChange={(e) => updateLuggageItem(index, 'width', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateLuggageItem(actualIndex, 'width', parseInt(e.target.value) || 0)}
                             placeholder="0"
                             className="text-sm"
                           />
@@ -421,7 +424,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                             type="number"
                             min="0"
                             value={item.height}
-                            onChange={(e) => updateLuggageItem(index, 'height', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateLuggageItem(actualIndex, 'height', parseInt(e.target.value) || 0)}
                             placeholder="0"
                             className="text-sm"
                           />
@@ -432,7 +435,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => updateLuggageItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) => updateLuggageItem(actualIndex, 'quantity', parseInt(e.target.value) || 1)}
                             placeholder="1"
                             className="text-sm"
                           />
@@ -441,8 +444,44 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => removeLuggageItem(index)}
+                          onClick={() => removeLuggageItem(actualIndex)}
                           className="h-8 w-8 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  
+                  {luggage.filter(item => item.length === 0 && item.width === 0 && item.height === 0).length === 0 && (
+                    <div className="text-sm text-gray-500 text-center py-2">
+                      点击"添加行李"按钮来手动输入特殊尺寸行李
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 已选择的行李汇总 */}
+            {luggage.length > 0 && luggage.some(item => item.length > 0 || item.width > 0 || item.height > 0) && (
+              <div className="space-y-3 pt-2 border-t">
+                <div className="text-sm font-medium text-gray-700">已选择的行李汇总：</div>
+                <div className="space-y-2">
+                  {luggage.map((item, index) => {
+                    // 只显示有尺寸数据的行李
+                    if (item.length === 0 && item.width === 0 && item.height === 0) return null;
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                        <span>
+                          {item.length}×{item.width}×{item.height}cm × {item.quantity}件
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeLuggageItem(index)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -454,7 +493,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             )}
             
             <div className="text-xs text-gray-600">
-              💡 如果没有行李，无需选择任何选项。可以从常见行李中快速选择，也可以启用手动输入来添加特殊尺寸行李。
+              💡 如果没有行李，无需选择任何选项。优先从常见行李中快速选择，如需添加特殊尺寸行李可启用手动输入功能。
             </div>
           </div>
 
