@@ -231,7 +231,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                             <div className="text-xs text-gray-600 mb-1">
                               {wallet.pay_way === 2 ? '交易所UID:' : '区块链地址:'}
                             </div>
-                            <div className="text-sm font-mono bg-gray-100 px-2 py-1 rounded w-full truncate">
+                            <div className="text-black text-sm font-mono bg-gray-100 px-2 py-1 rounded w-full truncate">
                               {wallet.address}
                             </div>
                           </div>
