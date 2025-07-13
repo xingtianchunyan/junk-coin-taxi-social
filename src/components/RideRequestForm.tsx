@@ -95,42 +95,28 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     try {
       console.log('开始加载固定路线，当前选择的目的地:', selectedDestination);
       
-      const routes = await rideRequestService.getFixedRoutes();
-      console.log('从数据库获取的所有路线:', routes);
-      
       if (selectedDestination) {
-        console.log('当前目的地名称:', selectedDestination.name);
+        console.log('使用目的地ID过滤路线，目的地ID:', selectedDestination.id);
         
-        // 修改过滤逻辑，使用更宽松的匹配
-        const filteredRoutes = routes.filter(route => {
-          const matchesStart = route.start_location.includes(selectedDestination.name) || 
-                             selectedDestination.name.includes(route.start_location);
-          const matchesEnd = route.end_location.includes(selectedDestination.name) || 
-                           selectedDestination.name.includes(route.end_location);
-          
-          console.log(`路线 "${route.name}": start_location="${route.start_location}", end_location="${route.end_location}"`);
-          console.log(`匹配结果: matchesStart=${matchesStart}, matchesEnd=${matchesEnd}`);
-          
-          return matchesStart || matchesEnd;
-        });
+        // 使用目的地ID来获取相关路线，而不是依赖名称匹配
+        const routes = await rideRequestService.getDestinationRoutes(selectedDestination.id);
+        console.log('通过目的地ID获取的路线:', routes);
         
-        console.log('过滤后的路线:', filteredRoutes);
-        setFixedRoutes(filteredRoutes);
+        setFixedRoutes(routes);
         
-        if (filteredRoutes.length === 0) {
-          console.warn('未找到匹配的路线，检查以下内容:');
-          console.warn('1. 目的地名称是否与路线起终点匹配');
-          console.warn('2. 数据库中是否存在相关路线');
-          console.warn('3. 路线是否处于激活状态 (is_active = true)');
-          
+        if (routes.length === 0) {
+          console.warn('未找到与目的地ID相关的路线');
           toast({
             title: "未找到相关路线",
             description: `未找到与目的地"${selectedDestination.name}"相关的固定路线，请联系管理员添加路线信息`,
             variant: "destructive"
           });
+        } else {
+          console.log(`成功加载 ${routes.length} 条路线`);
         }
       } else {
         console.log('未选择目的地，显示所有路线');
+        const routes = await rideRequestService.getFixedRoutes();
         setFixedRoutes(routes);
       }
     } catch (error) {
@@ -544,6 +530,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               {selectedDestination && (
                 <div className="text-xs text-gray-600 bg-gray-100 p-2 rounded">
                   <div>当前目的地: {selectedDestination.name}</div>
+                  <div>目的地ID: {selectedDestination.id}</div>
                   <div>可用路线数量: {fixedRoutes.length}</div>
                   {fixedRoutes.length === 0 && (
                     <div className="text-red-600 mt-1">
