@@ -6,7 +6,7 @@ import { Car, Users, UserCheck, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'passenger' | 'community_admin';
+type UserRole = 'passenger' | 'driver' | 'community_admin';
 
 interface RoleSelectionDialogProps {
   open: boolean;
@@ -31,6 +31,12 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
       title: '乘客',
       description: '需要出行服务，快速约车支付',
       color: 'bg-blue-100 text-blue-700',
+    },
+    driver: {
+      icon: UserCheck,
+      title: '司机',
+      description: '提供驾驶服务，赚取车费收入',
+      color: 'bg-green-100 text-green-700',
     },
     community_admin: {
       icon: Shield,
@@ -97,7 +103,7 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
             每个用户只能选择一个身份角色，选择后下次登录将直接进入对应页面
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.entries(roleConfig).map(([role, config]) => {
               const Icon = config.icon;
               const isSelected = selectedRole === role;
