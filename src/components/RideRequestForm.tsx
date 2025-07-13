@@ -36,19 +36,13 @@ const PRESET_LUGGAGE_OPTIONS = [
       { id: '16inch', name: '16寸拉杆箱', dimensions: { length: 31, width: 43, height: 13 } },
       { id: '17inch', name: '17寸拉杆箱', dimensions: { length: 32, width: 45, height: 18 } },
       { id: '18inch', name: '18寸拉杆箱', dimensions: { length: 34, width: 44, height: 20 } },
-      { id: '20inch-a', name: '20寸拉杆箱-A型', dimensions: { length: 34, width: 50, height: 20 } },
-      { id: '20inch-b', name: '20寸拉杆箱-B型', dimensions: { length: 50, width: 34, height: 19 } },
-      { id: '22inch-a', name: '22寸拉杆箱-A型', dimensions: { length: 39, width: 58, height: 24 } },
-      { id: '22inch-b', name: '22寸拉杆箱-B型', dimensions: { length: 52, width: 36, height: 26 } },
-      { id: '22inch-c', name: '22寸拉杆箱-C型', dimensions: { length: 55, width: 42, height: 23 } },
-      { id: '24inch-a', name: '24寸拉杆箱-A型', dimensions: { length: 42, width: 68, height: 26 } },
-      { id: '24inch-b', name: '24寸拉杆箱-B型', dimensions: { length: 60, width: 38, height: 28 } },
-      { id: '24inch-c', name: '24寸拉杆箱-C型', dimensions: { length: 64, width: 41, height: 26 } },
-      { id: '26inch-a', name: '26寸拉杆箱-A型', dimensions: { length: 45, width: 67, height: 28 } },
-      { id: '26inch-b', name: '26寸拉杆箱-B型', dimensions: { length: 68, width: 43, height: 26 } },
-      { id: '28inch-a', name: '28寸拉杆箱-A型', dimensions: { length: 47, width: 78, height: 28 } },
-      { id: '28inch-b', name: '28寸拉杆箱-B型', dimensions: { length: 70, width: 47, height: 27 } },
-      { id: '32inch', name: '32寸拉杆箱', dimensions: { length: 53, width: 88, height: 30 } },
+      { id: '20inch', name: '20寸拉杆箱', dimensions: { length: 31, width: 56, height: 28 } },
+      { id: '22inch', name: '22寸拉杆箱', dimensions: { length: 40, width: 60, height: 25 } },
+      { id: '24inch', name: '24寸拉杆箱', dimensions: { length: 44, width: 64, height: 31 } },
+      { id: '26inch', name: '26寸拉杆箱', dimensions: { length: 44, width: 69, height: 32 } },
+      { id: '28inch', name: '28寸拉杆箱', dimensions: { length: 42, width: 74, height: 37 } },
+      { id: '30inch', name: '30寸拉杆箱', dimensions: { length: 42, width: 78, height: 38 } },
+      { id: '32inch', name: '32寸拉杆箱', dimensions: { length: 44, width: 83, height: 30 } },
     ]
   },
   // 旅行背包选项
@@ -57,9 +51,9 @@ const PRESET_LUGGAGE_OPTIONS = [
     items: [
       { id: 'backpack-20l', name: '20L以下背包', dimensions: { length: 44, width: 30, height: 12 } },
       { id: 'backpack-30l', name: '30L左右背包', dimensions: { length: 45, width: 30, height: 25 } },
-      { id: 'backpack-40l', name: '40L左右背包', dimensions: { length: 55, width: 30, height: 20 } },
-      { id: 'backpack-50l', name: '50L左右背包', dimensions: { length: 40, width: 25, height: 25 } },
-      { id: 'backpack-60l', name: '60L以上背包', dimensions: { length: 60, width: 35, height: 25 } },
+      { id: 'backpack-40l', name: '40L左右背包', dimensions: { length: 55, width: 35, height: 20 } },
+      { id: 'backpack-50l', name: '50L左右背包', dimensions: { length: 62, width: 32, height: 24 } },
+      { id: 'backpack-60l', name: '60L以上背包', dimensions: { length: 65, width: 40, height: 25 } },
     ]
   }
 ];
