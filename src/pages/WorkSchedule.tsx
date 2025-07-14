@@ -89,7 +89,7 @@ const WorkSchedule: React.FC = () => {
         .from('fixed_routes')
         .select('*')
         .eq('is_active', true)
-        .ilike('end_location', `%${selectedDestination.name}%`);
+        .eq('destination_id', selectedDestination.id);
       
       if (error) throw error;
       setFixedRoutes(data || []);
@@ -110,12 +110,23 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
-  // 查询双向订单：既包括前往目的地的订单，也包括从目的地出发的订单
+      // 首先获取与目的地相关的路线ID
+      const { data: routeData, error: routeError } = await supabase
+        .from('fixed_routes')
+        .select('id')
+        .eq('destination_id', selectedDestination.id)
+        .eq('is_active', true);
+      
+      if (routeError) throw routeError;
+      
+      const routeIds = routeData?.map(route => route.id) || [];
+      
+      // 查询与这些路线相关的订单
       const { data, error } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('status', 'pending')
-        .or(`end_location.ilike.%${selectedDestination.name}%,start_location.ilike.%${selectedDestination.name}%`)
+        .in('fixed_route_id', routeIds)
         .order('requested_time', { ascending: true });
       
       if (error) throw error;

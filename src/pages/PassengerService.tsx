@@ -14,6 +14,7 @@ import DriverWalletDialog from '@/components/DriverWalletDialog';
 import { RideRequest, Vehicle } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Destination {
   id: string;
@@ -44,10 +45,27 @@ const PassengerService: React.FC = () => {
   const { hasAccess, accessCode, clearAccessCode } = useAccessCode();
   const navigate = useNavigate();
 
+  const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
+
   useEffect(() => {
     loadRideRequests();
     loadVehicles();
+    loadFixedRoutes();
   }, []);
+
+  const loadFixedRoutes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fixed_routes')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      setFixedRoutes(data || []);
+    } catch (error) {
+      console.error('加载固定路线失败:', error);
+    }
+  };
 
   const loadRideRequests = async () => {
     try {
@@ -160,10 +178,14 @@ const PassengerService: React.FC = () => {
     if (!selectedDestination) {
       return [];
     }
-    // 按目的地过滤请求：只显示与当前选定目的地相关的订单
+    // 按目的地ID过滤请求：通过fixed_route_id关联到目的地
     const destinationFilteredRequests = requests.filter(req => {
-      return req.start_location.includes(selectedDestination.name) || 
-             req.end_location.includes(selectedDestination.name);
+      // 如果没有固定路线ID，显示所有请求
+      if (!req.fixed_route_id) return true;
+      
+      // 查找对应的固定路线
+      const route = fixedRoutes.find(route => route.id === req.fixed_route_id);
+      return route && route.destination_id === selectedDestination.id;
     });
     
     return destinationFilteredRequests.map(req => {
