@@ -520,19 +520,6 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                 选择固定路线
               </Label>
               
-              {/* 显示调试信息 */}
-              {selectedDestination && (
-                <div className="text-xs text-gray-600 bg-gray-100 p-2 rounded">
-                  <div>当前目的地: {selectedDestination.name}</div>
-                  <div>目的地ID: {selectedDestination.id}</div>
-                  <div>可用路线数量: {fixedRoutes.length}</div>
-                  {fixedRoutes.length === 0 && (
-                    <div className="text-red-600 mt-1">
-                      ⚠️ 未找到相关路线，请检查路线配置
-                    </div>
-                  )}
-                </div>
-              )}
               
               <Select
                 value={formData.fixed_route_id}
