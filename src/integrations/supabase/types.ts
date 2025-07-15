@@ -145,29 +145,41 @@ export type Database = {
         Row: {
           address: string
           admin_user_id: string | null
+          approval_status: string | null
           created_at: string
           description: string | null
           id: string
           is_active: boolean | null
           name: string
+          service_days: Json | null
+          service_end_time: string | null
+          service_start_time: string | null
         }
         Insert: {
           address: string
           admin_user_id?: string | null
+          approval_status?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          service_days?: Json | null
+          service_end_time?: string | null
+          service_start_time?: string | null
         }
         Update: {
           address?: string
           admin_user_id?: string | null
+          approval_status?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          service_days?: Json | null
+          service_end_time?: string | null
+          service_start_time?: string | null
         }
         Relationships: [
           {
@@ -263,6 +275,7 @@ export type Database = {
         Row: {
           access_code: string
           created_at: string
+          destination_id: string | null
           id: string
           role: string | null
           updated_at: string
@@ -271,6 +284,7 @@ export type Database = {
         Insert: {
           access_code?: string
           created_at?: string
+          destination_id?: string | null
           id?: string
           role?: string | null
           updated_at?: string
@@ -279,22 +293,33 @@ export type Database = {
         Update: {
           access_code?: string
           created_at?: string
+          destination_id?: string | null
           id?: string
           role?: string | null
           updated_at?: string
           wallet_address?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "preset_destinations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicles: {
         Row: {
           created_at: string
+          current_status: string | null
           destination_id: string | null
           discount_percentage: number | null
           driver_name: string
           driver_phone: string | null
           id: string
           is_active: boolean | null
+          last_trip_end_time: string | null
           license_plate: string
           max_passengers: number
           trunk_height_cm: number
@@ -302,15 +327,19 @@ export type Database = {
           trunk_width_cm: number
           updated_at: string
           user_id: string | null
+          work_end_time: string | null
+          work_start_time: string | null
         }
         Insert: {
           created_at?: string
+          current_status?: string | null
           destination_id?: string | null
           discount_percentage?: number | null
           driver_name: string
           driver_phone?: string | null
           id?: string
           is_active?: boolean | null
+          last_trip_end_time?: string | null
           license_plate: string
           max_passengers?: number
           trunk_height_cm?: number
@@ -318,15 +347,19 @@ export type Database = {
           trunk_width_cm?: number
           updated_at?: string
           user_id?: string | null
+          work_end_time?: string | null
+          work_start_time?: string | null
         }
         Update: {
           created_at?: string
+          current_status?: string | null
           destination_id?: string | null
           discount_percentage?: number | null
           driver_name?: string
           driver_phone?: string | null
           id?: string
           is_active?: boolean | null
+          last_trip_end_time?: string | null
           license_plate?: string
           max_passengers?: number
           trunk_height_cm?: number
@@ -334,6 +367,8 @@ export type Database = {
           trunk_width_cm?: number
           updated_at?: string
           user_id?: string | null
+          work_end_time?: string | null
+          work_start_time?: string | null
         }
         Relationships: [
           {
@@ -424,6 +459,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_update_vehicle_availability: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_or_create_user_by_access_code: {
         Args: { input_access_code: string }
         Returns: string
@@ -436,9 +475,17 @@ export type Database = {
         Args: { input_access_code: string; admin_user_id: string }
         Returns: boolean
       }
+      is_service_time_active: {
+        Args: { dest_id: string }
+        Returns: boolean
+      }
       set_config: {
         Args: { setting_name: string; setting_value: string }
         Returns: undefined
+      }
+      user_has_destination_access: {
+        Args: { user_access_code: string; dest_id: string }
+        Returns: boolean
       }
     }
     Enums: {
