@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserRole = 'passenger' | 'driver' | 'owner' | 'admin';
+export type UserRole = 'passenger' | 'driver' | 'admin';
 
 export interface UserProfile {
   id: string;
@@ -14,22 +13,10 @@ export interface UserProfile {
 }
 
 export const useUserProfile = () => {
-  const { userProfile: accessCodeProfile, accessCode } = useAccessCode();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    if (accessCodeProfile) {
-      setProfile(accessCodeProfile);
-      setLoading(false);
-    } else if (accessCode) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-      setLoading(false);
-    }
-  }, [accessCodeProfile, accessCode]);
+  const [error, setError] = useState<string | null>(null);
+  const { accessCode } = useAccessCode();
 
   const fetchProfile = async () => {
     if (!accessCode) {
@@ -40,46 +27,59 @@ export const useUserProfile = () => {
 
     try {
       setLoading(true);
+      setError(null);
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('access_code', accessCode)
-        .maybeSingle();
+        .single();
 
       if (error) {
-        throw error;
-      }
+        if (error.code === 'PGRST116') {
+          // 用户不存在，创建新用户
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert([{ access_code: accessCode }])
+            .select()
+            .single();
 
-      setProfile(data);
-      setError(null);
-    } catch (err) {
-      setError(err as Error);
+          if (createError) throw createError;
+          setProfile(newUser);
+        } else {
+          throw error;
+        }
+      } else {
+        setProfile(data);
+      }
+    } catch (err: any) {
       console.error('获取用户资料失败:', err);
+      setError(err.message || '获取用户资料失败');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchProfile();
+  }, [accessCode]);
+
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!accessCode || !profile) return;
+    if (!profile) throw new Error('No profile found');
 
     try {
       const { data, error } = await supabase
         .from('users')
-        .upsert({
-          ...profile,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updates)
+        .eq('id', profile.id)
         .select()
         .single();
 
       if (error) throw error;
-
       setProfile(data);
       return data;
-    } catch (err) {
-      setError(err as Error);
+    } catch (err: any) {
+      console.error('更新用户资料失败:', err);
       throw err;
     }
   };
@@ -89,7 +89,7 @@ export const useUserProfile = () => {
   };
 
   const isDriver = (): boolean => hasRole('driver');
-  const isOwner = (): boolean => hasRole('owner');
+  const isAdmin = (): boolean => hasRole('admin');
   const isPassenger = (): boolean => hasRole('passenger');
 
   return {
@@ -100,7 +100,7 @@ export const useUserProfile = () => {
     refetch: fetchProfile,
     hasRole,
     isDriver,
-    isOwner,
+    isAdmin,
     isPassenger,
   };
 };
