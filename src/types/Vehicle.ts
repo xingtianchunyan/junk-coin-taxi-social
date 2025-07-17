@@ -13,6 +13,5 @@ export interface Vehicle {
   updated_at: Date;
   user_id?: string;
   access_code?: string;
-  destination_id?: string;
 }
 

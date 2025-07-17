@@ -186,8 +186,6 @@ const CommunityManagement: React.FC = () => {
         setRoutes(routeData);
         setVehicles(vehicleData);
         setWalletAddresses(walletData);
-        
-        console.log('加载的车辆数据:', vehicleData);
 
         // 检查是否需要显示一键返程按钮
         await checkReturnButtonVisibility(communityDestination.id, routeData);
