@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LogIn, UserPlus, Copy, Check } from 'lucide-react';
+import { LogIn, UserPlus, Copy, Check, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,12 +13,14 @@ interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAuthenticated: (accessCode: string, role?: string) => void;
+  onSuperAdminClick?: () => void;
 }
 
 const AuthDialog: React.FC<AuthDialogProps> = ({
   open,
   onOpenChange,
-  onAuthenticated
+  onAuthenticated,
+  onSuperAdminClick
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'confirm'>('login');
   const [accessCode, setAccessCode] = useState('');
@@ -239,8 +241,18 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
         className="sm:max-w-md" 
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="relative">
           <DialogTitle>欢迎使用山寨币社区拼车</DialogTitle>
+          {onSuperAdminClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-6 w-6"
+              onClick={onSuperAdminClick}
+            >
+              <Shield className="h-4 w-4" />
+            </Button>
+          )}
         </DialogHeader>
         
         {mode === 'login' && renderLoginForm()}

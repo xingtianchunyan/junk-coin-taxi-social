@@ -148,6 +148,7 @@ const RoleSelection: React.FC = () => {
         open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
         onAuthenticated={handleAuthenticated}
+        onSuperAdminClick={() => navigate('/super-admin')}
       />
 
       {/* 角色选择对话框 */}

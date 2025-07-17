@@ -10,6 +10,7 @@ import RoleSelection from "./pages/RoleSelection";
 import PassengerService from "./pages/PassengerService";
 import WorkSchedule from "./pages/WorkSchedule";
 import CommunityManagement from "./pages/CommunityManagement";
+import SuperAdmin from "./pages/SuperAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/passenger" element={<PassengerService />} />
               <Route path="/work-schedule" element={<WorkSchedule />} />
               <Route path="/community-management" element={<CommunityManagement />} />
+              <Route path="/super-admin" element={<SuperAdmin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
