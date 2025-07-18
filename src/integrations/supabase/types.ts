@@ -14,30 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          password_hash: string
-          username: string
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          password_hash: string
-          username: string
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          password_hash?: string
-          username?: string
-        }
-        Relationships: []
-      }
       fixed_routes: {
         Row: {
           created_at: string
@@ -467,10 +443,6 @@ export type Database = {
         Args: { input_access_code: string }
         Returns: string
       }
-      is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
       is_community_admin_by_access_code: {
         Args: { input_access_code: string; admin_user_id: string }
         Returns: boolean
@@ -479,8 +451,16 @@ export type Database = {
         Args: { dest_id: string }
         Returns: boolean
       }
+      is_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       set_config: {
         Args: { setting_name: string; setting_value: string }
+        Returns: undefined
+      }
+      set_super_admin_verified: {
+        Args: { is_verified: boolean }
         Returns: undefined
       }
       user_has_destination_access: {

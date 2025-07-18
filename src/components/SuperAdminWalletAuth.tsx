@@ -5,6 +5,8 @@ import { Wallet, Shield, Loader2 } from 'lucide-react';
 import { ethers } from 'ethers';
 import detectEthereumProvider from '@metamask/detect-provider';
 import { toast } from 'sonner';
+import { SUPER_ADMIN_CONFIG, isAuthorizedSuperAdmin } from '@/config/admin-config';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SuperAdminWalletAuthProps {
   onAuthenticated: (walletAddress: string, signature: string) => void;
@@ -56,16 +58,22 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
     try {
       setIsAuthenticating(true);
       
+      // 验证钱包地址是否为授权的超级管理员
+      if (!isAuthorizedSuperAdmin(walletAddress)) {
+        toast.error('未授权的钱包地址');
+        return;
+      }
+      
       const provider = await detectEthereumProvider();
       const ethProvider = new ethers.BrowserProvider(provider as any);
       const signer = await ethProvider.getSigner();
       
       // 创建签名消息
-      const message = `超级管理员身份验证\n时间戳: ${Date.now()}\n钱包地址: ${walletAddress}`;
+      const message = `${SUPER_ADMIN_CONFIG.SIGNATURE_MESSAGE}\n时间戳: ${Date.now()}\n钱包地址: ${walletAddress}`;
       const signature = await signer.signMessage(message);
       
-      // TODO: 这里可以添加服务器验证逻辑来验证钱包地址是否为授权的超级管理员地址
-      // 现在暂时允许任何钱包地址作为超级管理员进行测试
+      // 设置数据库会话的超级管理员验证状态
+      await supabase.rpc('set_super_admin_verified', { is_verified: true });
       
       onAuthenticated(walletAddress, signature);
       toast.success('身份验证成功');

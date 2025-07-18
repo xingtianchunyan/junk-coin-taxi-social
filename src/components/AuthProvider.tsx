@@ -35,24 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check if user is admin
-        if (session?.user) {
-          setTimeout(async () => {
-            try {
-              const { data, error } = await supabase
-                .from('admin_users')
-                .select('id')
-                .eq('id', session.user.id)
-                .single();
-              
-              setIsAdmin(!error && !!data);
-            } catch (error) {
-              setIsAdmin(false);
-            }
-          }, 0);
-        } else {
-          setIsAdmin(false);
-        }
+        // 超级管理员认证现在通过钱包签名验证，不再使用数据库表
+        setIsAdmin(false);
         
         setIsLoading(false);
       }
