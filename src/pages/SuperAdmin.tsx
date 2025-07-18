@@ -52,7 +52,7 @@ const SuperAdmin: React.FC = () => {
           destination_id,
           created_at,
           contact,
-          preset_destinations (
+          preset_destinations!preset_destinations_admin_user_id_fkey (
             name
           )
         `)
@@ -69,7 +69,9 @@ const SuperAdmin: React.FC = () => {
         destination_id: user.destination_id,
         created_at: user.created_at,
         contact: user.contact,
-        destination_name: user.preset_destinations?.name || '未设置'
+        destination_name: Array.isArray(user.preset_destinations) && user.preset_destinations.length > 0 
+          ? user.preset_destinations[0].name 
+          : '未设置'
       })) || [];
 
       setAdminRequests(formattedRequests);
