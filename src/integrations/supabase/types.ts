@@ -250,6 +250,7 @@ export type Database = {
       users: {
         Row: {
           access_code: string
+          contact: string | null
           created_at: string
           destination_id: string | null
           id: string
@@ -259,6 +260,7 @@ export type Database = {
         }
         Insert: {
           access_code?: string
+          contact?: string | null
           created_at?: string
           destination_id?: string | null
           id?: string
@@ -268,6 +270,7 @@ export type Database = {
         }
         Update: {
           access_code?: string
+          contact?: string | null
           created_at?: string
           destination_id?: string | null
           id?: string

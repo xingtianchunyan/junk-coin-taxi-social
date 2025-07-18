@@ -14,8 +14,8 @@ interface CommunityAdminRequest {
   access_code: string;
   destination_id: string | null;
   created_at: string;
+  contact: string | null;
   destination_name?: string;
-  contact_info?: string;
 }
 
 const SuperAdmin: React.FC = () => {
@@ -51,9 +51,9 @@ const SuperAdmin: React.FC = () => {
           access_code,
           destination_id,
           created_at,
+          contact,
           preset_destinations (
-            name,
-            address
+            name
           )
         `)
         .eq('role', 'community_admin')
@@ -68,8 +68,8 @@ const SuperAdmin: React.FC = () => {
         access_code: user.access_code,
         destination_id: user.destination_id,
         created_at: user.created_at,
-        destination_name: user.preset_destinations?.name || '未设置',
-        contact_info: user.preset_destinations?.address || '未设置'
+        contact: user.contact,
+        destination_name: user.preset_destinations?.name || '未设置'
       })) || [];
 
       setAdminRequests(formattedRequests);
@@ -209,7 +209,7 @@ const SuperAdmin: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{request.destination_name}</TableCell>
-                        <TableCell>{request.contact_info}</TableCell>
+                        <TableCell>{request.contact || '未设置'}</TableCell>
                         <TableCell>{formatDate(request.created_at)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-2">
