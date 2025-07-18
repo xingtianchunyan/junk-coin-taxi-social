@@ -2,7 +2,7 @@
 // 固定钱包地址用于身份验证，提升安全性
 export const SUPER_ADMIN_CONFIG = {
   // 授权的超级管理员钱包地址（请替换为您的实际钱包地址）
-  WALLET_ADDRESS: '0x1234567890123456789012345678901234567890',
+  WALLET_ADDRESS: '0xD921050BA7b2A8dDC7EcEb390AF3CDD2758FBf8f',
   // 显示名称
   DISPLAY_NAME: 'Super Admin',
   // 签名消息模板
