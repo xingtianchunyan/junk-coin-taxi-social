@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet, Shield, Loader2 } from 'lucide-react';
+import { Wallet, Shield, Loader2, Home } from 'lucide-react';
 import { ethers } from 'ethers';
 import detectEthereumProvider from '@metamask/detect-provider';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { SUPER_ADMIN_CONFIG, isAuthorizedSuperAdmin } from '@/config/admin-config';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +17,7 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const navigate = useNavigate();
 
   const connectWallet = async () => {
     try {
@@ -138,11 +140,12 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
               </Button>
               
               <Button 
-                onClick={() => setWalletAddress(null)} 
+                onClick={() => navigate('/')} 
                 variant="outline"
-                className="w-full"
+                className="w-full flex items-center gap-2"
               >
-                切换钱包
+                <Home className="h-4 w-4" />
+                返回首页
               </Button>
             </div>
           )}
