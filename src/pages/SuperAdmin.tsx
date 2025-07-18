@@ -11,11 +11,12 @@ import { useNavigate } from 'react-router-dom';
 
 interface CommunityAdminRequest {
   id: string;
-  access_code: string;
-  destination_id: string | null;
-  created_at: string;
+  admin_user_id: string | null;
+  name: string;
+  address: string;
   contact: string | null;
-  destination_name?: string;
+  is_approved: boolean;
+  created_at: string;
 }
 
 const SuperAdmin: React.FC = () => {
@@ -43,38 +44,25 @@ const SuperAdmin: React.FC = () => {
     try {
       setLoading(true);
       
-      // 查询待审批的社区管理员申请
-      const { data: users, error } = await supabase
-        .from('users')
+      // 直接查询preset_destinations表获取所有信息（包括已被批准的）
+      const { data: destinations, error } = await supabase
+        .from('preset_destinations')
         .select(`
           id,
-          access_code,
-          destination_id,
-          created_at,
+          admin_user_id,
+          name,
+          address,
           contact,
-          preset_destinations!preset_destinations_admin_user_id_fkey (
-            name
-          )
+          is_approved,
+          created_at
         `)
-        .eq('role', 'community_admin')
         .order('created_at', { ascending: false });
 
       if (error) {
         throw error;
       }
 
-      const formattedRequests = users?.map(user => ({
-        id: user.id,
-        access_code: user.access_code,
-        destination_id: user.destination_id,
-        created_at: user.created_at,
-        contact: user.contact,
-        destination_name: Array.isArray(user.preset_destinations) && user.preset_destinations.length > 0 
-          ? user.preset_destinations[0].name 
-          : '未设置'
-      })) || [];
-
-      setAdminRequests(formattedRequests);
+      setAdminRequests(destinations || []);
     } catch (error) {
       console.error('加载社区管理员申请失败:', error);
       toast.error('加载数据失败');
@@ -83,11 +71,19 @@ const SuperAdmin: React.FC = () => {
     }
   };
 
-  const handleApprove = async (userId: string, accessCode: string) => {
+  const handleApprove = async (destinationId: string, destinationName: string) => {
     try {
-      // 这里可以添加审批逻辑，比如更新用户状态
-      // 目前暂时只显示成功消息
-      toast.success(`已批准访问码 ${accessCode.slice(0, 8)}... 的社区管理员申请`);
+      // 更新目的地状态为已批准
+      const { error } = await supabase
+        .from('preset_destinations')
+        .update({ is_approved: true })
+        .eq('id', destinationId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success(`已批准目的地"${destinationName}"的申请`);
       
       // 刷新列表
       await loadAdminRequests();
@@ -97,19 +93,19 @@ const SuperAdmin: React.FC = () => {
     }
   };
 
-  const handleReject = async (userId: string, accessCode: string) => {
+  const handleReject = async (destinationId: string, destinationName: string) => {
     try {
-      // 删除用户记录
+      // 删除目的地记录
       const { error } = await supabase
-        .from('users')
+        .from('preset_destinations')
         .delete()
-        .eq('id', userId);
+        .eq('id', destinationId);
 
       if (error) {
         throw error;
       }
 
-      toast.success(`已拒绝访问码 ${accessCode.slice(0, 8)}... 的社区管理员申请`);
+      toast.success(`已拒绝目的地"${destinationName}"的申请`);
       
       // 刷新列表
       await loadAdminRequests();
@@ -125,10 +121,6 @@ const SuperAdmin: React.FC = () => {
     setIsAuthenticated(false);
     setWalletAddress(null);
     navigate('/');
-  };
-
-  const formatAccessCode = (code: string) => {
-    return `${code.slice(0, 8)}...${code.slice(-4)}`;
   };
 
   const formatAddress = (address: string) => {
@@ -172,10 +164,10 @@ const SuperAdmin: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              社区管理员访问码审批
+              社区目的地管理
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              审批社区管理员的访问码申请，管理社区管理员权限
+              管理社区目的地申请，审批和查看所有目的地状态
             </p>
           </CardHeader>
           
@@ -188,49 +180,58 @@ const SuperAdmin: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>访问码</TableHead>
-                    <TableHead>创建目的地</TableHead>
+                    <TableHead>目的地名称</TableHead>
+                    <TableHead>目的地地址</TableHead>
                     <TableHead>社区管理员联系方式</TableHead>
-                    <TableHead>访问码创建时间</TableHead>
+                    <TableHead>申请时间</TableHead>
+                    <TableHead>状态</TableHead>
                     <TableHead className="text-center">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {adminRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        暂无待审批的社区管理员申请
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        暂无社区目的地申请
                       </TableCell>
                     </TableRow>
                   ) : (
                     adminRequests.map((request) => (
                       <TableRow key={request.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono">
-                            {formatAccessCode(request.access_code)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{request.destination_name}</TableCell>
+                        <TableCell className="font-medium">{request.name}</TableCell>
+                        <TableCell>{request.address}</TableCell>
                         <TableCell>{request.contact || '未设置'}</TableCell>
                         <TableCell>{formatDate(request.created_at)}</TableCell>
                         <TableCell>
+                          <Badge variant={request.is_approved ? "default" : "secondary"}>
+                            {request.is_approved ? "已批准" : "待审批"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center justify-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleApprove(request.id, request.access_code)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleReject(request.id, request.access_code)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            {!request.is_approved && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={() => handleApprove(request.id, request.name)}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleReject(request.id, request.name)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {request.is_approved && (
+                              <span className="text-sm text-muted-foreground">已批准</span>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -121,11 +121,12 @@ export type Database = {
         Row: {
           address: string
           admin_user_id: string | null
-          approval_status: string | null
+          contact: string | null
           created_at: string
           description: string | null
           id: string
           is_active: boolean | null
+          is_approved: boolean | null
           name: string
           service_days: Json | null
           service_end_time: string | null
@@ -134,11 +135,12 @@ export type Database = {
         Insert: {
           address: string
           admin_user_id?: string | null
-          approval_status?: string | null
+          contact?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_approved?: boolean | null
           name: string
           service_days?: Json | null
           service_end_time?: string | null
@@ -147,11 +149,12 @@ export type Database = {
         Update: {
           address?: string
           admin_user_id?: string | null
-          approval_status?: string | null
+          contact?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_approved?: boolean | null
           name?: string
           service_days?: Json | null
           service_end_time?: string | null
@@ -250,7 +253,6 @@ export type Database = {
       users: {
         Row: {
           access_code: string
-          contact: string | null
           created_at: string
           destination_id: string | null
           id: string
@@ -260,7 +262,6 @@ export type Database = {
         }
         Insert: {
           access_code?: string
-          contact?: string | null
           created_at?: string
           destination_id?: string | null
           id?: string
@@ -270,7 +271,6 @@ export type Database = {
         }
         Update: {
           access_code?: string
-          contact?: string | null
           created_at?: string
           destination_id?: string | null
           id?: string
