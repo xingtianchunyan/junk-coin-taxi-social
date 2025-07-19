@@ -39,6 +39,12 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
     }
     setLoading(true);
     try {
+      // 先设置会话访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode.trim()
+      });
+
       // 检查访问码是否存在
       const {
         data: user,
@@ -74,6 +80,12 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
     try {
       // 生成新的访问码
       const newCode = crypto.randomUUID();
+
+      // 先设置会话访问码，然后创建用户
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: newCode
+      });
 
       // 创建新用户
       const {
