@@ -474,6 +474,10 @@ export type Database = {
         Args: { user_access_code: string; dest_id: string }
         Returns: boolean
       }
+      validate_access_code: {
+        Args: { input_access_code: string }
+        Returns: Json
+      }
     }
     Enums: {
       user_role: "passenger" | "driver" | "community_admin" | "super_admin"

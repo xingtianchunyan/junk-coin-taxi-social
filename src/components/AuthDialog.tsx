@@ -39,23 +39,25 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
     }
     setLoading(true);
     try {
-      // 先设置会话访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode.trim()
+      // 使用验证函数检查访问码是否存在
+      const { data: validationResult, error: validationError } = await supabase.rpc('validate_access_code', {
+        input_access_code: accessCode.trim()
       });
 
-      // 检查访问码是否存在
-      const {
-        data: user,
-        error
-      } = await supabase.from('users').select('*').eq('access_code', accessCode.trim()).single();
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (validationError) {
+        throw validationError;
       }
-      if (user) {
-        // 用户存在，直接登录
-        onAuthenticated(accessCode.trim(), user.role);
+
+      const result = validationResult as { exists?: boolean; role?: string };
+      if (result?.exists) {
+        // 访问码存在，设置会话访问码
+        await supabase.rpc('set_config', {
+          setting_name: 'app.current_access_code',
+          setting_value: accessCode.trim()
+        });
+
+        // 登录成功
+        onAuthenticated(accessCode.trim(), result.role);
         onOpenChange(false);
       } else {
         toast({
