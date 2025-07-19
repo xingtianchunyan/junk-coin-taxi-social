@@ -442,6 +442,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      get_current_access_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_or_create_user_by_access_code: {
         Args: { input_access_code: string }
         Returns: string
