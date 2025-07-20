@@ -151,6 +151,11 @@ const PassengerService: React.FC = () => {
         setting_value: accessCode
       });
 
+      // 验证是否有路线可用
+      if (!fixedRoutes || fixedRoutes.length === 0) {
+        throw new Error('未找到相关路线');
+      }
+
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
 
       // 重新加载数据以获取最新的组队信息

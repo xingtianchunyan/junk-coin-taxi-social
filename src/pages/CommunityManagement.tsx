@@ -472,35 +472,9 @@ const CommunityManagement: React.FC = () => {
 
   const handleDeleteVehicle = async (vehicleId: string) => {
     try {
-      // 先获取车辆的user_id
-      const { data: vehicle, error: fetchError } = await supabase
-        .from('vehicles')
-        .select('user_id')
-        .eq('id', vehicleId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // 删除车辆记录（真删除）
-      const { error: vehicleError } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('id', vehicleId);
-
-      if (vehicleError) throw vehicleError;
-
-      // 如果有关联的用户，也删除用户记录
-      if (vehicle?.user_id) {
-        const { error: userError } = await supabase
-          .from('users')
-          .delete()
-          .eq('id', vehicle.user_id);
-
-        if (userError) {
-          console.error('删除用户记录失败:', userError);
-        }
-      }
-
+      // 使用vehicleService来删除车辆和关联用户
+      await rideRequestService.deleteVehicle(vehicleId);
+      
       toast({
         title: "车辆已删除",
         description: "车辆及司机账户已成功删除",

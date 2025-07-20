@@ -295,6 +295,38 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 更新司机服务时间
+  const updateWorkHours = async () => {
+    if (!driverVehicle) return;
+    
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          work_start_time: newRoute.hub, // 临时使用这个字段存储开始时间
+          work_end_time: newRoute.destination // 临时使用这个字段存储结束时间
+        })
+        .eq('id', driverVehicle.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "工作时间已更新",
+        description: "您的服务时间设置已保存"
+      });
+      
+      // 重新加载车辆信息
+      await loadDriverVehicle();
+    } catch (error) {
+      console.error('更新工作时间失败:', error);
+      toast({
+        title: "更新失败",
+        description: "无法更新工作时间",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
@@ -329,6 +361,45 @@ const WorkSchedule: React.FC = () => {
           </p>
         )}
       </div>
+
+      {/* 司机服务时间设置 */}
+      {driverVehicle && (
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">设置服务时间</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="work_start">开始时间</Label>
+                <Input
+                  id="work_start"
+                  type="time"
+                  value={newRoute.hub}
+                  onChange={(e) => setNewRoute({...newRoute, hub: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="work_end">结束时间</Label>
+                <Input
+                  id="work_end"
+                  type="time"
+                  value={newRoute.destination}
+                  onChange={(e) => setNewRoute({...newRoute, destination: e.target.value})}
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={updateWorkHours} 
+              className="mt-4"
+              disabled={!newRoute.hub || !newRoute.destination}
+            >
+              更新服务时间
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 智能分组乘客列表 */}
       <div className="space-y-8">
