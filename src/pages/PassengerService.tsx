@@ -48,10 +48,31 @@ const PassengerService: React.FC = () => {
   const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
 
   useEffect(() => {
-    loadRideRequests();
-    loadVehicles();
-    loadFixedRoutes();
-  }, []);
+    const initializeSession = async () => {
+      if (accessCode) {
+        try {
+          // 设置当前会话的访问码到数据库配置中
+          await supabase.rpc('set_config', {
+            setting_name: 'app.current_access_code',
+            setting_value: accessCode
+          });
+          console.log('已设置当前访问码到会话中');
+        } catch (error) {
+          console.error('设置访问码失败:', error);
+          toast({
+            title: "初始化失败",
+            description: "无法设置访问码，请刷新页面重试",
+            variant: "destructive"
+          });
+        }
+      }
+      loadRideRequests();
+      loadVehicles();
+      loadFixedRoutes();
+    };
+    
+    initializeSession();
+  }, [accessCode, toast]);
 
   const loadFixedRoutes = async () => {
     try {

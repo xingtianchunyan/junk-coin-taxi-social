@@ -53,6 +53,12 @@ const WorkSchedule: React.FC = () => {
   const loadDriverVehicle = async () => {
     if (!accessCode) return;
     try {
+      // 设置当前访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode
+      });
+
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')

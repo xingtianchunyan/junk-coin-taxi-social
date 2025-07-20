@@ -11,13 +11,12 @@ import { useNavigate } from 'react-router-dom';
 
 interface CommunityAdminRequest {
   id: string;
-  admin_user_id: string | null;
   name: string;
   address: string;
   contact: string | null;
   is_approved: boolean;
   created_at: string;
-  admin_access_code?: string | null;
+  admin_access_code: string | null;
 }
 
 const SuperAdmin: React.FC = () => {
@@ -45,34 +44,15 @@ const SuperAdmin: React.FC = () => {
     try {
       setLoading(true);
       
-      // 查询目的地信息并关联用户访问码
+      // 使用新的数据库函数获取目的地和管理员访问码
       const { data: destinations, error } = await supabase
-        .from('preset_destinations')
-        .select(`
-          id,
-          admin_user_id,
-          name,
-          address,
-          contact,
-          is_approved,
-          created_at,
-          users:admin_user_id (
-            access_code
-          )
-        `)
-        .order('created_at', { ascending: false });
+        .rpc('get_destinations_with_admin_codes');
 
       if (error) {
         throw error;
       }
 
-      // 转换数据格式，添加访问码字段
-      const requestsWithAccessCode = destinations?.map(dest => ({
-        ...dest,
-        admin_access_code: dest.users?.access_code || null
-      })) || [];
-
-      setAdminRequests(requestsWithAccessCode);
+      setAdminRequests(destinations || []);
     } catch (error) {
       console.error('加载社区管理员申请失败:', error);
       toast.error('加载数据失败');

@@ -146,11 +146,32 @@ const CommunityManagement: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (accessCode) {
-      loadCommunityData();
-      loadCurrentUserWallet();
-    }
-  }, [accessCode]);
+    const setupSession = async () => {
+      if (accessCode) {
+        try {
+          // 设置当前会话的访问码到数据库配置中
+          await supabase.rpc('set_config', {
+            setting_name: 'app.current_access_code',
+            setting_value: accessCode
+          });
+          console.log('已设置当前访问码到会话中');
+          
+          // 加载社区管理数据
+          await loadCommunityData();
+          await loadCurrentUserWallet();
+        } catch (error) {
+          console.error('设置访问码失败:', error);
+          toast({
+            title: "初始化失败",
+            description: "无法初始化社区管理页面，请刷新重试",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    setupSession();
+  }, [accessCode, toast]);
 
   // 加载当前用户的钱包地址
   const loadCurrentUserWallet = async () => {

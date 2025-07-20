@@ -458,6 +458,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_destinations_with_admin_codes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          address: string
+          contact: string
+          is_approved: boolean
+          created_at: string
+          admin_access_code: string
+        }[]
+      }
       get_or_create_user_by_access_code: {
         Args: { input_access_code: string }
         Returns: string
