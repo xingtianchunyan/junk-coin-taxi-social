@@ -39,11 +39,8 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
   const loadDestinations = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('preset_destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      // 使用专门的函数获取已批准的目的地，绕过RLS限制
+      const { data, error } = await supabase.rpc('get_approved_destinations');
 
       if (error) throw error;
       setDestinations(data || []);

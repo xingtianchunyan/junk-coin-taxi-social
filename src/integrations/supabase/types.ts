@@ -442,6 +442,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      get_approved_destinations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          address: string
+          description: string
+          is_approved: boolean
+          is_active: boolean
+          created_at: string
+        }[]
+      }
       get_current_access_code: {
         Args: Record<PropertyKey, never>
         Returns: string
