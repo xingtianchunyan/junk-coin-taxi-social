@@ -358,6 +358,12 @@ const CommunityManagement: React.FC = () => {
     }
 
     try {
+      // 设置会话访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode
+      });
+
       const createdWallets = [];
 
       // 区块链支付
@@ -386,7 +392,10 @@ const CommunityManagement: React.FC = () => {
       else if (newPayment.pay_way === 2 && selectedExchangeIds.length > 0) {
         for (const exchangeId of selectedExchangeIds) {
           const address = exchangeAddresses[exchangeId];
-          if (!address) continue;
+          if (!address || address.trim() === '') {
+            console.warn(`空的交易所地址，跳过交易所 ${exchangeId}`);
+            continue;
+          }
 
           for (const routeId of selectedRouteIds) {
             const walletData = {
@@ -394,7 +403,7 @@ const CommunityManagement: React.FC = () => {
               chain_name: 2, // 默认值
               exchange_name: exchangeId,
               symbol: newPayment.symbol,
-              address: address,
+              address: address.trim(),
               route_id: routeId,
               vehicle_id: selectedVehicleId
             };

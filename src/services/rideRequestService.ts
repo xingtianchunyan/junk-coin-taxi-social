@@ -24,6 +24,12 @@ export class RideRequestService {
 
   // 创建用车需求
   async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, accessCode: string): Promise<RideRequest> {
+    // 确保会话访问码已设置
+    await supabase.rpc('set_config', {
+      setting_name: 'app.current_access_code',
+      setting_value: accessCode
+    });
+
     const { data, error } = await supabase
       .from('ride_requests')
       .insert([{
@@ -37,7 +43,10 @@ export class RideRequestService {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('创建用车需求失败:', error);
+      throw error;
+    }
 
     const request: RideRequest = {
       ...data,
