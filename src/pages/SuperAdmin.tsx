@@ -17,6 +17,7 @@ interface CommunityAdminRequest {
   contact: string | null;
   is_approved: boolean;
   created_at: string;
+  admin_access_code?: string | null;
 }
 
 const SuperAdmin: React.FC = () => {
@@ -44,7 +45,7 @@ const SuperAdmin: React.FC = () => {
     try {
       setLoading(true);
       
-      // 直接查询preset_destinations表获取所有信息（包括已被批准的）
+      // 查询目的地信息并关联用户访问码
       const { data: destinations, error } = await supabase
         .from('preset_destinations')
         .select(`
@@ -54,7 +55,10 @@ const SuperAdmin: React.FC = () => {
           address,
           contact,
           is_approved,
-          created_at
+          created_at,
+          users:admin_user_id (
+            access_code
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -62,7 +66,13 @@ const SuperAdmin: React.FC = () => {
         throw error;
       }
 
-      setAdminRequests(destinations || []);
+      // 转换数据格式，添加访问码字段
+      const requestsWithAccessCode = destinations?.map(dest => ({
+        ...dest,
+        admin_access_code: dest.users?.access_code || null
+      })) || [];
+
+      setAdminRequests(requestsWithAccessCode);
     } catch (error) {
       console.error('加载社区管理员申请失败:', error);
       toast.error('加载数据失败');
@@ -183,6 +193,7 @@ const SuperAdmin: React.FC = () => {
                     <TableHead>目的地名称</TableHead>
                     <TableHead>目的地地址</TableHead>
                     <TableHead>社区管理员联系方式</TableHead>
+                    <TableHead>管理员访问码</TableHead>
                     <TableHead>申请时间</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead className="text-center">操作</TableHead>
@@ -191,7 +202,7 @@ const SuperAdmin: React.FC = () => {
                 <TableBody>
                   {adminRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         暂无社区目的地申请
                       </TableCell>
                     </TableRow>
@@ -201,6 +212,15 @@ const SuperAdmin: React.FC = () => {
                         <TableCell className="font-medium">{request.name}</TableCell>
                         <TableCell>{request.address}</TableCell>
                         <TableCell>{request.contact || '未设置'}</TableCell>
+                        <TableCell>
+                          {request.admin_access_code ? (
+                            <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                              {request.admin_access_code}
+                            </code>
+                          ) : (
+                            <span className="text-gray-400">未关联</span>
+                          )}
+                        </TableCell>
                         <TableCell>{formatDate(request.created_at)}</TableCell>
                         <TableCell>
                           <Badge variant={request.is_approved ? "default" : "secondary"}>

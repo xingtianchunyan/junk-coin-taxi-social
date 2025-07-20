@@ -171,6 +171,12 @@ const CommunityManagement: React.FC = () => {
     
     setLoading(true);
     try {
+      // 设置会话访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode
+      });
+
       // 获取社区管理员管理的目的地
       const communityDestination = await rideRequestService.getCommunityDestination(accessCode);
       setDestination(communityDestination);

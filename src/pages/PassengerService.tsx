@@ -124,12 +124,17 @@ const PassengerService: React.FC = () => {
         return;
       }
 
+      // 设置会话访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode
+      });
+
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
 
       // 重新加载数据以获取最新的组队信息
       await loadRideRequests();
       setShowForm(false);
-
 
       toast({
         title: "用车需求已创建",
