@@ -16,7 +16,7 @@ import { rideRequestService } from '@/services/rideRequestService';
 const Index = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [accessLevel, setAccessLevel] = useState<'public' | 'private' | 'admin'>('public');
+  const [accessLevel, setAccessLevel] = useState<'public' | 'private' | 'community_admin'>('public');
   const [accessCode, setAccessCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -100,14 +100,14 @@ const Index = () => {
     }
   };
 
-  const handleAccessChange = (level: 'public' | 'private' | 'admin', code?: string) => {
+  const handleAccessChange = (level: 'public' | 'private' | 'community_admin', code?: string) => {
     setAccessLevel(level);
     setAccessCode(code || '');
   };
 
   // 根据访问级别过滤和处理数据
   const getFilteredRequests = () => {
-    if (accessLevel === 'admin') {
+    if (accessLevel === 'community_admin') {
       return requests; // 管理员可以看到所有信息
     } else if (accessLevel === 'private' && accessCode) {
       return requests; // 有访问码的用户可以看到所有信息

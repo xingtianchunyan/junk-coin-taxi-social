@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserRole = 'passenger' | 'driver' | 'admin';
+export type UserRole = 'passenger' | 'driver' | 'community_admin';
 
 export interface UserProfile {
   id: string;
@@ -89,7 +89,7 @@ export const useUserProfile = () => {
   };
 
   const isDriver = (): boolean => hasRole('driver');
-  const isAdmin = (): boolean => hasRole('admin');
+  const isAdmin = (): boolean => hasRole('community_admin');
   const isPassenger = (): boolean => hasRole('passenger');
 
   return {

@@ -7,7 +7,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-type UserRole = 'passenger' | 'driver' | 'admin';
+type UserRole = 'passenger' | 'driver' | 'community_admin';
 
 interface RoleSelectorProps {
   onRoleSelected: (roles: UserRole[]) => void;
@@ -27,7 +27,7 @@ const roleConfig = {
     description: '提供驾驶服务，赚取车费收入',
     color: 'bg-green-100 text-green-700',
   },
-  admin: {
+  community_admin: {
     icon: Crown,
     title: '社区管理员',
     description: '管理社区目的地，车辆和路线',
@@ -41,7 +41,7 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
   const { user } = useAuth();
 
   const selectRole = (role: UserRole) => {
-    if (role === 'admin') {
+    if (role === 'community_admin') {
       toast({
         title: "角色限制",
         description: "管理员角色需要特殊权限，请联系系统管理员",

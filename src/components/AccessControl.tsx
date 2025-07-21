@@ -12,8 +12,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { sanitizeTextInput } from '@/utils/inputValidation';
 
 interface AccessControlProps {
-  onAccessChange: (level: 'public' | 'private' | 'admin', accessCode?: string) => void;
-  currentLevel: 'public' | 'private' | 'admin';
+  onAccessChange: (level: 'public' | 'private' | 'community_admin', accessCode?: string) => void;
+  currentLevel: 'public' | 'private' | 'community_admin';
 }
 
 const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLevel }) => {
@@ -26,7 +26,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   useEffect(() => {
     // Update access level based on authentication
     if (user && isAdmin) {
-      onAccessChange('admin');
+      onAccessChange('community_admin');
     } else if (user) {
       onAccessChange('private');
     } else {
@@ -90,7 +90,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
           description: '可以查看完整需求信息',
           color: 'bg-green-100 text-green-700'
         };
-      case 'admin':
+      case 'community_admin':
         return {
           icon: <Shield className="h-4 w-4" />,
           label: '管理员',

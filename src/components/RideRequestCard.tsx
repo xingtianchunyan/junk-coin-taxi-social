@@ -9,7 +9,7 @@ import PaymentDialog from './PaymentDialog';
 interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
-  accessLevel: 'public' | 'private' | 'admin';
+  accessLevel: 'public' | 'private' | 'community_admin';
 }
 
 const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel }) => {
@@ -33,7 +33,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
   };
 
   const canShowDetails = accessLevel !== 'public';
-  const canManage = accessLevel === 'admin';
+  const canManage = accessLevel === 'community_admin';
 
   return (
     <>
