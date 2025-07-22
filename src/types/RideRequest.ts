@@ -74,6 +74,7 @@ export interface PresetDestination {
   address: string;
   description?: string;
   is_active: boolean;
+  is_approved: boolean;
   created_at: Date;
   admin_user_id?: string;
 }

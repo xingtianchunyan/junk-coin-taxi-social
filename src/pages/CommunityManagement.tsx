@@ -245,7 +245,8 @@ const CommunityManagement: React.FC = () => {
 
       const destinationData = {
         ...newDestination,
-        admin_user_id: userId
+        admin_user_id: userId,
+        is_approved: false
       };
 
       const newDest = await rideRequestService.createPresetDestination(destinationData);
@@ -800,6 +801,64 @@ const CommunityManagement: React.FC = () => {
         <div className="text-center">
           <p className="text-gray-600">加载中...</p>
         </div>
+      </div>
+    );
+  }
+
+  // 如果目的地未被批准，显示等待审批界面
+  if (destination && !destination.is_approved) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">社区管理</h1>
+          <div className="flex items-center justify-center gap-4">
+            <p className="text-gray-600">目的地申请管理</p>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </Button>
+          </div>
+        </div>
+
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              等待超级管理员批准
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="p-6 bg-amber-50 rounded-lg text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Building2 className="h-8 w-8 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">目的地申请已提交</h3>
+                <p className="text-amber-700 mb-4">
+                  您的目的地"{destination.name}"申请已成功提交，正在等待超级管理员审核批准。
+                </p>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg border border-amber-200 text-left">
+                <h4 className="font-medium text-gray-800 mb-2">申请信息：</h4>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <p><strong>目的地名称：</strong>{destination.name}</p>
+                  <p><strong>目的地地址：</strong>{destination.address}</p>
+                  {destination.description && (
+                    <p><strong>描述：</strong>{destination.description}</p>
+                  )}
+                  <p><strong>申请时间：</strong>{new Date(destination.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>下一步：</strong>请耐心等待超级管理员审核。审核通过后，您将能够管理该目的地下的路线、车辆和收款方式。
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
