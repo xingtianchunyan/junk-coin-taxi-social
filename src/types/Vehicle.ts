@@ -14,5 +14,8 @@ export interface Vehicle {
   user_id?: string;
   access_code?: string;
   destination_id?: string;
+  users?: {
+    access_code?: string;
+  };
 }
 

@@ -7,13 +7,17 @@ export const vehicleService = {
   async getVehicles(): Promise<Vehicle[]> {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('*')
+      .select(`
+        *,
+        users!vehicles_user_id_fkey(access_code)
+      `)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
     return data?.map(item => ({
       ...item,
+      access_code: item.users?.access_code,
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at)
     })) || [];
@@ -99,7 +103,10 @@ export const vehicleService = {
   async getVehicleById(id: string): Promise<Vehicle | null> {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('*')
+      .select(`
+        *,
+        users!vehicles_user_id_fkey(access_code)
+      `)
       .eq('id', id)
       .eq('is_active', true)
       .single();
@@ -107,6 +114,7 @@ export const vehicleService = {
     if (error) return null;
     return {
       ...data,
+      access_code: data.users?.access_code,
       created_at: new Date(data.created_at),
       updated_at: new Date(data.updated_at)
     };
