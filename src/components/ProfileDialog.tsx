@@ -7,10 +7,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
-import { Coins, Image } from 'lucide-react';
+import { Coins } from 'lucide-react';
 
 interface ProfileDialogProps {
   open: boolean;
@@ -25,12 +25,6 @@ interface TokenBalance {
   contractAddress?: string;
 }
 
-interface NFT {
-  tokenId: string;
-  name: string;
-  image?: string;
-  contractAddress: string;
-}
 
 export const ProfileDialog: React.FC<ProfileDialogProps> = ({
   open,
@@ -39,7 +33,7 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
 }) => {
   const [ethBalance, setEthBalance] = useState<string>('0');
   const [tokens, setTokens] = useState<TokenBalance[]>([]);
-  const [nfts, setNfts] = useState<NFT[]>([]);
+  
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -57,9 +51,9 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
       const balance = await provider.getBalance(walletAddress);
       setEthBalance(ethers.formatEther(balance));
       
-      // 这里可以集成第三方API来获取代币和NFT信息
+      // 这里可以集成第三方API来获取代币信息
       // 例如使用Alchemy、Moralis或其他服务
-      await loadTokensAndNFTs();
+      await loadTokens();
       
     } catch (error) {
       console.error('加载钱包资产失败:', error);
@@ -69,23 +63,14 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
     }
   };
 
-  const loadTokensAndNFTs = async () => {
-    // 这里需要第三方API来获取代币和NFT信息
+  const loadTokens = async () => {
+    // 这里需要第三方API来获取代币信息
     // 示例代码 - 实际需要API密钥
     
     // 模拟数据
     setTokens([
       { symbol: 'USDC', balance: '100.50', decimals: 6 },
       { symbol: 'USDT', balance: '250.75', decimals: 6 },
-    ]);
-    
-    setNfts([
-      { 
-        tokenId: '1', 
-        name: 'Sample NFT #1', 
-        contractAddress: '0x...',
-        image: 'https://via.placeholder.com/150'
-      },
     ]);
   };
 
@@ -110,76 +95,37 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="tokens" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="tokens">代币</TabsTrigger>
-              <TabsTrigger value="nfts">NFT</TabsTrigger>
-            </TabsList>
+          <div className="w-full space-y-4">
             
-            <TabsContent value="tokens" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Coins className="h-4 w-4" />
-                    ETH余额
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{ethBalance} ETH</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Coins className="h-4 w-4" />
+                  ETH余额
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{ethBalance} ETH</p>
+              </CardContent>
+            </Card>
+            
+            {tokens.map((token, index) => (
+              <Card key={index}>
+                <CardContent className="pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{token.symbol}</span>
+                    <span className="text-lg">{token.balance}</span>
+                  </div>
                 </CardContent>
               </Card>
-              
-              {tokens.map((token, index) => (
-                <Card key={index}>
-                  <CardContent className="pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{token.symbol}</span>
-                      <span className="text-lg">{token.balance}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {tokens.length === 0 && !loading && (
-                <p className="text-center text-muted-foreground py-8">
-                  暂无代币资产
-                </p>
-              )}
-            </TabsContent>
+            ))}
             
-            <TabsContent value="nfts" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {nfts.map((nft, index) => (
-                  <Card key={index}>
-                    <CardContent className="pt-4">
-                      <div className="space-y-2">
-                        {nft.image && (
-                          <img 
-                            src={nft.image} 
-                            alt={nft.name}
-                            className="w-full h-32 object-cover rounded"
-                          />
-                        )}
-                        <div>
-                          <p className="font-medium">{nft.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatAddress(nft.contractAddress)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              
-              {nfts.length === 0 && !loading && (
-                <div className="text-center py-8">
-                  <Image className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">暂无NFT资产</p>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+            {tokens.length === 0 && !loading && (
+              <p className="text-center text-muted-foreground py-8">
+                暂无代币资产
+              </p>
+            )}
+          </div>
           
           {loading && (
             <div className="text-center py-8">

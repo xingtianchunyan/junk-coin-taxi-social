@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check, RotateCcw, Award } from 'lucide-react';
+import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccessCode } from '@/components/AccessCodeProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -16,8 +16,6 @@ import { rideRequestService } from '@/services/rideRequestService';
 import { FixedRoute, WalletAddress, PresetDestination } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
 import { supabase } from '@/integrations/supabase/client';
-import BadgeSendDialog from '@/components/BadgeSendDialog';
-import { ADMIN_WALLET_ADDRESS } from '@/config/badge-contract';
 
 // 支付方式选项
 const PAY_WAY_OPTIONS = [
@@ -136,10 +134,6 @@ const CommunityManagement: React.FC = () => {
   // 支付方式多选删除相关状态
   const [selectedPaymentIdsForDelete, setSelectedPaymentIdsForDelete] = useState<string[]>([]);
 
-  // 徽章发送相关状态
-  const [showBadgeDialog, setShowBadgeDialog] = useState(false);
-  const [selectedDriverAddress, setSelectedDriverAddress] = useState<string>('');
-  const [currentUserWalletAddress, setCurrentUserWalletAddress] = useState<string>('');
 
   const { toast } = useToast();
   const { accessCode, clearAccessCode } = useAccessCode();
@@ -158,7 +152,6 @@ const CommunityManagement: React.FC = () => {
           
           // 加载社区管理数据
           await loadCommunityData();
-          await loadCurrentUserWallet();
         } catch (error) {
           console.error('设置访问码失败:', error);
           toast({
@@ -173,19 +166,6 @@ const CommunityManagement: React.FC = () => {
     setupSession();
   }, [accessCode, toast]);
 
-  // 加载当前用户的钱包地址
-  const loadCurrentUserWallet = async () => {
-    try {
-      if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setCurrentUserWalletAddress(accounts[0]);
-        }
-      }
-    } catch (error) {
-      console.error('获取钱包地址失败:', error);
-    }
-  };
 
   const loadCommunityData = async () => {
     if (!accessCode) return;
@@ -786,14 +766,6 @@ const CommunityManagement: React.FC = () => {
     setExchangeAddresses(prev => ({ ...prev, [exchangeId]: address }));
   };
 
-  // 处理发送徽章
-  const handleSendBadge = (driverAddress: string) => {
-    setSelectedDriverAddress(driverAddress);
-    setShowBadgeDialog(true);
-  };
-
-  // 检查是否为管理员钱包地址
-  const isAdminWallet = currentUserWalletAddress.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase();
 
   if (loading) {
     return (
@@ -1376,18 +1348,6 @@ const CommunityManagement: React.FC = () => {
                                 <p className="text-sm font-mono bg-gray-100 p-1 rounded mt-1 break-all flex-1">
                                   {wallet.address}
                                 </p>
-                                {/* 如果是管理员且是区块链支付，显示发送徽章按钮 */}
-                                {isAdminWallet && wallet.pay_way === 1 && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSendBadge(wallet.address)}
-                                    className="flex items-center gap-1"
-                                  >
-                                    <Award className="h-3 w-3" />
-                                    发送徽章
-                                  </Button>
-                                )}
                               </div>
                             )}
                           </div>
@@ -1616,12 +1576,6 @@ const CommunityManagement: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* 徽章发送对话框 */}
-      <BadgeSendDialog
-        open={showBadgeDialog}
-        onOpenChange={setShowBadgeDialog}
-        driverWalletAddress={selectedDriverAddress}
-      />
     </div>
   );
 };
