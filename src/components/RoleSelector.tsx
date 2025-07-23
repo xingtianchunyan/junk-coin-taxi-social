@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, Crown } from 'lucide-react';
-import { useAuth } from '@/components/AuthProvider';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -38,7 +38,7 @@ const roleConfig = {
 const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRoles = [] }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const { user } = useAuth();
+  const { userProfile } = useAccessCode();
 
   const selectRole = (role: UserRole) => {
     if (role === 'community_admin') {
@@ -53,14 +53,14 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRole
   };
 
   const handleSaveRole = async () => {
-    if (!selectedRole || !user) return;
+    if (!selectedRole || !userProfile) return;
 
     setIsUpdating(true);
     try {
       const { error } = await supabase
         .from('users')
         .update({ role: selectedRole })
-        .eq('id', user.id);
+        .eq('id', userProfile.id);
 
       if (error) throw error;
 

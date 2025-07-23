@@ -5,8 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Car, Plus, Users, Clock, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/components/AuthProvider';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
 import AccessControl from '@/components/AccessControl';
@@ -17,11 +16,10 @@ const Index = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [accessLevel, setAccessLevel] = useState<'public' | 'private' | 'community_admin'>('public');
-  const [accessCode, setAccessCode] = useState<string>('');
+  const [privateAccessCode, setPrivateAccessCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { profile } = useUserProfile();
+  const { accessCode, userProfile } = useAccessCode();
 
   // 加载用车需求数据
   useEffect(() => {
@@ -47,26 +45,23 @@ const Index = () => {
 
   const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
     try {
-      // 生成临时访问码（这个逻辑可能需要根据实际需求调整）
-      const tempAccessCode = crypto.randomUUID();
+      if (!accessCode) {
+        toast({
+          title: "需要登录",
+          description: "请先登录后再创建用车需求",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      const request = await rideRequestService.createRideRequest(requestData, tempAccessCode);
+      const request = await rideRequestService.createRideRequest(requestData, accessCode);
       setRequests(prev => [request, ...prev]);
       setShowForm(false);
       
-      // 显示访问码给用户
       toast({
         title: "用车需求已创建",
-        description: `您的访问码是: ${tempAccessCode}`,
-        duration: 10000,
+        description: "您的用车需求已成功创建",
       });
-      
-      // 可以选择自动切换到私密模式
-      setTimeout(() => {
-        if (confirm('是否要使用访问码查看完整信息？')) {
-          handleAccessChange('private', tempAccessCode);
-        }
-      }, 2000);
       
     } catch (error) {
       console.error('创建用车需求失败:', error);
@@ -102,14 +97,14 @@ const Index = () => {
 
   const handleAccessChange = (level: 'public' | 'private' | 'community_admin', code?: string) => {
     setAccessLevel(level);
-    setAccessCode(code || '');
+    setPrivateAccessCode(code || '');
   };
 
   // 根据访问级别过滤和处理数据
   const getFilteredRequests = () => {
     if (accessLevel === 'community_admin') {
       return requests; // 管理员可以看到所有信息
-    } else if (accessLevel === 'private' && accessCode) {
+    } else if (accessLevel === 'private' && privateAccessCode) {
       return requests; // 有访问码的用户可以看到所有信息
     } else {
       // 公开访问只显示时间和状态信息
@@ -149,9 +144,9 @@ const Index = () => {
             <Car className="h-8 w-8 text-green-600" />
             <h1 className="text-4xl font-bold text-gray-800">垃圾币打车</h1>
             <Link 
-              to="/admin" 
+              to="/super-admin" 
               className="ml-4 p-2 text-gray-500 hover:text-gray-700 transition-colors"
-              title="管理后台"
+              title="超级管理员"
             >
               <Shield className="h-5 w-5" />
             </Link>

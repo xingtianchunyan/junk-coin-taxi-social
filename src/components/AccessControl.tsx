@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Key, Eye, EyeOff, Shield, LogIn, User } from 'lucide-react';
-import { useAuth } from '@/components/AuthProvider';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAccessCode } from '@/components/AccessCodeProvider';
 import { sanitizeTextInput } from '@/utils/inputValidation';
 
 interface AccessControlProps {
@@ -17,27 +16,23 @@ interface AccessControlProps {
 }
 
 const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLevel }) => {
-  const [accessCode, setAccessCode] = useState('');
+  const [inputAccessCode, setInputAccessCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [showPrivateAccess, setShowPrivateAccess] = useState(false);
-  const { user, isAdmin, signOut } = useAuth();
-  const { profile } = useUserProfile();
+  const { accessCode: currentAccessCode, userProfile, clearAccessCode, setAccessCode } = useAccessCode();
 
   useEffect(() => {
-    // Update access level based on authentication
-    if (user && isAdmin) {
-      onAccessChange('community_admin');
-    } else if (user) {
-      onAccessChange('private');
-    } else {
-      // Check for saved access code only if not authenticated
-      const savedAccessCode = localStorage.getItem('access_code');
-      if (savedAccessCode && currentLevel === 'public') {
-        setAccessCode(savedAccessCode);
-        handlePrivateAccess(savedAccessCode);
+    // Update access level based on current access code and user profile
+    if (currentAccessCode && userProfile) {
+      if (userProfile.role === 'community_admin') {
+        onAccessChange('community_admin');
+      } else {
+        onAccessChange('private', currentAccessCode);
       }
+    } else if (currentAccessCode) {
+      onAccessChange('private', currentAccessCode);
     }
-  }, [user, isAdmin]);
+  }, [currentAccessCode, userProfile]);
 
   const handlePrivateAccess = async (code: string) => {
     const sanitizedCode = sanitizeTextInput(code, 50);
@@ -49,7 +44,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
       const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sanitizedCode);
       
       if (isValid) {
-        localStorage.setItem('access_code', sanitizedCode);
+        setAccessCode(sanitizedCode);
         onAccessChange('private', sanitizedCode);
       } else {
         alert('无效的访问码格式');
@@ -63,14 +58,8 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   };
 
   const handleLogout = async () => {
-    // 清除所有可能的访问码存储键名
-    localStorage.removeItem('access_code');
-    localStorage.removeItem('userAccessCode');
-    localStorage.removeItem('rideAccessCode');
-    if (user) {
-      await signOut();
-    }
-    setAccessCode('');
+    clearAccessCode();
+    setInputAccessCode('');
     onAccessChange('public');
   };
 
@@ -121,13 +110,11 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
           </div>
           
           <div className="flex items-center gap-2">
-            {user && (
-              <Button asChild variant="outline" size="sm">
-                <Link to="/profile" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  {profile?.role || '个人资料'}
-                </Link>
-              </Button>
+            {userProfile && (
+              <span className="text-sm text-gray-600 flex items-center gap-1">
+                <User className="h-4 w-4" />
+                {userProfile.role || '用户'}
+              </span>
             )}
             
             {currentLevel !== 'public' && (
@@ -139,11 +126,11 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
           </div>
         </div>
 
-        {currentLevel === 'public' && !user && (
+        {currentLevel === 'public' && !currentAccessCode && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link to="/auth" className="flex items-center gap-2">
+                <Link to="/" className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
                   登录/注册
                 </Link>
@@ -164,14 +151,14 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
                   <Input
                     id="accessCode"
                     type="password"
-                    value={accessCode}
-                    onChange={(e) => setAccessCode(e.target.value)}
+                    value={inputAccessCode}
+                    onChange={(e) => setInputAccessCode(e.target.value)}
                     placeholder="输入您的访问码"
-                    onKeyPress={(e) => e.key === 'Enter' && handlePrivateAccess(accessCode)}
+                    onKeyPress={(e) => e.key === 'Enter' && handlePrivateAccess(inputAccessCode)}
                   />
                   <Button
-                    onClick={() => handlePrivateAccess(accessCode)}
-                    disabled={isValidating || !accessCode.trim()}
+                    onClick={() => handlePrivateAccess(inputAccessCode)}
+                    disabled={isValidating || !inputAccessCode.trim()}
                   >
                     {isValidating ? '验证中...' : '访问'}
                   </Button>
