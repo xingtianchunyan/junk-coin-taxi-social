@@ -505,7 +505,7 @@ export class RideRequestService {
       .from('vehicles')
       .select(`
         *,
-        users(access_code)
+        users!vehicles_user_id_fkey(access_code)
       `)
       .eq('destination_id', destinationId)
       .eq('is_active', true)
