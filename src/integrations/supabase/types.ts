@@ -296,7 +296,6 @@ export type Database = {
           discount_percentage: number | null
           driver_name: string
           driver_phone: string | null
-          driver_user_id: string | null
           id: string
           is_active: boolean | null
           last_trip_end_time: string | null
@@ -306,6 +305,7 @@ export type Database = {
           trunk_length_cm: number
           trunk_width_cm: number
           updated_at: string
+          user_id: string | null
           work_end_time: string | null
           work_start_time: string | null
         }
@@ -316,7 +316,6 @@ export type Database = {
           discount_percentage?: number | null
           driver_name: string
           driver_phone?: string | null
-          driver_user_id?: string | null
           id?: string
           is_active?: boolean | null
           last_trip_end_time?: string | null
@@ -326,6 +325,7 @@ export type Database = {
           trunk_length_cm?: number
           trunk_width_cm?: number
           updated_at?: string
+          user_id?: string | null
           work_end_time?: string | null
           work_start_time?: string | null
         }
@@ -336,7 +336,6 @@ export type Database = {
           discount_percentage?: number | null
           driver_name?: string
           driver_phone?: string | null
-          driver_user_id?: string | null
           id?: string
           is_active?: boolean | null
           last_trip_end_time?: string | null
@@ -346,6 +345,7 @@ export type Database = {
           trunk_length_cm?: number
           trunk_width_cm?: number
           updated_at?: string
+          user_id?: string | null
           work_end_time?: string | null
           work_start_time?: string | null
         }
@@ -358,8 +358,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vehicles_driver_user_id_fkey"
-            columns: ["driver_user_id"]
+            foreignKeyName: "vehicles_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

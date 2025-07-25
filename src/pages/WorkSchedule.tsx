@@ -70,7 +70,7 @@ const WorkSchedule: React.FC = () => {
       const { data: vehicleData, error: vehicleError } = await supabase
         .from('vehicles')
         .select('*')
-        .eq('driver_user_id', userData.id)
+        .eq('user_id', userData.id)
         .eq('is_active', true)
         .single();
       

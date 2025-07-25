@@ -9,7 +9,7 @@ export const vehicleService = {
       .from('vehicles')
       .select(`
         *,
-        users!vehicles_driver_user_id_fkey(access_code)
+        users!vehicles_user_id_fkey(access_code)
       `)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
@@ -71,7 +71,7 @@ export const vehicleService = {
     // 首先获取车辆的用户ID
     const { data: vehicleData, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('driver_user_id')
+      .select('user_id')
       .eq('id', id)
       .single();
     
@@ -86,11 +86,11 @@ export const vehicleService = {
     if (deleteVehicleError) throw deleteVehicleError;
     
     // 如果有关联的司机用户，也删除该用户
-    if (vehicleData?.driver_user_id) {
+    if (vehicleData?.user_id) {
       const { error: deleteUserError } = await supabase
         .from('users')
         .delete()
-        .eq('id', vehicleData.driver_user_id);
+        .eq('id', vehicleData.user_id);
       
       if (deleteUserError) {
         console.error('删除关联司机用户失败:', deleteUserError);
@@ -105,7 +105,7 @@ export const vehicleService = {
       .from('vehicles')
       .select(`
         *,
-        users!vehicles_driver_user_id_fkey(access_code)
+        users!vehicles_user_id_fkey(access_code)
       `)
       .eq('id', id)
       .eq('is_active', true)
