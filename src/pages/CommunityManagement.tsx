@@ -1105,39 +1105,40 @@ const CommunityManagement: React.FC = () => {
                   <div key={vehicle.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between">
                        <div className="flex-1">
-                         <h4 className="font-semibold">{vehicle.license_plate}</h4>
-                         <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
-                         {vehicle.driver_phone && (
-                           <p className="text-sm text-gray-600 flex items-center gap-1">
-                             <Phone className="h-3 w-3" />
-                             {vehicle.driver_phone}
-                           </p>
-                         )}
-                          <p className="text-sm text-gray-600">
-                            载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
-                          </p>
-                          {vehicle.access_code && (
-                            <div className="mt-2 p-2 bg-green-50 rounded flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-green-700 font-medium">司机访问码:</p>
-                                <p className="text-sm font-mono text-green-800">{vehicle.access_code}</p>
+                          <h4 className="font-semibold">{vehicle.license_plate}</h4>
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-600">司机: {vehicle.driver_name}</p>
+                            {vehicle.access_code && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-green-700 font-medium">访问码:</span>
+                                <span className="text-xs font-mono text-green-800 bg-green-50 px-2 py-1 rounded">
+                                  {vehicle.access_code}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCopyAccessCode(vehicle.access_code)}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  {copiedAccessCode === vehicle.access_code ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCopyAccessCode(vehicle.access_code)}
-                                className="flex items-center gap-1"
-                              >
-                                {copiedAccessCode === vehicle.access_code ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Copy className="h-3 w-3" />
-                                )}
-                                {copiedAccessCode === vehicle.access_code ? '已复制' : '复制'}
-                              </Button>
-                            </div>
+                            )}
+                          </div>
+                          {vehicle.driver_phone && (
+                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {vehicle.driver_phone}
+                            </p>
                           )}
-                       </div>
+                           <p className="text-sm text-gray-600">
+                             载客: {vehicle.max_passengers}人 | 后备箱: {vehicle.trunk_length_cm}×{vehicle.trunk_width_cm}×{vehicle.trunk_height_cm}cm
+                           </p>
+                        </div>
                       <Button
                         size="sm"
                         variant="ghost"
