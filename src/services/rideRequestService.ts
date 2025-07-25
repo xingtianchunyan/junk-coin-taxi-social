@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
-import { RideRequest, WalletAddress, Payment, PresetDestination, FixedRoute, Vehicle } from '@/types/RideRequest';
+import { RideRequest, WalletAddress, Payment, PresetDestination, FixedRoute } from '@/types/RideRequest';
+import { Vehicle } from '@/types/Vehicle';
 
 export class RideRequestService {
   // 获取所有用车需求（只显示基本信息）
@@ -573,11 +574,23 @@ export class RideRequestService {
 
     if (error) throw error;
 
+    // 重新查询以获取包含用户访问码的完整数据
+    const { data: vehicleWithUser, error: selectError } = await supabase
+      .from('vehicles')
+      .select(`
+        *,
+        users!vehicles_user_id_fkey(access_code)
+      `)
+      .eq('id', data.id)
+      .single();
+
+    if (selectError) throw selectError;
+
     return {
-      ...data,
-      is_active: data.is_active ?? true,
-      created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at)
+      ...vehicleWithUser,
+      access_code: vehicleWithUser.users?.access_code,
+      created_at: new Date(vehicleWithUser.created_at),
+      updated_at: new Date(vehicleWithUser.updated_at)
     };
   }
 
