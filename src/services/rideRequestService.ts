@@ -505,7 +505,7 @@ export class RideRequestService {
       .from('vehicles')
       .select(`
         *,
-        users!vehicles_user_id_fkey(access_code)
+        users(access_code)
       `)
       .eq('destination_id', destinationId)
       .eq('is_active', true)
@@ -663,17 +663,8 @@ export class RideRequestService {
     return { created, skipped };
   }
 
-  // 删除车辆（同时删除关联的司机用户）
+  // 删除车辆
   async deleteVehicle(vehicleId: string): Promise<void> {
-    // 首先获取车辆的用户ID
-    const { data: vehicleData, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('user_id')
-      .eq('id', vehicleId)
-      .single();
-    
-    if (vehicleError) throw vehicleError;
-    
     // 删除车辆
     const { error: deleteVehicleError } = await supabase
       .from('vehicles')
@@ -681,19 +672,6 @@ export class RideRequestService {
       .eq('id', vehicleId);
     
     if (deleteVehicleError) throw deleteVehicleError;
-    
-    // 如果有关联的司机用户，也删除该用户
-    if (vehicleData?.user_id) {
-      const { error: deleteUserError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', vehicleData.user_id);
-      
-      if (deleteUserError) {
-        console.error('删除关联司机用户失败:', deleteUserError);
-        // 不抛出错误，因为车辆已经删除成功
-      }
-    }
   }
 }
 

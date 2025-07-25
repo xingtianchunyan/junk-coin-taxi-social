@@ -11,7 +11,7 @@ export interface Vehicle {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
-  user_id?: string;
+  driver_user_id?: string;
   access_code?: string;
   destination_id?: string;
   users?: {
