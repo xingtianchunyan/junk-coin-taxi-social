@@ -111,30 +111,19 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   };
 
   const handlePaymentSubmit = async () => {
-    if (!request || !selectedWallet) return;
-
     setLoading(true);
     try {
-      await rideRequestService.createPayment({
-        ride_request_id: request.id,
-        amount: request.payment_amount || 0,
-        currency: request.payment_currency || selectedWallet.symbol,
-        wallet_address: selectedWallet.address,
-        payment_method: getPaymentMethodDescription(selectedWallet),
-        status: 'pending'
-      });
-
       toast({
-        title: "支付记录已创建",
-        description: "请完成转账并等待确认",
+        title: "等待当面确认",
+        description: "网站只提供信息，具体情况请与司机当面确认",
       });
-
+      
       onOpenChange(false);
     } catch (error) {
-      console.error('创建支付记录失败:', error);
+      console.error('支付确认失败:', error);
       toast({
-        title: "创建失败",
-        description: "无法创建支付记录",
+        title: "确认失败",
+        description: "请与司机联系确认支付",
         variant: "destructive",
       });
     } finally {

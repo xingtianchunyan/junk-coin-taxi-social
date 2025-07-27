@@ -11,7 +11,8 @@ import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
 import DestinationSelectionDialog from '@/components/DestinationSelectionDialog';
 import DriverWalletDialog from '@/components/DriverWalletDialog';
-import { RideRequest, Vehicle } from '@/types/RideRequest';
+import { RideRequest } from '@/types/RideRequest';
+import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { supabase } from '@/integrations/supabase/client';
@@ -380,8 +381,8 @@ const PassengerService: React.FC = () => {
                             <div key={groupIndex} className="border rounded-lg p-3 bg-white">
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge variant="outline" className="bg-green-100 text-green-700">
-                                  第{groupIndex + 1}组 ({group.length}/4人)
-                                </Badge>
+                                   第{groupIndex + 1}组 ({group.reduce((sum, r) => sum + (r.passenger_count || 1), 0)}/{vehicles.filter(v => v.destination_id === selectedDestination?.id && v.is_active).length > 0 ? vehicles.filter(v => v.destination_id === selectedDestination?.id && v.is_active)[0].max_passengers : 4}人)
+                                 </Badge>
                               </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (

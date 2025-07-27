@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus } from 'lucide-react';
 import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
+import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { useToast } from '@/hooks/use-toast';
@@ -67,6 +68,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     contact_info: '',
     notes: '',
     fixed_route_id: '',
+    vehicle_id: '',
     passenger_count: 1
   });
   const [luggage, setLuggage] = useState<LuggageItem[]>([
@@ -76,6 +78,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
   const [selectedLuggageType, setSelectedLuggageType] = useState('');
   const [selectedLuggageQuantity, setSelectedLuggageQuantity] = useState(1);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +86,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
 
   useEffect(() => {
     loadFixedRoutes();
+    loadVehicles();
   }, [selectedDestination]);
 
   const loadFixedRoutes = async () => {
@@ -123,6 +127,20 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     }
   };
 
+  const loadVehicles = async () => {
+    try {
+      if (selectedDestination) {
+        const vehicleData = await rideRequestService.getDestinationVehicles(selectedDestination.id);
+        setVehicles(vehicleData);
+      } else {
+        const vehicleData = await vehicleService.getVehicles();
+        setVehicles(vehicleData);
+      }
+    } catch (error) {
+      console.error('加载车辆失败:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationErrors([]);
@@ -157,6 +175,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         ...validation.sanitizedData,
         requested_time: new Date(formData.requested_time),
         fixed_route_id: formData.fixed_route_id,
+        vehicle_id: formData.vehicle_id || undefined,
         passenger_count: formData.passenger_count,
         luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
         payment_required: selectedRoute ? selectedRoute.our_price > 0 : false,
@@ -175,6 +194,7 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         contact_info: '',
         notes: '',
         fixed_route_id: '',
+        vehicle_id: '',
         passenger_count: 1
       });
       setLuggage([{ length: 0, width: 0, height: 0, quantity: 1 }]);
@@ -544,6 +564,36 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               )}
             </div>
           </div>
+
+          {/* 司机选择 */}
+          {vehicles.length > 0 && (
+            <div className="space-y-4 p-4 border rounded-lg bg-purple-50">
+              <div className="space-y-2">
+                <Label htmlFor="vehicle_id" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  选择司机 (可选)
+                </Label>
+                <Select
+                  value={formData.vehicle_id}
+                  onValueChange={(value) => handleInputChange('vehicle_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="系统自动分配司机或手动选择" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vehicles.map(vehicle => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.driver_name} - {vehicle.license_plate} (载客{vehicle.max_passengers}人)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-purple-600">
+                  💡 如不选择司机，系统将根据时间和路线自动分配合适的司机
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="requested_time" className="flex items-center gap-2">

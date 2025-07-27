@@ -30,6 +30,10 @@ const WorkSchedule: React.FC = () => {
     duration: '',
     fee: ''
   });
+  const [workHours, setWorkHours] = useState({
+    start_time: '08:00',
+    end_time: '18:00'
+  });
   const { toast } = useToast();
   const { clearAccessCode, accessCode } = useAccessCode();
   const navigate = useNavigate();
@@ -80,6 +84,12 @@ const WorkSchedule: React.FC = () => {
         ...vehicleData,
         created_at: new Date(vehicleData.created_at),
         updated_at: new Date(vehicleData.updated_at)
+      });
+      
+      // 同时加载工作时间
+      setWorkHours({
+        start_time: vehicleData.work_start_time || '08:00',
+        end_time: vehicleData.work_end_time || '18:00'
       });
     } catch (error) {
       console.error('加载司机车辆信息失败:', error);
@@ -300,11 +310,17 @@ const WorkSchedule: React.FC = () => {
     if (!driverVehicle) return;
     
     try {
+      // 设置当前访问码
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_access_code',
+        setting_value: accessCode
+      });
+
       const { error } = await supabase
         .from('vehicles')
         .update({
-          work_start_time: newRoute.hub, // 临时使用这个字段存储开始时间
-          work_end_time: newRoute.destination // 临时使用这个字段存储结束时间
+          work_start_time: workHours.start_time,
+          work_end_time: workHours.end_time
         })
         .eq('id', driverVehicle.id);
       
@@ -376,8 +392,8 @@ const WorkSchedule: React.FC = () => {
                 <Input
                   id="work_start"
                   type="time"
-                  value={newRoute.hub}
-                  onChange={(e) => setNewRoute({...newRoute, hub: e.target.value})}
+                  value={workHours.start_time}
+                  onChange={(e) => setWorkHours({...workHours, start_time: e.target.value})}
                 />
               </div>
               <div>
@@ -385,15 +401,15 @@ const WorkSchedule: React.FC = () => {
                 <Input
                   id="work_end"
                   type="time"
-                  value={newRoute.destination}
-                  onChange={(e) => setNewRoute({...newRoute, destination: e.target.value})}
+                  value={workHours.end_time}
+                  onChange={(e) => setWorkHours({...workHours, end_time: e.target.value})}
                 />
               </div>
             </div>
             <Button 
               onClick={updateWorkHours} 
               className="mt-4"
-              disabled={!newRoute.hub || !newRoute.destination}
+              disabled={!workHours.start_time || !workHours.end_time}
             >
               更新服务时间
             </Button>

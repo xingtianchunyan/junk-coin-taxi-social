@@ -513,7 +513,6 @@ export class RideRequestService {
       .order('driver_name', { ascending: true });
 
     if (error) throw error;
-
     return data?.map(item => ({
       ...item,
       access_code: item.users?.access_code,
