@@ -457,64 +457,48 @@ export class RideRequestService {
 
   // 社区管理员专用方法
   async getCommunityDestination(accessCode: string): Promise<PresetDestination | null> {
-    try {
-      // 设置会话访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
-      });
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('access_code', accessCode)
+      .single();
 
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('access_code', accessCode)
-        .single();
+    if (userError || !user) return null;
 
-      if (userError || !user) return null;
+    const { data, error } = await supabase
+      .from('preset_destinations')
+      .select('*')
+      .eq('admin_user_id', user.id)
+      .eq('is_active', true)
+      .single();
 
-      const { data, error } = await supabase
-        .from('preset_destinations')
-        .select('*')
-        .eq('admin_user_id', user.id)
-        .eq('is_active', true)
-        .single();
+    if (error) return null;
 
-      if (error) return null;
-
-      return {
-        ...data,
-        is_active: data.is_active ?? true,
-        description: data.description ?? undefined,
-        created_at: new Date(data.created_at)
-      };
-    } catch (error) {
-      console.error('获取社区目的地失败:', error);
-      return null;
-    }
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      description: data.description ?? undefined,
+      created_at: new Date(data.created_at)
+    };
   }
 
   async getDestinationRoutes(destinationId: string): Promise<FixedRoute[]> {
-    try {
-      const { data, error } = await supabase
-        .from('fixed_routes')
-        .select('*')
-        .eq('destination_id', destinationId)
-        .eq('is_active', true)
-        .order('name', { ascending: true });
+    const { data, error } = await supabase
+      .from('fixed_routes')
+      .select('*')
+      .eq('destination_id', destinationId)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      return data?.map(item => ({
-        ...item,
-        is_active: item.is_active ?? true,
-        currency: item.currency ?? 'CNY',
-        created_at: new Date(item.created_at),
-        updated_at: new Date(item.updated_at)
-      })) || [];
-    } catch (error) {
-      console.error('获取目的地路线失败:', error);
-      throw error;
-    }
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      currency: item.currency ?? 'CNY',
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
   }
 
   async getDestinationVehicles(destinationId: string): Promise<Vehicle[]> {

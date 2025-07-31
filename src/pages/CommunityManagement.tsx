@@ -180,28 +180,24 @@ const CommunityManagement: React.FC = () => {
 
       // 获取社区管理员管理的目的地
       const communityDestination = await rideRequestService.getCommunityDestination(accessCode);
-      
+      setDestination(communityDestination);
+
       if (communityDestination) {
-        setDestination(communityDestination);
+        // 加载该目的地下的所有资源
+        const [routeData, vehicleData, walletData] = await Promise.all([
+          rideRequestService.getDestinationRoutes(communityDestination.id),
+          rideRequestService.getDestinationVehicles(communityDestination.id),
+          rideRequestService.getDestinationWallets(communityDestination.id)
+        ]);
 
-        // 只有审核通过的目的地才加载关联资源
-        if (communityDestination.is_approved) {
-          // 加载该目的地下的所有资源
-          const [routeData, vehicleData, walletData] = await Promise.all([
-            rideRequestService.getDestinationRoutes(communityDestination.id),
-            rideRequestService.getDestinationVehicles(communityDestination.id),
-            rideRequestService.getDestinationWallets(communityDestination.id)
-          ]);
+        setRoutes(routeData);
+        setVehicles(vehicleData);
+        setWalletAddresses(walletData);
+        
+        console.log('加载的车辆数据:', vehicleData);
 
-          setRoutes(routeData);
-          setVehicles(vehicleData);
-          setWalletAddresses(walletData);
-          
-          console.log('加载的车辆数据:', vehicleData);
-
-          // 检查是否需要显示一键返程按钮
-          await checkReturnButtonVisibility(communityDestination.id, routeData);
-        }
+        // 检查是否需要显示一键返程按钮
+        await checkReturnButtonVisibility(communityDestination.id, routeData);
       }
     } catch (error) {
       console.error('加载社区数据失败:', error);
