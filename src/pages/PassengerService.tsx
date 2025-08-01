@@ -53,9 +53,8 @@ const PassengerService: React.FC = () => {
       if (accessCode) {
         try {
           // 设置当前会话的访问码到数据库配置中
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_access_code',
-            setting_value: accessCode
+          await supabase.rpc('set_current_access_code', {
+            input_access_code: accessCode
           });
           console.log('已设置当前访问码到会话中');
         } catch (error) {
@@ -147,9 +146,8 @@ const PassengerService: React.FC = () => {
       }
 
       // 设置会话访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
       });
 
       // 验证是否有路线可用

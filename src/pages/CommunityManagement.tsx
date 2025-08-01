@@ -173,9 +173,8 @@ const CommunityManagement: React.FC = () => {
     setLoading(true);
     try {
       // 设置会话访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
       });
 
       // 获取社区管理员管理的目的地
@@ -185,7 +184,7 @@ const CommunityManagement: React.FC = () => {
       if (communityDestination) {
         // 加载该目的地下的所有资源
         const [routeData, vehicleData, walletData] = await Promise.all([
-          rideRequestService.getDestinationRoutes(communityDestination.id),
+          rideRequestService.getDestinationRoutes(communityDestination.id, accessCode),
           rideRequestService.getDestinationVehicles(communityDestination.id),
           rideRequestService.getDestinationWallets(communityDestination.id)
         ]);
@@ -267,7 +266,7 @@ const CommunityManagement: React.FC = () => {
         currency: 'CNY'
       };
 
-      await rideRequestService.createDestinationRoute(routeData, destination.id);
+      await rideRequestService.createDestinationRoute(routeData, destination.id, accessCode);
       
       toast({
         title: "路线已添加",
@@ -297,7 +296,7 @@ const CommunityManagement: React.FC = () => {
     if (!destination) return;
 
     try {
-      await rideRequestService.createDestinationVehicle(newVehicle, destination.id);
+      await rideRequestService.createDestinationVehicle(newVehicle, destination.id, accessCode);
       
       toast({
         title: "车辆已添加",
@@ -505,7 +504,7 @@ const CommunityManagement: React.FC = () => {
     try {
       await Promise.all(
         selectedRouteIdsForDelete.map(routeId => 
-          rideRequestService.deleteFixedRoute(routeId)
+          rideRequestService.deleteFixedRoute(routeId, accessCode)
         )
       );
       toast({
@@ -998,7 +997,7 @@ const CommunityManagement: React.FC = () => {
                         <div className="flex-1">
                           <h4 className="font-semibold">{route.name}</h4>
                           <p className="text-sm text-gray-600">
-                            {route.start_location} → {destination.name}
+                            起点: {route.start_location} → 终点: {route.end_location}
                           </p>
                           <div className="flex gap-4 text-sm text-gray-600 mt-1">
                             {route.distance_km && <span>距离: {route.distance_km}km</span>}

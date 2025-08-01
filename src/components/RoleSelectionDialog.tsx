@@ -32,12 +32,6 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
       description: '需要出行服务，快速约车支付',
       color: 'bg-blue-100 text-blue-700',
     },
-    // driver: {
-    //   icon: UserCheck,
-    //   title: '司机',
-    //   description: '提供驾驶服务，赚取车费收入',
-    //   color: 'bg-green-100 text-green-700',
-    // },
     community_admin: {
       icon: Shield,
       title: '社区管理员',
@@ -62,6 +56,11 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
 
     setLoading(true);
     try {
+      // 首先设置当前会话访问码
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
+      });
+
       // 更新用户角色
       const { error } = await supabase
         .from('users')

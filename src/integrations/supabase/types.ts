@@ -490,6 +490,10 @@ export type Database = {
         Args: { setting_name: string; setting_value: string }
         Returns: undefined
       }
+      set_current_access_code: {
+        Args: { input_access_code: string }
+        Returns: undefined
+      }
       set_super_admin_verified: {
         Args: { is_verified: boolean }
         Returns: undefined

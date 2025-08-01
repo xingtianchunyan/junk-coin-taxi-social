@@ -26,9 +26,8 @@ export class RideRequestService {
   // 创建用车需求
   async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, accessCode: string): Promise<RideRequest> {
     // 确保会话访问码已设置
-    await supabase.rpc('set_config', {
-      setting_name: 'app.current_access_code',
-      setting_value: accessCode
+    await supabase.rpc('set_current_access_code', {
+      input_access_code: accessCode
     });
 
     const { data, error } = await supabase
@@ -446,7 +445,14 @@ export class RideRequestService {
   }
 
   // 删除固定路线
-  async deleteFixedRoute(id: string): Promise<void> {
+  async deleteFixedRoute(id: string, accessCode?: string): Promise<void> {
+    // 如果提供了访问码，设置会话
+    if (accessCode) {
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
+      });
+    }
+
     const { error } = await supabase
       .from('fixed_routes')
       .delete()
@@ -457,6 +463,11 @@ export class RideRequestService {
 
   // 社区管理员专用方法
   async getCommunityDestination(accessCode: string): Promise<PresetDestination | null> {
+    // 设置当前会话访问码
+    await supabase.rpc('set_current_access_code', {
+      input_access_code: accessCode
+    });
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
@@ -482,7 +493,14 @@ export class RideRequestService {
     };
   }
 
-  async getDestinationRoutes(destinationId: string): Promise<FixedRoute[]> {
+  async getDestinationRoutes(destinationId: string, accessCode?: string): Promise<FixedRoute[]> {
+    // 如果提供了访问码，设置会话
+    if (accessCode) {
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
+      });
+    }
+
     const { data, error } = await supabase
       .from('fixed_routes')
       .select('*')
@@ -538,7 +556,14 @@ export class RideRequestService {
     })) || [];
   }
 
-  async createDestinationRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string): Promise<FixedRoute> {
+  async createDestinationRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<FixedRoute> {
+    // 如果提供了访问码，设置会话
+    if (accessCode) {
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
+      });
+    }
+
     const { data, error } = await supabase
       .from('fixed_routes')
       .insert([{
@@ -560,7 +585,14 @@ export class RideRequestService {
     };
   }
 
-  async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string): Promise<Vehicle> {
+  async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<Vehicle> {
+    // 如果提供了访问码，设置会话
+    if (accessCode) {
+      await supabase.rpc('set_current_access_code', {
+        input_access_code: accessCode
+      });
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .insert([{
