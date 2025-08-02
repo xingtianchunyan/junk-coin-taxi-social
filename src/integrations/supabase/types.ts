@@ -438,74 +438,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      auto_update_vehicle_availability: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      get_approved_destinations: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          address: string
-          description: string
-          is_approved: boolean
-          is_active: boolean
-          created_at: string
-        }[]
-      }
-      get_current_access_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_destinations_with_admin_codes: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          address: string
-          contact: string
-          is_approved: boolean
-          created_at: string
-          admin_access_code: string
-        }[]
-      }
-      get_or_create_user_by_access_code: {
-        Args: { input_access_code: string }
-        Returns: string
-      }
-      is_community_admin_by_access_code: {
-        Args: { input_access_code: string; admin_user_id: string }
-        Returns: boolean
-      }
-      is_service_time_active: {
-        Args: { dest_id: string }
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      set_config: {
-        Args: { setting_name: string; setting_value: string }
-        Returns: undefined
-      }
-      set_current_access_code: {
-        Args: { input_access_code: string }
-        Returns: undefined
-      }
-      set_super_admin_verified: {
-        Args: { is_verified: boolean }
-        Returns: undefined
-      }
-      user_has_destination_access: {
-        Args: { user_access_code: string; dest_id: string }
-        Returns: boolean
-      }
-      validate_access_code: {
-        Args: { input_access_code: string }
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       user_role: "passenger" | "driver" | "community_admin" | "super_admin"
