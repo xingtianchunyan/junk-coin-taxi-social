@@ -549,13 +549,25 @@ export class RideRequestService {
   }
 
   async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<Vehicle> {
-    // Session management removed - no longer needed without RLS
+    // 首先为司机创建用户记录
+    const { data: driverUser, error: userError } = await supabase
+      .from('users')
+      .insert([{
+        role: 'driver',
+        destination_id: destinationId
+      }])
+      .select()
+      .single();
 
+    if (userError) throw userError;
+
+    // 然后创建车辆记录，关联到司机用户
     const { data, error } = await supabase
       .from('vehicles')
       .insert([{
         ...vehicleData,
         destination_id: destinationId,
+        user_id: driverUser.id,
         is_active: true
       }])
       .select()
