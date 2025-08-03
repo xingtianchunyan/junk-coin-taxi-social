@@ -53,7 +53,7 @@ const WorkSchedule: React.FC = () => {
     return [];
   };
 
-  // 加载司机车辆信息
+  // 加载司机车辆信息和目的地
   const loadDriverVehicle = async () => {
     if (!accessCode) return;
     try {
@@ -61,11 +61,24 @@ const WorkSchedule: React.FC = () => {
 
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id')
+        .select('id, destination_id')
         .eq('access_code', accessCode)
         .single();
       
       if (userError || !userData) return;
+
+      // 如果用户有关联的目的地，自动加载目的地信息
+      if (userData.destination_id) {
+        const { data: destinationData, error: destError } = await supabase
+          .from('preset_destinations')
+          .select('*')
+          .eq('id', userData.destination_id)
+          .single();
+        
+        if (!destError && destinationData) {
+          setSelectedDestination(destinationData);
+        }
+      }
 
       const { data: vehicleData, error: vehicleError } = await supabase
         .from('vehicles')
@@ -348,10 +361,6 @@ const WorkSchedule: React.FC = () => {
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">管理您的工作时间和订单安排</p>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowDestinationSelector(true)} className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              服务目的地
-            </Button>
             <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
               <LogOut className="h-4 w-4" />
               退出登录
