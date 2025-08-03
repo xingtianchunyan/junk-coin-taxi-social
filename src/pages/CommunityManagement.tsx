@@ -210,8 +210,12 @@ const CommunityManagement: React.FC = () => {
 
       if (userError) throw userError;
       
-      // 提取用户ID - userInfo是数组格式
-      const userId = Array.isArray(userInfo) ? userInfo[0]?.id : userInfo?.id;
+      // 提取用户ID - 数据库函数返回数组格式
+      if (!userInfo || !Array.isArray(userInfo) || userInfo.length === 0) {
+        throw new Error('无法获取用户信息');
+      }
+      
+      const userId = userInfo[0].id;
       if (!userId) throw new Error('无法获取用户ID');
 
       const destinationData = {
