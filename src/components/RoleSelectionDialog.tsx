@@ -56,11 +56,6 @@ const RoleSelectionDialog: React.FC<RoleSelectionDialogProps> = ({
 
     setLoading(true);
     try {
-      // 首先设置当前会话访问码
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-
       // 更新用户角色
       const { error } = await supabase
         .from('users')

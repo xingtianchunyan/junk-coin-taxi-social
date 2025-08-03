@@ -48,16 +48,12 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
         throw validationError;
       }
 
-      const result = validationResult as { exists?: boolean; role?: string };
-      if (result?.exists) {
-        // 访问码存在，设置会话访问码
-        await supabase.rpc('set_config', {
-          setting_name: 'app.current_access_code',
-          setting_value: accessCode.trim()
-        });
-
+      // 检查是否有返回结果（访问码存在）
+      if (validationResult && validationResult.length > 0) {
+        const userInfo = validationResult[0];
+        
         // 登录成功
-        onAuthenticated(accessCode.trim(), result.role);
+        onAuthenticated(accessCode.trim(), userInfo.role);
         onOpenChange(false);
       } else {
         toast({
@@ -82,12 +78,6 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
     try {
       // 生成新的访问码
       const newCode = crypto.randomUUID();
-
-      // 先设置会话访问码，然后创建用户
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: newCode
-      });
 
       // 创建新用户
       const {

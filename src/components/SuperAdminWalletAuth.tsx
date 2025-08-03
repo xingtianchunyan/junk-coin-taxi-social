@@ -74,8 +74,7 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
       const message = `${SUPER_ADMIN_CONFIG.SIGNATURE_MESSAGE}\n时间戳: ${Date.now()}\n钱包地址: ${walletAddress}`;
       const signature = await signer.signMessage(message);
       
-      // 设置数据库会话的超级管理员验证状态
-      await supabase.rpc('set_super_admin_verified', { is_verified: true });
+      // Session verification removed - no longer needed without RLS
       
       onAuthenticated(walletAddress, signature);
       toast.success('身份验证成功');

@@ -57,11 +57,7 @@ const WorkSchedule: React.FC = () => {
   const loadDriverVehicle = async () => {
     if (!accessCode) return;
     try {
-      // 设置当前访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
-      });
+      // Session management removed - no longer needed without RLS
 
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -310,11 +306,7 @@ const WorkSchedule: React.FC = () => {
     if (!driverVehicle) return;
     
     try {
-      // 设置当前访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
-      });
+      // Session management removed - no longer needed without RLS
 
       const { error } = await supabase
         .from('vehicles')

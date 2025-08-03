@@ -46,11 +46,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateJWTClaims = async (code: string) => {
     try {
-      // 设置当前会话的访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: code
-      });
+      // Session management removed - no longer needed without RLS
 
       // 确保用户存在，如果不存在则创建
       const { data: userData, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {

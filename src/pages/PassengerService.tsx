@@ -52,11 +52,8 @@ const PassengerService: React.FC = () => {
     const initializeSession = async () => {
       if (accessCode) {
         try {
-          // 设置当前会话的访问码到数据库配置中
-          await supabase.rpc('set_current_access_code', {
-            input_access_code: accessCode
-          });
-          console.log('已设置当前访问码到会话中');
+          // Session management removed - no longer needed without RLS
+          console.log('访问码已加载:', accessCode);
         } catch (error) {
           console.error('设置访问码失败:', error);
           toast({
@@ -145,10 +142,7 @@ const PassengerService: React.FC = () => {
         return;
       }
 
-      // 设置会话访问码
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
+      // Session management removed - no longer needed without RLS
 
       // 验证是否有路线可用
       if (!fixedRoutes || fixedRoutes.length === 0) {

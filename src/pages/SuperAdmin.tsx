@@ -44,15 +44,25 @@ const SuperAdmin: React.FC = () => {
     try {
       setLoading(true);
       
-      // 使用新的数据库函数获取目的地和管理员访问码
+      // 直接查询目的地表并关联用户表获取访问码
       const { data: destinations, error } = await supabase
-        .rpc('get_destinations_with_admin_codes');
+        .from('preset_destinations')
+        .select(`
+          *,
+          users!preset_destinations_admin_user_id_fkey(access_code)
+        `);
 
       if (error) {
         throw error;
       }
 
-      setAdminRequests(destinations || []);
+      // 转换数据格式以适配组件
+      const mappedDestinations = destinations?.map(dest => ({
+        ...dest,
+        admin_access_code: dest.users?.access_code || ''
+      })) || [];
+      
+      setAdminRequests(mappedDestinations);
     } catch (error) {
       console.error('加载社区管理员申请失败:', error);
       toast.error('加载数据失败');

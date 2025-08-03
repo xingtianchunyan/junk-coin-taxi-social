@@ -25,10 +25,7 @@ export class RideRequestService {
 
   // 创建用车需求
   async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, accessCode: string): Promise<RideRequest> {
-    // 确保会话访问码已设置
-    await supabase.rpc('set_current_access_code', {
-      input_access_code: accessCode
-    });
+    // Session management removed - no longer needed without RLS
 
     const { data, error } = await supabase
       .from('ride_requests')
@@ -225,23 +222,7 @@ export class RideRequestService {
     if (error) throw error;
   }
 
-  // 创建支付记录
-  async createPayment(paymentData: Omit<Payment, 'id' | 'created_at' | 'confirmed_at'>): Promise<Payment> {
-    const { data, error } = await supabase
-      .from('payments')
-      .insert([paymentData])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return {
-      ...data,
-      status: (data.status as Payment['status']) || 'pending',
-      created_at: new Date(data.created_at),
-      confirmed_at: data.confirmed_at ? new Date(data.confirmed_at) : undefined
-    };
-  }
+  // 支付记录已移至行程表的支付状态字段
 
   // 获取统计数据
   async getStatistics(): Promise<{
@@ -446,12 +427,7 @@ export class RideRequestService {
 
   // 删除固定路线
   async deleteFixedRoute(id: string, accessCode?: string): Promise<void> {
-    // 如果提供了访问码，设置会话
-    if (accessCode) {
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-    }
+    // Session management removed - no longer needed without RLS
 
     const { error } = await supabase
       .from('fixed_routes')
@@ -463,10 +439,7 @@ export class RideRequestService {
 
   // 社区管理员专用方法
   async getCommunityDestination(accessCode: string): Promise<PresetDestination | null> {
-    // 设置当前会话访问码
-    await supabase.rpc('set_current_access_code', {
-      input_access_code: accessCode
-    });
+    // Session management removed - no longer needed without RLS
 
     const { data: user, error: userError } = await supabase
       .from('users')
@@ -494,12 +467,7 @@ export class RideRequestService {
   }
 
   async getDestinationRoutes(destinationId: string, accessCode?: string): Promise<FixedRoute[]> {
-    // 如果提供了访问码，设置会话
-    if (accessCode) {
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-    }
+    // Session management removed - no longer needed without RLS
 
     const { data, error } = await supabase
       .from('fixed_routes')
@@ -557,12 +525,7 @@ export class RideRequestService {
   }
 
   async createDestinationRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<FixedRoute> {
-    // 如果提供了访问码，设置会话
-    if (accessCode) {
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-    }
+    // Session management removed - no longer needed without RLS
 
     const { data, error } = await supabase
       .from('fixed_routes')
@@ -586,12 +549,7 @@ export class RideRequestService {
   }
 
   async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<Vehicle> {
-    // 如果提供了访问码，设置会话
-    if (accessCode) {
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-    }
+    // Session management removed - no longer needed without RLS
 
     const { data, error } = await supabase
       .from('vehicles')

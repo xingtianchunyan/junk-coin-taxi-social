@@ -143,17 +143,10 @@ const CommunityManagement: React.FC = () => {
     const setupSession = async () => {
       if (accessCode) {
         try {
-          // 设置当前会话的访问码到数据库配置中
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_access_code',
-            setting_value: accessCode
-          });
-          console.log('已设置当前访问码到会话中');
-          
           // 加载社区管理数据
           await loadCommunityData();
         } catch (error) {
-          console.error('设置访问码失败:', error);
+          console.error('加载数据失败:', error);
           toast({
             title: "初始化失败",
             description: "无法初始化社区管理页面，请刷新重试",
@@ -172,11 +165,6 @@ const CommunityManagement: React.FC = () => {
     
     setLoading(true);
     try {
-      // 设置会话访问码
-      await supabase.rpc('set_current_access_code', {
-        input_access_code: accessCode
-      });
-
       // 获取社区管理员管理的目的地
       const communityDestination = await rideRequestService.getCommunityDestination(accessCode);
       setDestination(communityDestination);
@@ -216,16 +204,21 @@ const CommunityManagement: React.FC = () => {
 
     try {
       // 使用函数获取或创建用户
-      const { data: userId, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
+      const { data: userInfo, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
         input_access_code: accessCode
       });
 
       if (userError) throw userError;
+      
+      // 提取用户ID - userInfo是数组格式
+      const userId = Array.isArray(userInfo) ? userInfo[0]?.id : userInfo?.id;
+      if (!userId) throw new Error('无法获取用户ID');
 
       const destinationData = {
         ...newDestination,
         admin_user_id: userId,
-        is_approved: false
+        is_approved: false,
+        is_active: true
       };
 
       const newDest = await rideRequestService.createPresetDestination(destinationData);
@@ -338,11 +331,6 @@ const CommunityManagement: React.FC = () => {
     }
 
     try {
-      // 设置会话访问码
-      await supabase.rpc('set_config', {
-        setting_name: 'app.current_access_code',
-        setting_value: accessCode
-      });
 
       const createdWallets = [];
 
