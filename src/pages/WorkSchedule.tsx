@@ -67,19 +67,6 @@ const WorkSchedule: React.FC = () => {
       
       if (userError || !userData) return;
 
-      // 如果用户有关联的目的地，自动加载目的地信息
-      if (userData.destination_id) {
-        const { data: destinationData, error: destError } = await supabase
-          .from('preset_destinations')
-          .select('*')
-          .eq('id', userData.destination_id)
-          .single();
-        
-        if (!destError && destinationData) {
-          setSelectedDestination(destinationData);
-        }
-      }
-
       const { data: vehicleData, error: vehicleError } = await supabase
         .from('vehicles')
         .select('*')
@@ -94,6 +81,21 @@ const WorkSchedule: React.FC = () => {
         created_at: new Date(vehicleData.created_at),
         updated_at: new Date(vehicleData.updated_at)
       });
+
+      // 获取目的地ID - 优先使用用户的destination_id，否则使用车辆的destination_id
+      const destinationId = userData.destination_id || vehicleData.destination_id;
+      
+      if (destinationId) {
+        const { data: destinationData, error: destError } = await supabase
+          .from('preset_destinations')
+          .select('*')
+          .eq('id', destinationId)
+          .single();
+        
+        if (!destError && destinationData) {
+          setSelectedDestination(destinationData);
+        }
+      }
       
       // 同时加载工作时间
       setWorkHours({
