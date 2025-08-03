@@ -70,53 +70,6 @@ export type Database = {
           },
         ]
       }
-      payments: {
-        Row: {
-          amount: number
-          confirmed_at: string | null
-          created_at: string | null
-          currency: string
-          id: string
-          payment_method: string
-          ride_request_id: string | null
-          status: string | null
-          transaction_hash: string | null
-          wallet_address: string
-        }
-        Insert: {
-          amount: number
-          confirmed_at?: string | null
-          created_at?: string | null
-          currency: string
-          id?: string
-          payment_method: string
-          ride_request_id?: string | null
-          status?: string | null
-          transaction_hash?: string | null
-          wallet_address: string
-        }
-        Update: {
-          amount?: number
-          confirmed_at?: string | null
-          created_at?: string | null
-          currency?: string
-          id?: string
-          payment_method?: string
-          ride_request_id?: string | null
-          status?: string | null
-          transaction_hash?: string | null
-          wallet_address?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_ride_request_id_fkey"
-            columns: ["ride_request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       preset_destinations: {
         Row: {
           address: string
@@ -438,7 +391,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_approved_destinations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          address: string
+          contact: string
+          description: string
+          service_start_time: string
+          service_end_time: string
+          service_days: Json
+          is_active: boolean
+          is_approved: boolean
+          admin_user_id: string
+          created_at: string
+        }[]
+      }
+      get_or_create_user_by_access_code: {
+        Args: { input_access_code: string }
+        Returns: {
+          id: string
+          access_code: string
+          role: string
+          wallet_address: string
+          destination_id: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      validate_access_code: {
+        Args: { input_access_code: string }
+        Returns: {
+          access_code: string
+          role: string
+        }[]
+      }
     }
     Enums: {
       user_role: "passenger" | "driver" | "community_admin" | "super_admin"
