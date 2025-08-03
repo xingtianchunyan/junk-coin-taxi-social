@@ -688,6 +688,17 @@ export class RideRequestService {
     
     if (vehicleError) throw vehicleError;
     
+    // 删除与该车辆相关的钱包地址
+    const { error: deleteWalletError } = await supabase
+      .from('wallet_addresses')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+    
+    if (deleteWalletError) {
+      console.error('删除车辆钱包地址失败:', deleteWalletError);
+      // 继续执行，不阻止车辆删除
+    }
+    
     // 删除车辆
     const { error: deleteVehicleError } = await supabase
       .from('vehicles')
