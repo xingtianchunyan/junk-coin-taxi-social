@@ -141,6 +141,8 @@ export type Database = {
           payment_required: boolean | null
           payment_status: string | null
           payment_tx_hash: string | null
+          processing_driver_id: string | null
+          request_type: string | null
           requested_time: string
           start_location: string
           status: string | null
@@ -164,6 +166,8 @@ export type Database = {
           payment_required?: boolean | null
           payment_status?: string | null
           payment_tx_hash?: string | null
+          processing_driver_id?: string | null
+          request_type?: string | null
           requested_time: string
           start_location: string
           status?: string | null
@@ -187,6 +191,8 @@ export type Database = {
           payment_required?: boolean | null
           payment_status?: string | null
           payment_tx_hash?: string | null
+          processing_driver_id?: string | null
+          request_type?: string | null
           requested_time?: string
           start_location?: string
           status?: string | null
@@ -199,6 +205,13 @@ export type Database = {
             columns: ["fixed_route_id"]
             isOneToOne: false
             referencedRelation: "fixed_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ride_requests_processing_driver_id_fkey"
+            columns: ["processing_driver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

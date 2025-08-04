@@ -14,7 +14,7 @@ export interface RideRequest {
   requested_time: Date;
   contact_info: string;
   notes?: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'processing';
   payment_required: boolean;
   payment_amount?: number;
   payment_currency?: string;
@@ -24,6 +24,8 @@ export interface RideRequest {
   vehicle_id?: string;
   passenger_count?: number;
   luggage: LuggageItem[];
+  request_type: 'community_carpool' | 'quick_carpool_info';
+  processing_driver_id?: string;
   created_at: Date;
   updated_at: Date;
 }

@@ -356,6 +356,50 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 确认帮忙功能
+  const handleConfirmAssist = async (requestId: string) => {
+    if (!driverVehicle) return;
+    
+    try {
+      // 获取当前用户信息
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('access_code', accessCode)
+        .single();
+      
+      if (userError || !userData) {
+        throw new Error('获取用户信息失败');
+      }
+
+      // 更新订单状态为处理中，并绑定司机
+      const { error } = await supabase
+        .from('ride_requests')
+        .update({
+          status: 'processing',
+          processing_driver_id: userData.id
+        })
+        .eq('id', requestId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "确认成功",
+        description: "您已确认帮忙，订单状态已更新为处理中"
+      });
+      
+      // 重新加载数据
+      await loadRideRequests();
+    } catch (error) {
+      console.error('确认帮忙失败:', error);
+      toast({
+        title: "确认失败",
+        description: "无法确认帮忙，请重试",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
@@ -481,39 +525,67 @@ const WorkSchedule: React.FC = () => {
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                  {group.map(request => {
-                                    const luggageItems = parseLuggageData(request.luggage);
-                                    return (
-                                      <div key={request.id} className="p-3 bg-gray-50 rounded-lg">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <span className="font-medium">{request.friend_name}</span>
-                                          <span className="text-sm text-gray-600">
-                                            {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
-                                              hour: '2-digit',
-                                              minute: '2-digit'
-                                            })}
-                                          </span>
-                                        </div>
-                                        <div className="text-sm text-gray-600 space-y-1">
-                                          <div>📍 {request.start_location} → {request.end_location}</div>
-                                          <div>👥 {request.passenger_count || 1}人</div>
-                                          <div>📞 {request.contact_info}</div>
-                                          {luggageItems.length > 0 && (
-                                            <div className="bg-blue-50 p-2 rounded mt-2">
-                                              <div className="font-medium text-blue-800 mb-1">🧳 行李信息:</div>
-                                              {luggageItems.map((item: LuggageItem, index: number) => (
-                                                <div key={index} className="text-blue-700 text-xs">
-                                                  • {item.length}×{item.width}×{item.height}cm × {item.quantity}件
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
-                                          {request.notes && <div>📝 {request.notes}</div>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                   {group.map(request => {
+                                     const luggageItems = parseLuggageData(request.luggage);
+                                     const selectedRoute = fixedRoutes.find(route => route.id === request.fixed_route_id);
+                                     
+                                     return (
+                                       <div key={request.id} className="p-3 bg-gray-50 rounded-lg">
+                                         <div className="flex items-center justify-between mb-2">
+                                           <div className="flex items-center gap-2">
+                                             <span className="font-medium">{request.friend_name}</span>
+                                             <Badge variant="outline" className={request.request_type === 'community_carpool' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}>
+                                               {request.request_type === 'community_carpool' ? '社区顺风车' : '拼车信息'}
+                                             </Badge>
+                                           </div>
+                                           <span className="text-sm text-gray-600">
+                                             {new Date(request.requested_time).toLocaleTimeString('zh-CN', {
+                                               hour: '2-digit',
+                                               minute: '2-digit'
+                                             })}
+                                           </span>
+                                         </div>
+                                         <div className="text-sm text-gray-600 space-y-1">
+                                           <div>📍 {request.start_location} → {request.end_location}</div>
+                                           <div>👥 {request.passenger_count || 1}人</div>
+                                           <div>📞 {request.contact_info}</div>
+                                           
+                                           {/* 显示市场价格 */}
+                                           {selectedRoute?.market_price && (
+                                             <div className="flex items-center gap-2">
+                                               <span>💰 市场价: {selectedRoute.market_price} {selectedRoute.currency}</span>
+                                             </div>
+                                           )}
+                                           
+                                           {luggageItems.length > 0 && (
+                                             <div className="bg-blue-50 p-2 rounded mt-2">
+                                               <div className="font-medium text-blue-800 mb-1">🧳 行李信息:</div>
+                                               {luggageItems.map((item: LuggageItem, index: number) => (
+                                                 <div key={index} className="text-blue-700 text-xs">
+                                                   • {item.length}×{item.width}×{item.height}cm × {item.quantity}件
+                                                 </div>
+                                               ))}
+                                             </div>
+                                           )}
+                                           {request.notes && <div>📝 {request.notes}</div>}
+                                         </div>
+                                         
+                                         {/* 确认帮忙按钮 */}
+                                         {request.status === 'pending' && (
+                                           <div className="mt-3 pt-2 border-t">
+                                             <Button 
+                                               size="sm" 
+                                               onClick={() => handleConfirmAssist(request.id)}
+                                               className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                             >
+                                               确认帮忙
+                                             </Button>
+                                           </div>
+                                         )}
+                                       </div>
+                                     );
+                                   })}
                                 </div>
                               </div>
                             );

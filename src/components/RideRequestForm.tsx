@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus } from 'lucide-react';
+import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus, Car } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
@@ -69,7 +70,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     notes: '',
     fixed_route_id: '',
     vehicle_id: '',
-    passenger_count: 1
+    passenger_count: 1,
+    request_type: 'community_carpool' as 'community_carpool' | 'quick_carpool_info'
   });
   const [luggage, setLuggage] = useState<LuggageItem[]>([
     { length: 0, width: 0, height: 0, quantity: 1 }
@@ -242,7 +244,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
         payment_required: paymentAmount > 0,
         payment_amount: paymentAmount,
-        payment_currency: selectedRoute?.currency || 'CNY'
+        payment_currency: selectedRoute?.currency || 'CNY',
+        request_type: formData.request_type
       };
       
       await onSubmit(submitData);
@@ -257,7 +260,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
         notes: '',
         fixed_route_id: '',
         vehicle_id: '',
-        passenger_count: 1
+        passenger_count: 1,
+        request_type: 'community_carpool'
       });
       setLuggage([{ length: 0, width: 0, height: 0, quantity: 1 }]);
     } catch (error) {
@@ -336,6 +340,26 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
               </AlertDescription>
             </Alert>
           )}
+
+          {/* 需求类型选择 */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-base font-medium">
+              <MapPin className="h-5 w-5" />
+              需求类型
+            </Label>
+            <Select
+              value={formData.request_type}
+              onValueChange={(value: 'community_carpool' | 'quick_carpool_info') => handleInputChange('request_type', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="community_carpool">使用社区顺风车</SelectItem>
+                <SelectItem value="quick_carpool_info">快速添加拼车信息</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -627,8 +651,8 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             </div>
           </div>
 
-          {/* 司机选择 */}
-          {vehicles.length > 0 && (
+          {/* 司机选择 - 仅在使用社区顺风车时显示 */}
+          {formData.request_type === 'community_carpool' && vehicles.length > 0 && (
             <div className="space-y-4 p-4 border rounded-lg bg-purple-50">
               <div className="space-y-2">
                 <Label htmlFor="vehicle_id" className="flex items-center gap-2">
@@ -655,10 +679,20 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                         return scheduleText || '工作时间未设置';
                       };
                       
+                      // 检查司机状态
+                      const isInTrip = vehicle.current_status === 'busy';
+                      
                       return (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
                           <div className="flex flex-col">
-                            <div>{vehicle.driver_name} - {vehicle.license_plate} (载客{vehicle.max_passengers}人)</div>
+                            <div className="flex items-center gap-2">
+                              <span>{vehicle.driver_name} - {vehicle.license_plate} (载客{vehicle.max_passengers}人, 折扣{vehicle.discount_percentage || 50}%)</span>
+                              {isInTrip && (
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 text-xs">
+                                  行程中
+                                </Badge>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-500">{formatSchedule()}</div>
                           </div>
                         </SelectItem>

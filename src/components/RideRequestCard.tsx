@@ -86,8 +86,9 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
                 </Badge>}
-              <Badge variant={request.status === 'completed' ? 'secondary' : 'outline'} className={request.status === 'completed' ? 'bg-green-100 text-green-700' : ''}>
-                {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : '待处理'}
+              <Badge variant={request.status === 'completed' ? 'secondary' : request.status === 'processing' ? 'outline' : 'outline'} 
+                     className={request.status === 'completed' ? 'bg-green-100 text-green-700' : request.status === 'processing' ? 'bg-green-500 text-white' : ''}>
+                {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : request.status === 'processing' ? '处理中' : '待处理'}
               </Badge>
             </div>
           </div>
