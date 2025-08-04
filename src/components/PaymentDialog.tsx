@@ -161,7 +161,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            包红包感谢社区朋友
+            红包金额
           </DialogTitle>
         </DialogHeader>
 
@@ -177,9 +177,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                 </div>
                 {/* 显示折扣信息 */}
                 {request.vehicle_id && <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">司机折扣</span>
+                    <span className="text-sm text-gray-600">优惠折扣</span>
                     <Badge variant="outline" className="bg-green-50 text-green-700">
-                      已享受司机优惠
+                      已享受优惠
                     </Badge>
                   </div>}
                 <div className="flex justify-between items-center">
