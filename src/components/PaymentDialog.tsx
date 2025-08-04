@@ -8,7 +8,6 @@ import { Copy, CheckCircle, Clock, CreditCard, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RideRequest, WalletAddress } from '@/types/RideRequest';
 import { rideRequestService } from '@/services/rideRequestService';
-
 interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,38 +44,40 @@ const EXCHANGE_NAME_MAP = {
   7: 'KuCoin',
   8: '火币'
 };
-
-const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, request }) => {
+const PaymentDialog: React.FC<PaymentDialogProps> = ({
+  open,
+  onOpenChange,
+  request
+}) => {
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletAddress | null>(null);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // 过滤出区块链和交易所支付方式
   const onlinePaymentMethods = walletAddresses.filter(wallet => wallet.pay_way === 1 || wallet.pay_way === 2);
   // 检查是否有链下支付方式（支付宝/微信、现金）
   const hasOfflinePayment = walletAddresses.some(wallet => wallet.pay_way === 3 || wallet.pay_way === 4);
-
   useEffect(() => {
     if (open && request?.payment_required) {
       loadWalletAddresses();
     }
   }, [open, request]);
-
   const loadWalletAddresses = async () => {
     try {
       let addresses: WalletAddress[] = [];
-      
+
       // 如果有固定路线ID，优先获取该路线的支付方式
       if (request?.fixed_route_id) {
         addresses = await rideRequestService.getWalletAddressesByRoute(request.fixed_route_id);
       }
-      
+
       // 如果没有固定路线或该路线没有配置支付方式，则获取所有支付方式
       if (addresses.length === 0) {
         addresses = await rideRequestService.getWalletAddresses();
       }
-      
       setWalletAddresses(addresses);
       if (addresses.length > 0) {
         setSelectedWallet(addresses[0]);
@@ -86,16 +87,15 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
       toast({
         title: "加载失败",
         description: "无法加载支付地址",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
       title: "已复制",
-      description: "地址已复制到剪贴板",
+      description: "地址已复制到剪贴板"
     });
   };
 
@@ -106,25 +106,23 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
     const infoType = wallet.pay_way === 2 ? '交易所UID' : '区块链地址';
     toast({
       title: "已复制",
-      description: `${infoType}已复制到剪贴板`,
+      description: `${infoType}已复制到剪贴板`
     });
   };
-
   const handlePaymentSubmit = async () => {
     setLoading(true);
     try {
       toast({
         title: "等待当面确认",
-        description: "网站只提供信息，具体情况请与司机当面确认",
+        description: "网站只提供信息，具体情况请与司机当面确认"
       });
-      
       onOpenChange(false);
     } catch (error) {
       console.error('支付确认失败:', error);
       toast({
         title: "确认失败",
         description: "请与司机联系确认支付",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -134,32 +132,31 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
   // 获取支付方式描述
   const getPaymentMethodDescription = (wallet: WalletAddress) => {
     const payWay = PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP] || '未知支付方式';
-    
-    if (wallet.pay_way === 1) { // 区块链支付
+    if (wallet.pay_way === 1) {
+      // 区块链支付
       const chainName = CHAIN_NAME_MAP[wallet.chain_name as keyof typeof CHAIN_NAME_MAP] || '未知网络';
       return `${payWay} - ${chainName} (${wallet.symbol})`;
-    } else if (wallet.pay_way === 2 && wallet.exchange_name) { // 交易所转账
+    } else if (wallet.pay_way === 2 && wallet.exchange_name) {
+      // 交易所转账
       const exchangeName = EXCHANGE_NAME_MAP[wallet.exchange_name as keyof typeof EXCHANGE_NAME_MAP] || '未知交易所';
       return `${payWay} - ${exchangeName} (${wallet.symbol})`;
     }
-    
     return `${payWay} - ${wallet.symbol}`;
   };
 
   // 获取支付通道显示名称
   const getPaymentChannelName = (wallet: WalletAddress) => {
-    if (wallet.pay_way === 1) { // 区块链支付
+    if (wallet.pay_way === 1) {
+      // 区块链支付
       return CHAIN_NAME_MAP[wallet.chain_name as keyof typeof CHAIN_NAME_MAP] || '未知网络';
-    } else if (wallet.pay_way === 2 && wallet.exchange_name) { // 交易所转账
+    } else if (wallet.pay_way === 2 && wallet.exchange_name) {
+      // 交易所转账
       return EXCHANGE_NAME_MAP[wallet.exchange_name as keyof typeof EXCHANGE_NAME_MAP] || '未知交易所';
     }
     return PAY_WAY_MAP[wallet.pay_way as keyof typeof PAY_WAY_MAP] || '未知支付方式';
   };
-
   if (!request || !request.payment_required) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+  return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -179,42 +176,27 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                   </Badge>
                 </div>
                 {/* 显示折扣信息 */}
-                {request.vehicle_id && (
-                  <div className="flex justify-between items-center mb-2">
+                {request.vehicle_id && <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600">司机折扣</span>
                     <Badge variant="outline" className="bg-green-50 text-green-700">
                       已享受司机优惠
                     </Badge>
-                  </div>
-                )}
+                  </div>}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">支付状态</span>
-                  <Badge className={
-                    request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                    request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }>
+                  <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
                     <Clock className="h-3 w-3 mr-1" />
-                    {request.payment_status === 'unpaid' ? '未支付' :
-                     request.payment_status === 'pending' ? '待确认' :
-                     request.payment_status === 'confirmed' ? '已确认' : '支付失败'}
+                    {request.payment_status === 'unpaid' ? '未支付' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已确认' : '支付失败'}
                   </Badge>
                 </div>
               </CardContent>
             </Card>
 
-            {onlinePaymentMethods.length > 0 && (
-              <div className="space-y-3">
+            {onlinePaymentMethods.length > 0 && <div className="space-y-3">
                 <label className="text-sm font-medium">选择支付方式</label>
                 <ScrollArea className="max-h-[250px] overflow-y-auto">
                   <div className="grid grid-cols-1 gap-3 pr-2">
-                    {onlinePaymentMethods.map((wallet) => (
-                      <Button
-                        key={wallet.id}
-                        variant={selectedWallet?.id === wallet.id ? "default" : "outline"}
-                        onClick={() => handlePaymentOptionClick(wallet)}
-                        className="justify-start h-auto p-4 text-left"
-                      >
+                    {onlinePaymentMethods.map(wallet => <Button key={wallet.id} variant={selectedWallet?.id === wallet.id ? "default" : "outline"} onClick={() => handlePaymentOptionClick(wallet)} className="justify-start h-auto p-4 text-left">
                         <div className="flex flex-col items-start w-full">
                           <div className="flex items-center justify-between w-full mb-2">
                             <div className="flex items-center gap-2">
@@ -235,26 +217,20 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                           </div>
 
                         </div>
-                      </Button>
-                    ))}
+                      </Button>)}
                   </div>
                 </ScrollArea>
-              </div>
-            )}
+              </div>}
 
-            {hasOfflinePayment && (
-              <Card className="border-orange-200 bg-orange-50">
+            {hasOfflinePayment && <Card className="border-orange-200 bg-orange-50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-orange-700">
                     <Info className="h-5 w-5" />
                     <span className="font-medium">支持链下支付</span>
                   </div>
-                  <p className="text-sm text-orange-600 mt-2">
-                    具体情况与司机沟通（支持支付宝、微信或现金支付）
-                  </p>
+                  <p className="text-sm text-orange-600 mt-2">具体情况与司机沟通（支持支付宝红包、微信红包或现金感谢）</p>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
           </div>
         </div>
 
@@ -262,17 +238,11 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             取消
           </Button>
-          <Button 
-            onClick={handlePaymentSubmit}
-            disabled={loading || !selectedWallet}
-            className="flex-1"
-          >
+          <Button onClick={handlePaymentSubmit} disabled={loading || !selectedWallet} className="flex-1">
             {loading ? '处理中...' : '我已转账'}
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default PaymentDialog;
