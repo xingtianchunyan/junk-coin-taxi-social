@@ -152,11 +152,11 @@ const WorkSchedule: React.FC = () => {
       
       const routeIds = routeData?.map(route => route.id) || [];
       
-      // 查询与这些路线相关的订单
+      // 查询与这些路线相关的订单（包含pending和processing状态）
       const { data, error } = await supabase
         .from('ride_requests')
         .select('*')
-        .eq('status', 'pending')
+        .in('status', ['pending', 'processing'])
         .in('fixed_route_id', routeIds)
         .order('requested_time', { ascending: true });
       
