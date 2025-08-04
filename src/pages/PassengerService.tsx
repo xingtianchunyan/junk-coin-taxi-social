@@ -149,11 +149,7 @@ const PassengerService: React.FC = () => {
         throw new Error('请选择固定路线');
       }
 
-      console.log('准备创建用车需求，数据:', requestData);
-      console.log('访问码:', accessCode);
-      
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
-      console.log('用车需求创建成功:', request);
 
       // 重新加载数据以获取最新的组队信息
       await loadRideRequests();
@@ -164,26 +160,10 @@ const PassengerService: React.FC = () => {
         description: "需求已成功提交"
       });
     } catch (error) {
-      console.error('创建用车需求失败，完整错误信息:', error);
-      console.error('错误类型:', typeof error);
-      console.error('错误消息:', error instanceof Error ? error.message : String(error));
-      
-      let errorMessage = "无法创建用车需求，请重试";
-      if (error instanceof Error) {
-        if (error.message.includes('duplicate')) {
-          errorMessage = "您已在该时段创建过用车需求";
-        } else if (error.message.includes('route')) {
-          errorMessage = "请选择有效的路线";
-        } else if (error.message.includes('validation')) {
-          errorMessage = "输入数据格式有误";
-        } else {
-          errorMessage = `创建失败: ${error.message}`;
-        }
-      }
-      
+      console.error('创建用车需求失败:', error);
       toast({
         title: "创建失败",
-        description: errorMessage,
+        description: "无法创建用车需求，请重试",
         variant: "destructive"
       });
     }
