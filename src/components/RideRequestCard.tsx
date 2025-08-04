@@ -110,10 +110,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             <span>{formatDateTime(request.requested_time)}</span>
           </div>
           
-          {canShowDetails && request.contact_info && <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Phone className="h-4 w-4" />
-              <span>{request.contact_info}</span>
-            </div>}
+          {canShowDetails && (() => {
+            const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
+            return selectedVehicle?.driver_phone && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Phone className="h-4 w-4" />
+                <span>司机电话: {selectedVehicle.driver_phone}</span>
+              </div>
+            );
+          })()}
           
           {canShowDetails && request.notes && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               <strong>备注：</strong>{request.notes}
