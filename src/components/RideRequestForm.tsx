@@ -89,6 +89,21 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     loadVehicles();
   }, [selectedDestination]);
 
+  // Clear selected vehicle when requested time changes if the vehicle is no longer available
+  useEffect(() => {
+    if (formData.requested_time && formData.vehicle_id) {
+      const selectedVehicle = vehicles.find(v => v.id === formData.vehicle_id);
+      if (selectedVehicle && !isDriverAvailable(selectedVehicle, formData.requested_time)) {
+        setFormData(prev => ({ ...prev, vehicle_id: '' }));
+        toast({
+          title: "司机不可用",
+          description: "所选司机在此时间段不工作，已自动取消选择",
+          variant: "destructive"
+        });
+      }
+    }
+  }, [formData.requested_time, formData.vehicle_id, vehicles, toast]);
+
   const loadFixedRoutes = async () => {
     try {
       console.log('开始加载固定路线，当前选择的目的地:', selectedDestination);
@@ -139,6 +154,36 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     } catch (error) {
       console.error('加载车辆失败:', error);
     }
+  };
+
+  // 检查司机是否在工作时间内
+  const isDriverAvailable = (vehicle: Vehicle, requestedTime: string) => {
+    if (!requestedTime || !vehicle.work_start_time || !vehicle.work_end_time) return true;
+    
+    const requestDate = new Date(requestedTime);
+    const requestDateStr = requestDate.toISOString().split('T')[0];
+    const requestTimeStr = requestDate.toTimeString().split(' ')[0].slice(0, 5);
+    
+    // 检查日期范围
+    if (vehicle.work_start_date && vehicle.work_end_date) {
+      if (requestDateStr < vehicle.work_start_date || requestDateStr > vehicle.work_end_date) {
+        return false;
+      }
+    }
+    
+    // 检查时间范围
+    if (requestTimeStr < vehicle.work_start_time || requestTimeStr > vehicle.work_end_time) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // 获取可用司机列表
+  const getAvailableVehicles = () => {
+    if (!formData.requested_time) return vehicles;
+    
+    return vehicles.filter(vehicle => isDriverAvailable(vehicle, formData.requested_time));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -581,15 +626,36 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
                     <SelectValue placeholder="系统自动分配司机或手动选择" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vehicles.map(vehicle => (
-                      <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.driver_name} - {vehicle.license_plate} (载客{vehicle.max_passengers}人)
-                      </SelectItem>
-                    ))}
+                    {getAvailableVehicles().map(vehicle => {
+                      const formatSchedule = () => {
+                        let scheduleText = '';
+                        if (vehicle.work_start_date && vehicle.work_end_date) {
+                          scheduleText += `${vehicle.work_start_date}至${vehicle.work_end_date} `;
+                        }
+                        if (vehicle.work_start_time && vehicle.work_end_time) {
+                          scheduleText += `${vehicle.work_start_time}-${vehicle.work_end_time}`;
+                        }
+                        return scheduleText || '工作时间未设置';
+                      };
+                      
+                      return (
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                          <div className="flex flex-col">
+                            <div>{vehicle.driver_name} - {vehicle.license_plate} (载客{vehicle.max_passengers}人)</div>
+                            <div className="text-xs text-gray-500">{formatSchedule()}</div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {formData.requested_time && getAvailableVehicles().length < vehicles.length && (
+                  <div className="text-xs text-yellow-600">
+                    ⚠️ 部分司机在您选择的时间段不可用，已自动过滤
+                  </div>
+                )}
                 <div className="text-xs text-purple-600">
-                  💡 如不选择司机，系统将根据时间和路线自动分配合适的司机
+                  💡 只显示在您选择的时间段内工作的司机，如不选择司机，系统将自动分配
                 </div>
               </div>
             </div>

@@ -144,9 +144,9 @@ const PassengerService: React.FC = () => {
 
       // Session management removed - no longer needed without RLS
 
-      // 验证是否有路线可用
-      if (!fixedRoutes || fixedRoutes.length === 0) {
-        throw new Error('未找到相关路线');
+      // 验证是否选择了固定路线
+      if (!requestData.fixed_route_id) {
+        throw new Error('请选择固定路线');
       }
 
       const request = await rideRequestService.createRideRequest(requestData, accessCode);

@@ -259,7 +259,9 @@ export type Database = {
           trunk_width_cm: number
           updated_at: string
           user_id: string | null
+          work_end_date: string | null
           work_end_time: string | null
+          work_start_date: string | null
           work_start_time: string | null
         }
         Insert: {
@@ -279,7 +281,9 @@ export type Database = {
           trunk_width_cm?: number
           updated_at?: string
           user_id?: string | null
+          work_end_date?: string | null
           work_end_time?: string | null
+          work_start_date?: string | null
           work_start_time?: string | null
         }
         Update: {
@@ -299,7 +303,9 @@ export type Database = {
           trunk_width_cm?: number
           updated_at?: string
           user_id?: string | null
+          work_end_date?: string | null
           work_end_time?: string | null
+          work_start_date?: string | null
           work_start_time?: string | null
         }
         Relationships: [
