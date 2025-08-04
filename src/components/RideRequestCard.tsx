@@ -122,7 +122,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
           {request.payment_required && accessLevel === 'private' && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
-                <span className="font-medium">支付信息</span>
+                <span className="font-medium">未感谢</span>
               </div>
               <div className="mt-1 text-purple-600">
                 {priceInfo.discountPercentage ? <div>
