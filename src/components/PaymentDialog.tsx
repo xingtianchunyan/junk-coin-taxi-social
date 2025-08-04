@@ -161,7 +161,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            支付用车费用
+            包红包感谢社区朋友
           </DialogTitle>
         </DialogHeader>
 
