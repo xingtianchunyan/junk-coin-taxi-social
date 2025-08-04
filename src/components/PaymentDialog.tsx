@@ -236,9 +236,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         </div>
 
         <div className="flex gap-2 pt-4 border-t mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            取消
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">取消
+我已感谢</Button>
           <Button onClick={handlePaymentSubmit} disabled={loading || !selectedWallet} className="flex-1">
             {loading ? '处理中...' : '我已转账'}
           </Button>
