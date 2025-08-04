@@ -217,14 +217,21 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
       const selectedRoute = fixedRoutes.find(route => route.id === formData.fixed_route_id);
       const selectedVehicle = vehicles.find(v => v.id === formData.vehicle_id);
       
+      console.log('选择的路线:', selectedRoute);
+      console.log('选择的车辆:', selectedVehicle);
+      
       // 计算支付金额：市场价 × 司机折扣百分比
       let paymentAmount = 0;
       if (selectedRoute?.market_price && selectedVehicle?.discount_percentage) {
         paymentAmount = selectedRoute.market_price * (selectedVehicle.discount_percentage / 100);
+        console.log('使用折扣计算金额:', selectedRoute.market_price, '×', selectedVehicle.discount_percentage, '% =', paymentAmount);
       } else if (selectedRoute?.our_price) {
         // 如果没有市场价或司机折扣，则使用原价
         paymentAmount = selectedRoute.our_price;
+        console.log('使用原价:', paymentAmount);
       }
+      
+      console.log('最终支付金额:', paymentAmount);
       
       const submitData = {
         ...validation.sanitizedData,
