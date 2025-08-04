@@ -161,7 +161,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            支付用车费用
+            红包感谢社区朋友
           </DialogTitle>
         </DialogHeader>
 
@@ -236,10 +236,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         </div>
 
         <div className="flex gap-2 pt-4 border-t mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">取消
-我已感谢</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">取消</Button>
           <Button onClick={handlePaymentSubmit} disabled={loading || !selectedWallet} className="flex-1">
-            {loading ? '处理中...' : '我已转账'}
+            {loading ? '处理中...' : '我要感谢'}
           </Button>
         </div>
       </DialogContent>

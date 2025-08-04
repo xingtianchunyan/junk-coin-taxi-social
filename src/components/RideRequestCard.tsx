@@ -86,10 +86,6 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
                 </Badge>}
-              {request.payment_required && accessLevel === 'private' && <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                  <CreditCard className="h-3 w-3 mr-1" />
-                  需付费
-                </Badge>}
               <Badge variant={request.status === 'completed' ? 'secondary' : 'outline'} className={request.status === 'completed' ? 'bg-green-100 text-green-700' : ''}>
                 {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : '待处理'}
               </Badge>
@@ -127,7 +123,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
           {request.payment_required && accessLevel === 'private' && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
-                <span className="font-medium">未感谢</span>
+                <span className="font-medium">感谢费</span>
               </div>
               <div className="mt-1 text-purple-600">
                 {priceInfo.discountPercentage ? <div>
@@ -144,7 +140,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
-                  {request.payment_status === 'unpaid' ? '未支付' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
+                  {request.payment_status === 'unpaid' ? '未感谢' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
                 </Badge>
                 {request.payment_status === 'unpaid' && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)} className="text-purple-600 border-purple-200 hover:bg-purple-50">去感谢</Button>}
               </div>
