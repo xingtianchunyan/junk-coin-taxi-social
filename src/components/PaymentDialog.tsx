@@ -113,7 +113,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     setLoading(true);
     try {
       toast({
-        title: "请当面感谢",
+        title: "等待当面确认",
         description: "网站只提供信息，具体情况请与司机当面确认"
       });
       onOpenChange(false);
@@ -161,7 +161,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            支付感谢费用
+            支付用车费用
           </DialogTitle>
         </DialogHeader>
 
@@ -170,7 +170,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             <Card>
               <CardContent className="p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">需支付金额</span>
+                  <span className="text-sm text-gray-600">红包金额</span>
                   <Badge className="bg-purple-100 text-purple-700">
                     {request.payment_amount} {request.payment_currency}
                   </Badge>
@@ -193,7 +193,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             </Card>
 
             {onlinePaymentMethods.length > 0 && <div className="space-y-3">
-                <label className="text-sm font-medium">选择感谢方式</label>
+                <label className="text-sm font-medium">选择红包方式</label>
                 <ScrollArea className="max-h-[250px] overflow-y-auto">
                   <div className="grid grid-cols-1 gap-3 pr-2">
                     {onlinePaymentMethods.map(wallet => <Button key={wallet.id} variant={selectedWallet?.id === wallet.id ? "default" : "outline"} onClick={() => handlePaymentOptionClick(wallet)} className="justify-start h-auto p-4 text-left">
