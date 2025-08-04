@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard } from 'lucide-react';
 import { RideRequest } from '@/types/RideRequest';
 import PaymentDialog from './PaymentDialog';
-
 interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
@@ -13,67 +12,68 @@ interface RideRequestCardProps {
   vehicles?: any[];
   fixedRoutes?: any[];
 }
-
-const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel, vehicles = [], fixedRoutes = [] }) => {
+const RideRequestCard: React.FC<RideRequestCardProps> = ({
+  request,
+  onDelete,
+  accessLevel,
+  vehicles = [],
+  fixedRoutes = []
+}) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('zh-CN', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit',
+      minute: '2-digit'
     }).format(date);
   };
-
   const isUpcoming = (date: Date) => {
     const now = new Date();
     const timeDiff = date.getTime() - now.getTime();
     const hoursDiff = timeDiff / (1000 * 3600);
     return hoursDiff <= 24 && hoursDiff > 0;
   };
-
   const canShowDetails = accessLevel !== 'public';
   const canManage = accessLevel === 'community_admin';
 
   // 计算折扣后的价格和折扣信息
   const getDiscountedPrice = () => {
     if (!request.fixed_route_id || !request.vehicle_id) {
-      return { amount: request.payment_amount, discountPercentage: null, originalPrice: null };
+      return {
+        amount: request.payment_amount,
+        discountPercentage: null,
+        originalPrice: null
+      };
     }
-
     const selectedRoute = fixedRoutes.find(route => route.id === request.fixed_route_id);
     const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
-
     if (!selectedRoute || !selectedVehicle) {
-      return { amount: request.payment_amount, discountPercentage: null, originalPrice: null };
+      return {
+        amount: request.payment_amount,
+        discountPercentage: null,
+        originalPrice: null
+      };
     }
-
     const originalPrice = selectedRoute.market_price || selectedRoute.our_price;
     if (!originalPrice || !selectedVehicle.discount_percentage) {
-      return { amount: originalPrice || request.payment_amount, discountPercentage: null, originalPrice };
+      return {
+        amount: originalPrice || request.payment_amount,
+        discountPercentage: null,
+        originalPrice
+      };
     }
-
     const discountedAmount = originalPrice * (selectedVehicle.discount_percentage / 100);
-    return { 
-      amount: discountedAmount, 
+    return {
+      amount: discountedAmount,
       discountPercentage: selectedVehicle.discount_percentage,
-      originalPrice 
+      originalPrice
     };
   };
-
   const priceInfo = getDiscountedPrice();
-
-  return (
-    <>
-      <Card className={`transition-all duration-200 hover:shadow-md ${
-        request.status === 'completed' 
-          ? 'opacity-75 bg-gray-50' 
-          : isUpcoming(request.requested_time) 
-            ? 'border-orange-200 bg-orange-50' 
-            : 'bg-white'
-      }`}>
+  return <>
+      <Card className={`transition-all duration-200 hover:shadow-md ${request.status === 'completed' ? 'opacity-75 bg-gray-50' : isUpcoming(request.requested_time) ? 'border-orange-200 bg-orange-50' : 'bg-white'}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -83,23 +83,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              {isUpcoming(request.requested_time) && request.status === 'pending' && (
-                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
+              {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
-                </Badge>
-              )}
-              {request.payment_required && accessLevel === 'private' && (
-                <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                </Badge>}
+              {request.payment_required && accessLevel === 'private' && <Badge variant="outline" className="bg-purple-100 text-purple-700">
                   <CreditCard className="h-3 w-3 mr-1" />
                   需付费
-                </Badge>
-              )}
-              <Badge 
-                variant={request.status === 'completed' ? 'secondary' : 'outline'}
-                className={request.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
-              >
-                {request.status === 'completed' ? '已完成' : 
-                 request.status === 'confirmed' ? '已确认' : '待处理'}
+                </Badge>}
+              <Badge variant={request.status === 'completed' ? 'secondary' : 'outline'} className={request.status === 'completed' ? 'bg-green-100 text-green-700' : ''}>
+                {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : '待处理'}
               </Badge>
             </div>
           </div>
@@ -109,10 +101,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <MapPin className="h-4 w-4" />
             <span>
-              {canShowDetails 
-                ? `${request.start_location} → ${request.end_location}`
-                : '*** → ***'
-              }
+              {canShowDetails ? `${request.start_location} → ${request.end_location}` : '*** → ***'}
             </span>
           </div>
           
@@ -121,28 +110,22 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
             <span>{formatDateTime(request.requested_time)}</span>
           </div>
           
-          {canShowDetails && request.contact_info && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+          {canShowDetails && request.contact_info && <div className="flex items-center gap-2 text-sm text-gray-600">
               <Phone className="h-4 w-4" />
               <span>{request.contact_info}</span>
-            </div>
-          )}
+            </div>}
           
-          {canShowDetails && request.notes && (
-            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+          {canShowDetails && request.notes && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               <strong>备注：</strong>{request.notes}
-            </div>
-          )}
+            </div>}
 
-          {request.payment_required && accessLevel === 'private' && (
-            <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
+          {request.payment_required && accessLevel === 'private' && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
                 <span className="font-medium">支付信息</span>
               </div>
               <div className="mt-1 text-purple-600">
-                {priceInfo.discountPercentage ? (
-                  <div>
+                {priceInfo.discountPercentage ? <div>
                     <div className="flex items-center gap-2">
                       <span className="line-through text-gray-500">原价: {priceInfo.originalPrice} {request.payment_currency}</span>
                       <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
@@ -152,34 +135,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
                     <div className="font-semibold">
                       折后价: {priceInfo.amount.toFixed(2)} {request.payment_currency}
                     </div>
-                  </div>
-                ) : (
-                  <span>金额: {priceInfo.amount} {request.payment_currency}</span>
-                )}
+                  </div> : <span>金额: {priceInfo.amount} {request.payment_currency}</span>}
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <Badge className={
-                  request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                  request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }>
-                  {request.payment_status === 'unpaid' ? '未支付' :
-                   request.payment_status === 'pending' ? '待确认' :
-                   request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
+                <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
+                  {request.payment_status === 'unpaid' ? '未支付' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
                 </Badge>
-                {request.payment_status === 'unpaid' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowPaymentDialog(true)}
-                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                  >
-                    去支付
-                  </Button>
-                )}
+                {request.payment_status === 'unpaid' && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)} className="text-purple-600 border-purple-200 hover:bg-purple-50">去感谢</Button>}
               </div>
-            </div>
-          )}
+            </div>}
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -187,33 +151,20 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
               创建于 {formatDateTime(request.created_at)}
             </div>
             
-            {request.status === 'pending' && (canShowDetails || canManage) && (
-              <Button
-                onClick={() => {
-                  if (window.confirm('确定要删除这个用车需求吗？此操作不可撤销。')) {
-                    onDelete(request.id);
-                  }
-                }}
-                size="sm"
-                variant="destructive"
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
+            {request.status === 'pending' && (canShowDetails || canManage) && <Button onClick={() => {
+            if (window.confirm('确定要删除这个用车需求吗？此操作不可撤销。')) {
+              onDelete(request.id);
+            }
+          }} size="sm" variant="destructive" className="bg-red-600 hover:bg-red-700 text-white">
                 <Trash2 className="h-4 w-4 mr-1" />
                 删除需求
-              </Button>
-            )}
+              </Button>}
           </div>
 
         </CardContent>
       </Card>
 
-      <PaymentDialog 
-        open={showPaymentDialog}
-        onOpenChange={setShowPaymentDialog}
-        request={request}
-      />
-    </>
-  );
+      <PaymentDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} request={request} />
+    </>;
 };
-
 export default RideRequestCard;
