@@ -383,6 +383,8 @@ const PassengerService: React.FC = () => {
                                   request={request} 
                                   onDelete={deleteRequest}
                                   accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                  vehicles={vehicles}
+                                  fixedRoutes={fixedRoutes}
                                 />
                                 ))}
                               </div>

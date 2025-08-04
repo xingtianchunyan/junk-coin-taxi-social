@@ -10,9 +10,11 @@ interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
   accessLevel: 'public' | 'private' | 'community_admin';
+  vehicles?: any[];
+  fixedRoutes?: any[];
 }
 
-const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel }) => {
+const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, accessLevel, vehicles = [], fixedRoutes = [] }) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const formatDateTime = (date: Date) => {
@@ -34,6 +36,34 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
 
   const canShowDetails = accessLevel !== 'public';
   const canManage = accessLevel === 'community_admin';
+
+  // 计算折扣后的价格和折扣信息
+  const getDiscountedPrice = () => {
+    if (!request.fixed_route_id || !request.vehicle_id) {
+      return { amount: request.payment_amount, discountPercentage: null, originalPrice: null };
+    }
+
+    const selectedRoute = fixedRoutes.find(route => route.id === request.fixed_route_id);
+    const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
+
+    if (!selectedRoute || !selectedVehicle) {
+      return { amount: request.payment_amount, discountPercentage: null, originalPrice: null };
+    }
+
+    const originalPrice = selectedRoute.market_price || selectedRoute.our_price;
+    if (!originalPrice || !selectedVehicle.discount_percentage) {
+      return { amount: originalPrice || request.payment_amount, discountPercentage: null, originalPrice };
+    }
+
+    const discountedAmount = originalPrice * (selectedVehicle.discount_percentage / 100);
+    return { 
+      amount: discountedAmount, 
+      discountPercentage: selectedVehicle.discount_percentage,
+      originalPrice 
+    };
+  };
+
+  const priceInfo = getDiscountedPrice();
 
   return (
     <>
@@ -111,13 +141,22 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
                 <span className="font-medium">支付信息</span>
               </div>
               <div className="mt-1 text-purple-600">
-                金额: {request.payment_amount} {request.payment_currency}
+                {priceInfo.discountPercentage ? (
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="line-through text-gray-500">原价: {priceInfo.originalPrice} {request.payment_currency}</span>
+                      <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
+                        {priceInfo.discountPercentage}% 折扣
+                      </Badge>
+                    </div>
+                    <div className="font-semibold">
+                      折后价: {priceInfo.amount.toFixed(2)} {request.payment_currency}
+                    </div>
+                  </div>
+                ) : (
+                  <span>金额: {priceInfo.amount} {request.payment_currency}</span>
+                )}
               </div>
-              {request.vehicle_id && (
-                <div className="mt-1 text-xs text-green-600">
-                  * 已享受司机优惠价格
-                </div>
-              )}
               <div className="mt-1 flex items-center justify-between">
                 <Badge className={
                   request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' :
