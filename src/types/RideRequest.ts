@@ -21,6 +21,7 @@ export interface RideRequest {
   payment_status: 'unpaid' | 'pending' | 'confirmed' | 'failed';
   payment_tx_hash?: string;
   fixed_route_id?: string;
+  vehicle_id?: string;
   passenger_count?: number;
   luggage: LuggageItem[];
   created_at: Date;

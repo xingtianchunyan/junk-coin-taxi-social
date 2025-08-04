@@ -113,6 +113,11 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({ request, onDelete, ac
               <div className="mt-1 text-purple-600">
                 金额: {request.payment_amount} {request.payment_currency}
               </div>
+              {request.vehicle_id && (
+                <div className="mt-1 text-xs text-green-600">
+                  * 已享受司机优惠价格
+                </div>
+              )}
               <div className="mt-1 flex items-center justify-between">
                 <Badge className={
                   request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' :

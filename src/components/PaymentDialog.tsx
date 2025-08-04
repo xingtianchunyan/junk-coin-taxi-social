@@ -178,6 +178,15 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onOpenChange, reque
                     {request.payment_amount} {request.payment_currency}
                   </Badge>
                 </div>
+                {/* 显示折扣信息 */}
+                {request.vehicle_id && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">司机折扣</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700">
+                      已享受司机优惠
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">支付状态</span>
                   <Badge className={

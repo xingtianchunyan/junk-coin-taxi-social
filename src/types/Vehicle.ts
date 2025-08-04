@@ -18,6 +18,7 @@ export interface Vehicle {
   work_end_time?: string;
   work_start_date?: string;
   work_end_date?: string;
+  discount_percentage?: number;
   users?: {
     access_code?: string;
   };
