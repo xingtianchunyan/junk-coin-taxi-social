@@ -226,7 +226,8 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-orange-700">
                     <Info className="h-5 w-5" />
-                    <span className="font-medium">支持链下支付</span>
+                    <span className="font-medium">红包感谢
+                </span>
                   </div>
                   <p className="text-sm text-orange-600 mt-2">具体情况与司机沟通（支持支付宝红包、微信红包或现金感谢）</p>
                 </CardContent>
