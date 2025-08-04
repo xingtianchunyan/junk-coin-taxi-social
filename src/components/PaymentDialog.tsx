@@ -113,7 +113,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     setLoading(true);
     try {
       toast({
-        title: "等待当面确认",
+        title: "请当面感谢",
         description: "网站只提供信息，具体情况请与司机当面确认"
       });
       onOpenChange(false);
@@ -161,7 +161,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            支付用车费用
+            支付感谢费用
           </DialogTitle>
         </DialogHeader>
 
@@ -183,7 +183,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                     </Badge>
                   </div>}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">支付状态</span>
+                  <span className="text-sm text-gray-600">感谢状态</span>
                   <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
                     <Clock className="h-3 w-3 mr-1" />
                     {request.payment_status === 'unpaid' ? '未支付' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已确认' : '支付失败'}
@@ -193,7 +193,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             </Card>
 
             {onlinePaymentMethods.length > 0 && <div className="space-y-3">
-                <label className="text-sm font-medium">选择支付方式</label>
+                <label className="text-sm font-medium">选择感谢方式</label>
                 <ScrollArea className="max-h-[250px] overflow-y-auto">
                   <div className="grid grid-cols-1 gap-3 pr-2">
                     {onlinePaymentMethods.map(wallet => <Button key={wallet.id} variant={selectedWallet?.id === wallet.id ? "default" : "outline"} onClick={() => handlePaymentOptionClick(wallet)} className="justify-start h-auto p-4 text-left">
@@ -226,8 +226,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-orange-700">
                     <Info className="h-5 w-5" />
-                    <span className="font-medium">红包感谢
-                </span>
+                    <span className="font-medium">支持红包感谢</span>
                   </div>
                   <p className="text-sm text-orange-600 mt-2">具体情况与司机沟通（支持支付宝红包、微信红包或现金感谢）</p>
                 </CardContent>
@@ -236,8 +235,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         </div>
 
         <div className="flex gap-2 pt-4 border-t mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">取消
-我已感谢</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+            取消
+          </Button>
           <Button onClick={handlePaymentSubmit} disabled={loading || !selectedWallet} className="flex-1">
             {loading ? '处理中...' : '我已转账'}
           </Button>
