@@ -1119,6 +1119,19 @@ const CommunityManagement: React.FC = () => {
                                 </Button>
                               </div>
                             )}
+                            {/* 显示司机折扣信息 */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-blue-700 font-medium">司机折扣:</span>
+                              {vehicle.discount_percentage && vehicle.discount_percentage > 0 ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                                  同意 {vehicle.discount_percentage}% 折扣
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-medium">
+                                  不同意折扣
+                                </span>
+                              )}
+                            </div>
                           </div>
                           {vehicle.driver_phone && (
                             <p className="text-sm text-gray-600 flex items-center gap-1">
