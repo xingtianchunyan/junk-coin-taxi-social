@@ -14,6 +14,10 @@ export interface Vehicle {
   user_id?: string;
   access_code?: string;
   destination_id?: string;
+  work_start_time?: string;
+  work_end_time?: string;
+  work_start_date?: string;
+  work_end_date?: string;
   users?: {
     access_code?: string;
   };

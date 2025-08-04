@@ -32,7 +32,9 @@ const WorkSchedule: React.FC = () => {
   });
   const [workHours, setWorkHours] = useState({
     start_time: '08:00',
-    end_time: '18:00'
+    end_time: '18:00',
+    start_date: '',
+    end_date: ''
   });
   const { toast } = useToast();
   const { clearAccessCode, accessCode } = useAccessCode();
@@ -100,7 +102,9 @@ const WorkSchedule: React.FC = () => {
       // 同时加载工作时间
       setWorkHours({
         start_time: vehicleData.work_start_time || '08:00',
-        end_time: vehicleData.work_end_time || '18:00'
+        end_time: vehicleData.work_end_time || '18:00',
+        start_date: vehicleData.work_start_date || '',
+        end_date: vehicleData.work_end_date || ''
       });
     } catch (error) {
       console.error('加载司机车辆信息失败:', error);
@@ -327,7 +331,9 @@ const WorkSchedule: React.FC = () => {
         .from('vehicles')
         .update({
           work_start_time: workHours.start_time,
-          work_end_time: workHours.end_time
+          work_end_time: workHours.end_time,
+          work_start_date: workHours.start_date,
+          work_end_date: workHours.end_date
         })
         .eq('id', driverVehicle.id);
       
@@ -391,6 +397,24 @@ const WorkSchedule: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <Label htmlFor="work_start_date">开始日期</Label>
+                <Input
+                  id="work_start_date"
+                  type="date"
+                  value={workHours.start_date}
+                  onChange={(e) => setWorkHours({...workHours, start_date: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="work_end_date">结束日期</Label>
+                <Input
+                  id="work_end_date"
+                  type="date"
+                  value={workHours.end_date}
+                  onChange={(e) => setWorkHours({...workHours, end_date: e.target.value})}
+                />
+              </div>
+              <div>
                 <Label htmlFor="work_start">开始时间</Label>
                 <Input
                   id="work_start"
@@ -412,7 +436,7 @@ const WorkSchedule: React.FC = () => {
             <Button 
               onClick={updateWorkHours} 
               className="mt-4"
-              disabled={!workHours.start_time || !workHours.end_time}
+              disabled={!workHours.start_time || !workHours.end_time || !workHours.start_date || !workHours.end_date}
             >
               更新服务时间
             </Button>
