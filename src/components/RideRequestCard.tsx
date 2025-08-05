@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard } from 'lucide-react';
+import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard, Copy } from 'lucide-react';
 import { RideRequest } from '@/types/RideRequest';
 import PaymentDialog from './PaymentDialog';
+import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
@@ -20,6 +22,8 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
   fixedRoutes = []
 }) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('zh-CN', {
       year: 'numeric',
@@ -27,7 +31,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date);
+    }).format(date).replace(/\//g, '/').replace(/\s/g, '-');
   };
   const isUpcoming = (date: Date) => {
     const now = new Date();
@@ -37,6 +41,28 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
   };
   const canShowDetails = accessLevel !== 'public';
   const canManage = accessLevel === 'community_admin';
+
+  // 复制电话号码到剪贴板
+  const copyPhoneNumber = async (phoneNumber: string) => {
+    try {
+      await navigator.clipboard.writeText(phoneNumber);
+      toast({
+        title: "复制成功",
+        description: "电话号码已复制到剪贴板"
+      });
+    } catch (error) {
+      toast({
+        title: "复制失败",
+        description: "无法复制电话号码",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // 拨打电话
+  const dialPhoneNumber = (phoneNumber: string) => {
+    window.location.href = `tel:${phoneNumber}`;
+  };
 
   // 计算折扣后的价格和折扣信息
   const getDiscountedPrice = () => {
@@ -86,6 +112,9 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
                 </Badge>}
+              {request.status === 'processing' && <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+                  已联系
+                </Badge>}
               <Badge variant={request.status === 'completed' ? 'secondary' : request.status === 'processing' ? 'outline' : 'outline'} 
                      className={request.status === 'completed' ? 'bg-green-100 text-green-700' : request.status === 'processing' ? 'bg-green-500 text-white' : ''}>
                 {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : request.status === 'processing' ? '处理中' : '待处理'}
@@ -113,9 +142,57 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Phone className="h-4 w-4" />
                 <span>司机电话: {selectedVehicle.driver_phone}</span>
+                <div className="flex items-center gap-1 ml-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyPhoneNumber(selectedVehicle.driver_phone!)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  {isMobile && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => dialPhoneNumber(selectedVehicle.driver_phone!)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Phone className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
             );
           })()}
+
+          {/* 显示乘客电话（仅在工作安排页面，即accessLevel为community_admin时显示） */}
+          {canManage && request.contact_info && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Phone className="h-4 w-4" />
+              <span>乘客电话: {request.contact_info}</span>
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyPhoneNumber(request.contact_info)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                {isMobile && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => dialPhoneNumber(request.contact_info)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Phone className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
           
           {canShowDetails && request.notes && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               <strong>备注：</strong>{request.notes}
