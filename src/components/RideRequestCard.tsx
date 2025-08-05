@@ -112,9 +112,6 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
                 </Badge>}
-              {request.status === 'processing' && <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
-                  已联系
-                </Badge>}
               <Badge variant={request.status === 'completed' ? 'secondary' : request.status === 'processing' ? 'outline' : 'outline'} 
                      className={request.status === 'completed' ? 'bg-green-100 text-green-700' : request.status === 'processing' ? 'bg-green-500 text-white' : ''}>
                 {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : request.status === 'processing' ? '处理中' : '待处理'}
@@ -136,7 +133,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             <span>{formatDateTime(request.requested_time)}</span>
           </div>
           
-          {canShowDetails && (() => {
+          {canShowDetails && accessLevel !== 'community_admin' && (() => {
             const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
             return selectedVehicle?.driver_phone && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -198,7 +195,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               <strong>备注：</strong>{request.notes}
             </div>}
 
-          {request.payment_required && accessLevel === 'private' && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
+          {request.payment_required && (accessLevel === 'private' || accessLevel === 'community_admin') && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
                 <CreditCard className="h-4 w-4" />
                 <span className="font-medium">感谢费</span>
