@@ -40,10 +40,12 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
     setLoading(true);
     try {
       // 使用验证函数检查访问码是否存在
-      const { data: validationResult, error: validationError } = await supabase.rpc('validate_access_code', {
+      const {
+        data: validationResult,
+        error: validationError
+      } = await supabase.rpc('validate_access_code', {
         input_access_code: accessCode.trim()
       });
-
       if (validationError) {
         throw validationError;
       }
@@ -51,7 +53,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
       // 检查是否有返回结果（访问码存在）
       if (validationResult && validationResult.length > 0) {
         const userInfo = validationResult[0];
-        
+
         // 登录成功
         onAuthenticated(accessCode.trim(), userInfo.role);
         onOpenChange(false);
@@ -208,7 +210,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
       </Card>
     </ScrollArea>;
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={e => e.preventDefault()}>
+      <DialogContent onInteractOutside={e => e.preventDefault()} className="sm:max-w-md mx-0">
         <DialogHeader className="relative">
           <DialogTitle>欢迎使用山寨币社区拼车</DialogTitle>
           {onSuperAdminClick && <Button variant="ghost" size="icon" onClick={onSuperAdminClick} className="absolute right-0 top-0 h-6 w-6 my-0 py-0">
