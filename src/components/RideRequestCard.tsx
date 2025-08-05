@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard, Copy } from 'lucide-react';
+import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard } from 'lucide-react';
 import { RideRequest } from '@/types/RideRequest';
 import PaymentDialog from './PaymentDialog';
-import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
 interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
@@ -22,38 +20,14 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
   fixedRoutes = []
 }) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const { toast } = useToast();
-  const isMobile = useIsMobile();
   const formatDateTime = (date: Date) => {
-    const formatted = new Intl.DateTimeFormat('zh-CN', {
+    return new Intl.DateTimeFormat('zh-CN', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
-    // 将格式从 YYYY/MM/DD HH:mm 改为 YYYY/MM/DD-HH:mm
-    return formatted.replace(' ', '-');
-  };
-
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "复制成功",
-        description: `${label}已复制到剪贴板`,
-      });
-    } catch (err) {
-      toast({
-        title: "复制失败",
-        description: "请手动复制",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const dialPhone = (phone: string) => {
-    window.location.href = `tel:${phone}`;
   };
   const isUpcoming = (date: Date) => {
     const now = new Date();
@@ -116,11 +90,6 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
                      className={request.status === 'completed' ? 'bg-green-100 text-green-700' : request.status === 'processing' ? 'bg-green-500 text-white' : ''}>
                 {request.status === 'completed' ? '已完成' : request.status === 'confirmed' ? '已确认' : request.status === 'processing' ? '处理中' : '待处理'}
               </Badge>
-              {request.status === 'processing' && (
-                <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
-                  已联系
-                </Badge>
-              )}
             </div>
           </div>
         </CardHeader>
@@ -138,32 +107,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             <span>{formatDateTime(request.requested_time)}</span>
           </div>
           
-          {canShowDetails && request.contact_info && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Phone className="h-4 w-4" />
-              <span>乘客电话: {request.contact_info}</span>
-              <div className="flex items-center gap-1 ml-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 hover:bg-gray-100"
-                  onClick={() => copyToClipboard(request.contact_info, '乘客电话')}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                {isMobile && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 hover:bg-green-100 text-green-600"
-                    onClick={() => dialPhone(request.contact_info)}
-                  >
-                    <Phone className="h-3 w-3" />
-                  </Button>
-                )}
+          {canShowDetails && (() => {
+            const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
+            return selectedVehicle?.driver_phone && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Phone className="h-4 w-4" />
+                <span>司机电话: {selectedVehicle.driver_phone}</span>
               </div>
-            </div>
-          )}
+            );
+          })()}
           
           {canShowDetails && request.notes && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               <strong>备注：</strong>{request.notes}
