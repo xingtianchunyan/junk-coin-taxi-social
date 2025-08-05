@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,20 +7,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MapPin, Info, CheckCircle, Users, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
-
 interface Destination {
   id: string;
   name: string;
   address: string;
   description: string | null;
 }
-
 interface DestinationSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDestinationSelected: (destination: Destination) => void;
 }
-
 const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
   open,
   onOpenChange,
@@ -30,14 +26,14 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   useEffect(() => {
     if (open) {
       loadDestinations();
     }
   }, [open]);
-
   const loadDestinations = async () => {
     try {
       setLoading(true);
@@ -51,43 +47,39 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
       toast({
         title: "加载失败",
         description: "无法加载目的地列表",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const handleConfirm = () => {
     if (!selectedDestination) {
       toast({
         title: "请选择目的地",
         description: "必须选择一个目的地才能继续",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     const destination = destinations.find(d => d.id === selectedDestination);
     if (destination) {
       onDestinationSelected(destination);
     }
   };
-
-  return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      // 不允许用户关闭对话框，除非选择了目的地
-      if (!newOpen && !selectedDestination) {
-        toast({
-          title: "请选择目的地",
-          description: "必须选择目的地后才能继续使用服务",
-          variant: "destructive",
-        });
-        return;
-      }
-      onOpenChange(newOpen);
-    }}>
-      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
+  return <Dialog open={open} onOpenChange={newOpen => {
+    // 不允许用户关闭对话框，除非选择了目的地
+    if (!newOpen && !selectedDestination) {
+      toast({
+        title: "请选择目的地",
+        description: "必须选择目的地后才能继续使用服务",
+        variant: "destructive"
+      });
+      return;
+    }
+    onOpenChange(newOpen);
+  }}>
+      <DialogContent onInteractOutside={e => e.preventDefault()} className="sm:max-w-lg mx-px">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <MapPin className="h-5 w-5 text-blue-600" />
@@ -140,43 +132,33 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
                 选择当前到访目的地 *
               </label>
               
-              {loading ? (
-                <div className="text-center py-4">
+              {loading ? <div className="text-center py-4">
                   <p className="text-sm text-gray-500">加载目的地中...</p>
-                </div>
-              ) : (
-                <Select value={selectedDestination} onValueChange={setSelectedDestination}>
+                </div> : <Select value={selectedDestination} onValueChange={setSelectedDestination}>
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="请选择您要前往的目的地" />
                   </SelectTrigger>
                   <SelectContent>
-                    {destinations.map((destination) => (
-                      <SelectItem key={destination.id} value={destination.id}>
+                    {destinations.map(destination => <SelectItem key={destination.id} value={destination.id}>
                         <div className="py-1">
                           <div className="font-medium">{destination.name}</div>
                           <div className="text-xs text-gray-500">{destination.address}</div>
                         </div>
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                   </SelectContent>
-                </Select>
-              )}
+                </Select>}
 
-              {selectedDestination && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              {selectedDestination && <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-1">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <p className="text-sm font-medium text-green-700">
                       已选择: {destinations.find(d => d.id === selectedDestination)?.name}
                     </p>
                   </div>
-                  {destinations.find(d => d.id === selectedDestination)?.description && (
-                    <p className="text-xs text-green-600 ml-6">
+                  {destinations.find(d => d.id === selectedDestination)?.description && <p className="text-xs text-green-600 ml-6">
                       {destinations.find(d => d.id === selectedDestination)?.description}
-                    </p>
-                  )}
-                </div>
-              )}
+                    </p>}
+                </div>}
             </div>
 
             {/* 功能说明 */}
@@ -202,18 +184,12 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
             </Card>
 
             {/* 确认按钮 */}
-            <Button 
-              onClick={handleConfirm}
-              className="w-full h-12 text-base"
-              disabled={!selectedDestination || loading}
-            >
+            <Button onClick={handleConfirm} className="w-full h-12 text-base" disabled={!selectedDestination || loading}>
               {selectedDestination ? '确认选择并开始使用' : '请先选择目的地'}
             </Button>
           </div>
         </ScrollArea>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default DestinationSelectionDialog;
