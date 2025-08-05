@@ -401,6 +401,33 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 更新支付状态
+  const handleUpdatePaymentStatus = async (requestId: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('ride_requests')
+        .update({ payment_status: status })
+        .eq('id', requestId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "状态已更新",
+        description: "支付状态已成功更新"
+      });
+      
+      // 重新加载数据
+      await loadRideRequests();
+    } catch (error) {
+      console.error('更新支付状态失败:', error);
+      toast({
+        title: "更新失败",
+        description: "无法更新支付状态，请重试",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
@@ -540,6 +567,7 @@ const WorkSchedule: React.FC = () => {
                                          // Handle delete - reload requests after deletion
                                          loadRideRequests();
                                        }}
+                                       onUpdatePaymentStatus={handleUpdatePaymentStatus}
                                        accessLevel="community_admin"
                                        vehicles={[driverVehicle]}
                                        fixedRoutes={fixedRoutes}

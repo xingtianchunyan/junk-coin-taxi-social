@@ -10,6 +10,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface RideRequestCardProps {
   request: RideRequest;
   onDelete: (id: string) => void;
+  onUpdatePaymentStatus?: (id: string, status: string) => void;
   accessLevel: 'public' | 'private' | 'community_admin';
   vehicles?: any[];
   fixedRoutes?: any[];
@@ -17,6 +18,7 @@ interface RideRequestCardProps {
 const RideRequestCard: React.FC<RideRequestCardProps> = ({
   request,
   onDelete,
+  onUpdatePaymentStatus,
   accessLevel,
   vehicles = [],
   fixedRoutes = []
@@ -215,9 +217,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
-                  {request.payment_status === 'unpaid' ? '未感谢' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已支付' : '支付失败'}
+                  {request.payment_status === 'unpaid' ? '未感谢' : request.payment_status === 'pending' ? '待确认' : request.payment_status === 'confirmed' ? '已感谢' : '支付失败'}
                 </Badge>
-                {request.payment_status === 'unpaid' && <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)} className="text-purple-600 border-purple-200 hover:bg-purple-50">去感谢</Button>}
+                {request.payment_status === 'unpaid' && (
+                  accessLevel === 'private' ? (
+                    <Button size="sm" variant="outline" onClick={() => setShowPaymentDialog(true)} className="text-purple-600 border-purple-200 hover:bg-purple-50">去感谢</Button>
+                  ) : accessLevel === 'community_admin' && onUpdatePaymentStatus ? (
+                    <Button size="sm" variant="outline" onClick={() => onUpdatePaymentStatus(request.id, 'confirmed')} className="text-green-600 border-green-200 hover:bg-green-50">已收到红包</Button>
+                  ) : null
+                )}
               </div>
             </div>}
 
