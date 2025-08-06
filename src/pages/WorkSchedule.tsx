@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { vehicleService } from '@/services/vehicleService';
 import { Vehicle } from '@/types/Vehicle';
-import { LuggageItem } from '@/types/RideRequest';
+import { LuggageItem, RideRequest } from '@/types/RideRequest';
 const WorkSchedule: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<any>(null);
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
@@ -353,9 +353,92 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 计算司机工作时间
+  const calculateDriverWorkTime = (groupRequests: RideRequest[], fixedRoute: any) => {
+    if (!groupRequests.length || !fixedRoute) return null;
+
+    // 获取所有请求的时间
+    const requestTimes = groupRequests.map(req => new Date(req.requested_time));
+    const earliestTime = new Date(Math.min(...requestTimes.map(t => t.getTime())));
+    const latestTime = new Date(Math.max(...requestTimes.map(t => t.getTime())));
+    
+    const estimatedDuration = fixedRoute.estimated_duration_minutes || 30;
+    
+    // 判断固定路线起点是否是目的地
+    const isStartFromDestination = fixedRoute.start_location === selectedDestination?.name;
+    
+    let workStartTime, workEndTime;
+    
+    if (isStartFromDestination) {
+      // 起点是目的地，司机在目的地待命，只需计算结束时间
+      workStartTime = earliestTime;
+      workEndTime = new Date(latestTime.getTime() + estimatedDuration * 60 * 1000);
+    } else {
+      // 起点不是目的地，司机需要提前出发到起点
+      workStartTime = new Date(earliestTime.getTime() - estimatedDuration * 60 * 1000);
+      workEndTime = new Date(latestTime.getTime() + estimatedDuration * 60 * 1000);
+    }
+    
+    return { workStartTime, workEndTime, isStartFromDestination };
+  };
+
+  // 检查司机是否能及时完成
+  const canDriverCompleteOnTime = (groupRequests: RideRequest[], fixedRoute: any) => {
+    const workTime = calculateDriverWorkTime(groupRequests, fixedRoute);
+    if (!workTime || !driverVehicle) return true;
+    
+    const { workStartTime, workEndTime } = workTime;
+    const vehicleStartTime = driverVehicle.work_start_time;
+    const vehicleEndTime = driverVehicle.work_end_time;
+    
+    if (!vehicleStartTime || !vehicleEndTime) return true;
+    
+    // 将时间字符串转换为今天的Date对象进行比较
+    const today = new Date();
+    const vehicleStart = new Date(`${today.toDateString()} ${vehicleStartTime}`);
+    const vehicleEnd = new Date(`${today.toDateString()} ${vehicleEndTime}`);
+    
+    // 检查计算出的工作时间是否在司机设定的工作时间范围内
+    const startOk = workStartTime >= vehicleStart;
+    const endOk = workEndTime <= vehicleEnd;
+    
+    return startOk && endOk;
+  };
+
   // 确认帮忙功能
   const handleConfirmAssist = async (requestId: string) => {
     if (!driverVehicle) return;
+    
+    // 首先检查时间是否合适
+    const request = rideRequests.find(r => r.id === requestId);
+    if (request && request.fixed_route_id) {
+      const fixedRoute = fixedRoutes.find(r => r.id === request.fixed_route_id);
+      if (fixedRoute) {
+        const groupedRequests = getDriverGroupedRequests();
+        
+        // 找到包含当前请求的组
+        let targetGroup: RideRequest[] = [];
+        Object.values(groupedRequests).forEach(periodGroups => {
+          Object.values(periodGroups).forEach(routeGroups => {
+            routeGroups.forEach(group => {
+              if (group.some(r => r.id === requestId)) {
+                targetGroup = group;
+              }
+            });
+          });
+        });
+        
+        if (targetGroup.length > 0 && !canDriverCompleteOnTime(targetGroup, fixedRoute)) {
+          toast({
+            title: "时间冲突",
+            description: "根据您的工作时间设置，可能无法及时完成此次服务，请检查时间安排",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+    }
+    
     try {
       // 获取当前用户信息
       const {
@@ -374,6 +457,7 @@ const WorkSchedule: React.FC = () => {
         processing_driver_id: userData.id
       }).eq('id', requestId);
       if (error) throw error;
+      
       toast({
         title: "确认成功",
         description: "您已确认帮忙，订单状态已更新为处理中"

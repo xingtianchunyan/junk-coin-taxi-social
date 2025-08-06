@@ -242,6 +242,50 @@ const PassengerService: React.FC = () => {
     return totalVolume <= trunkVolume * 0.8;
   };
 
+  // 检查司机时间安排对特定请求的影响
+  const checkDriverTimingForRequest = (request: RideRequest, groupRequests: RideRequest[]) => {
+    if (!request.fixed_route_id || !selectedDestination) return false;
+    
+    const fixedRoute = fixedRoutes.find(r => r.id === request.fixed_route_id);
+    if (!fixedRoute) return false;
+    
+    // 找到服务此请求的车辆
+    const requestVehicle = vehicles.find(v => 
+      v.destination_id === selectedDestination.id && 
+      v.is_active
+    );
+    
+    if (!requestVehicle || !requestVehicle.work_start_time || !requestVehicle.work_end_time) return false;
+    
+    // 计算工作时间
+    const requestTimes = groupRequests.map(req => new Date(req.requested_time));
+    const earliestTime = new Date(Math.min(...requestTimes.map(t => t.getTime())));
+    const latestTime = new Date(Math.max(...requestTimes.map(t => t.getTime())));
+    
+    const estimatedDuration = fixedRoute.estimated_duration_minutes || 30;
+    const isStartFromDestination = fixedRoute.start_location === selectedDestination.name;
+    
+    let workStartTime, workEndTime;
+    
+    if (isStartFromDestination) {
+      workStartTime = earliestTime;
+      workEndTime = new Date(latestTime.getTime() + estimatedDuration * 60 * 1000);
+    } else {
+      workStartTime = new Date(earliestTime.getTime() - estimatedDuration * 60 * 1000);
+      workEndTime = new Date(latestTime.getTime() + estimatedDuration * 60 * 1000);
+    }
+    
+    // 检查是否在司机工作时间范围内
+    const today = new Date();
+    const vehicleStart = new Date(`${today.toDateString()} ${requestVehicle.work_start_time}`);
+    const vehicleEnd = new Date(`${today.toDateString()} ${requestVehicle.work_end_time}`);
+    
+    const startOk = workStartTime >= vehicleStart;
+    const endOk = workEndTime <= vehicleEnd;
+    
+    return !(startOk && endOk);
+  };
+
   const getGroupedRequests = () => {
     const filteredRequests = getFilteredRequests();
     const groups: Record<string, Record<string, RideRequest[][]>> = {};
@@ -384,14 +428,16 @@ const PassengerService: React.FC = () => {
                                </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (
-                                <RideRequestCard 
-                                  key={request.id} 
-                                  request={request} 
-                                  onDelete={deleteRequest}
-                                  accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                  vehicles={vehicles}
-                                  fixedRoutes={fixedRoutes}
-                                />
+                                 <RideRequestCard 
+                                   key={request.id} 
+                                   request={request} 
+                                   onDelete={deleteRequest}
+                                   accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                   vehicles={vehicles}
+                                   fixedRoutes={fixedRoutes}
+                                   groupedRequests={group}
+                                   showTimingWarning={checkDriverTimingForRequest(request, group)}
+                                 />
                                 ))}
                               </div>
                             </div>
