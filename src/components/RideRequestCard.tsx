@@ -205,10 +205,10 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             </div>}
 
           {/* 时间冲突警告 */}
-          {showTimingWarning && accessLevel === 'public' && (
+          {showTimingWarning && (accessLevel === 'public' || accessLevel === 'private') && (
             <div className="text-sm p-2 rounded bg-orange-50 border border-orange-200">
               <div className="text-orange-700">
-                ⚠️ 社区朋友的顺风车可能无法及时到达，如果时间紧急请及时与社区朋友取得联系，尽早做出正确的选择
+                ⚠️ 社区朋友的顺风车可能无法及时到达，如果时间紧急请及时与社区朋友取得联系或直接选用滴滴打车
               </div>
             </div>
           )}
