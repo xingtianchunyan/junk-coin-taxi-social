@@ -353,6 +353,89 @@ const WorkSchedule: React.FC = () => {
     }
   };
 
+  // 计算司机工作时间冲突
+  const calculateDriverWorkTime = (requests: any[], route: any) => {
+    if (!requests.length || !route) return null;
+
+    // 获取时间最早和最晚的请求
+    const sortedRequests = requests.sort((a, b) => 
+      new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime()
+    );
+    const earliestRequest = sortedRequests[0];
+    const latestRequest = sortedRequests[sortedRequests.length - 1];
+
+    const earliestTime = new Date(earliestRequest.requested_time);
+    const latestTime = new Date(latestRequest.requested_time);
+    const routeDuration = route.estimated_duration_minutes || 60; // 默认60分钟
+
+    // 判断固定路线的起点是否是目的地
+    const isStartFromDestination = selectedDestination && 
+      route.start_location.includes(selectedDestination.name) ||
+      route.start_location.includes(selectedDestination.address);
+
+    let workStartTime: Date;
+    let workEndTime: Date;
+
+    if (isStartFromDestination) {
+      // 起点是目的地，司机平时在目的地，只需考虑最晚时间
+      workStartTime = latestTime;
+      workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
+    } else {
+      // 起点不是目的地，需要提前出发
+      workStartTime = new Date(earliestTime.getTime() - routeDuration * 60 * 1000);
+      workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
+    }
+
+    return {
+      workStartTime,
+      workEndTime,
+      duration: (workEndTime.getTime() - workStartTime.getTime()) / (1000 * 60), // 分钟
+      isStartFromDestination
+    };
+  };
+
+  // 检查司机是否有时间冲突
+  const checkDriverTimeConflict = (newRequests: any[], newRoute: any) => {
+    // 获取司机当前所有处理中的请求
+    const currentProcessingRequests = rideRequests.filter(req => 
+      req.processing_driver_id && req.status === 'processing'
+    );
+
+    if (currentProcessingRequests.length === 0) return false;
+
+    // 按路线分组
+    const existingGroups: Record<string, any[]> = {};
+    currentProcessingRequests.forEach(req => {
+      const routeId = req.fixed_route_id;
+      if (!existingGroups[routeId]) existingGroups[routeId] = [];
+      existingGroups[routeId].push(req);
+    });
+
+    // 计算新请求组的工作时间
+    const newWorkTime = calculateDriverWorkTime(newRequests, newRoute);
+    if (!newWorkTime) return false;
+
+    // 检查与现有组是否有时间冲突
+    for (const [routeId, requests] of Object.entries(existingGroups)) {
+      const route = fixedRoutes.find(r => r.id === routeId);
+      if (!route) continue;
+
+      const existingWorkTime = calculateDriverWorkTime(requests, route);
+      if (!existingWorkTime) continue;
+
+      // 检查时间重叠
+      const isOverlapping = 
+        (newWorkTime.workStartTime <= existingWorkTime.workEndTime) &&
+        (newWorkTime.workEndTime >= existingWorkTime.workStartTime);
+
+      if (isOverlapping) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   // 确认帮忙功能
   const handleConfirmAssist = async (requestId: string) => {
     if (!driverVehicle) return;
@@ -366,14 +449,48 @@ const WorkSchedule: React.FC = () => {
         throw new Error('获取用户信息失败');
       }
 
-      // 更新订单状态为处理中，并绑定司机
-      const {
-        error
-      } = await supabase.from('ride_requests').update({
-        status: 'processing',
-        processing_driver_id: userData.id
-      }).eq('id', requestId);
-      if (error) throw error;
+      // 获取要确认的请求
+      const targetRequest = rideRequests.find(req => req.id === requestId);
+      if (!targetRequest) return;
+
+      // 获取对应的路线信息
+      const route = fixedRoutes.find(r => r.id === targetRequest.fixed_route_id);
+      if (!route) return;
+
+      // 获取同一组的所有请求（同一时段、同一路线）
+      const groupedRequests = getDriverGroupedRequests();
+      let targetGroup: any[] = [];
+      
+      Object.values(groupedRequests).forEach(periodGroups => {
+        Object.values(periodGroups).forEach(routeGroups => {
+          routeGroups.forEach(group => {
+            if (group.some((req: any) => req.id === requestId)) {
+              targetGroup = group;
+            }
+          });
+        });
+      });
+
+      // 检查时间冲突
+      if (checkDriverTimeConflict(targetGroup, route)) {
+        toast({
+          title: "时间冲突",
+          description: "该时段与您已确认的其他行程存在时间冲突，请合理安排时间",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // 更新整组的状态为处理中，并绑定司机
+      const updatePromises = targetGroup.map(req => 
+        supabase.from('ride_requests').update({
+          status: 'processing',
+          processing_driver_id: userData.id
+        }).eq('id', req.id)
+      );
+
+      await Promise.all(updatePromises);
+
       toast({
         title: "确认成功",
         description: "您已确认帮忙，订单状态已更新为处理中"

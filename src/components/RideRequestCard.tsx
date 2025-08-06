@@ -14,6 +14,7 @@ interface RideRequestCardProps {
   accessLevel: 'public' | 'private' | 'community_admin';
   vehicles?: any[];
   fixedRoutes?: any[];
+  showTimingWarning?: boolean;
 }
 const RideRequestCard: React.FC<RideRequestCardProps> = ({
   request,
@@ -21,7 +22,8 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
   onUpdatePaymentStatus,
   accessLevel,
   vehicles = [],
-  fixedRoutes = []
+  fixedRoutes = [],
+  showTimingWarning = false
 }) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const { toast } = useToast();
@@ -201,6 +203,15 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
           {canShowDetails && request.notes && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               <strong>备注：</strong>{request.notes}
             </div>}
+
+          {/* 时间冲突警告 */}
+          {showTimingWarning && accessLevel === 'public' && (
+            <div className="text-sm p-2 rounded bg-orange-50 border border-orange-200">
+              <div className="text-orange-700">
+                ⚠️ 社区朋友的顺风车可能无法及时到达，如果时间紧急请及时与社区朋友取得联系，尽早做出正确的选择
+              </div>
+            </div>
+          )}
 
           {request.payment_required && (accessLevel === 'private' || accessLevel === 'community_admin') && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">

@@ -48,6 +48,81 @@ const PassengerService: React.FC = () => {
 
   const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
 
+  // 检查司机时间安排是否会冲突
+  const checkDriverTimingForRequest = (request: RideRequest): boolean => {
+    if (!request.vehicle_id || !request.fixed_route_id) return false;
+
+    // 找到对应的车辆和路线
+    const vehicle = vehicles.find(v => v.id === request.vehicle_id);
+    const route = fixedRoutes.find(r => r.id === request.fixed_route_id);
+    
+    if (!vehicle || !route) return false;
+
+    // 获取司机的所有处理中请求
+    const driverProcessingRequests = requests.filter(req => 
+      req.processing_driver_id === vehicle.user_id && 
+      req.status === 'processing' &&
+      req.id !== request.id
+    );
+
+    if (driverProcessingRequests.length === 0) return false;
+
+    // 计算当前请求的时间需求
+    const requestTime = request.requested_time;
+    const routeDuration = route.estimated_duration_minutes || 60;
+    
+    // 判断路线起点是否是目的地
+    const isStartFromDestination = selectedDestination && 
+      (route.start_location.includes(selectedDestination.name) ||
+       route.start_location.includes(selectedDestination.address));
+
+    let requestStartTime: Date;
+    let requestEndTime: Date;
+
+    if (isStartFromDestination) {
+      requestStartTime = requestTime;
+      requestEndTime = new Date(requestTime.getTime() + routeDuration * 60 * 1000);
+    } else {
+      requestStartTime = new Date(requestTime.getTime() - routeDuration * 60 * 1000);
+      requestEndTime = new Date(requestTime.getTime() + routeDuration * 60 * 1000);
+    }
+
+    // 检查与其他请求的时间冲突
+    for (const otherRequest of driverProcessingRequests) {
+      const otherRoute = fixedRoutes.find(r => r.id === otherRequest.fixed_route_id);
+      if (!otherRoute) continue;
+
+      const otherRequestTime = otherRequest.requested_time;
+      const otherRouteDuration = otherRoute.estimated_duration_minutes || 60;
+      
+      const otherIsStartFromDestination = selectedDestination && 
+        (otherRoute.start_location.includes(selectedDestination.name) ||
+         otherRoute.start_location.includes(selectedDestination.address));
+
+      let otherStartTime: Date;
+      let otherEndTime: Date;
+
+      if (otherIsStartFromDestination) {
+        otherStartTime = otherRequestTime;
+        otherEndTime = new Date(otherRequestTime.getTime() + otherRouteDuration * 60 * 1000);
+      } else {
+        otherStartTime = new Date(otherRequestTime.getTime() - otherRouteDuration * 60 * 1000);
+        otherEndTime = new Date(otherRequestTime.getTime() + otherRouteDuration * 60 * 1000);
+      }
+
+      // 检查时间重叠
+      const isOverlapping = 
+        (requestStartTime <= otherEndTime) &&
+        (requestEndTime >= otherStartTime);
+
+      if (isOverlapping) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     const initializeSession = async () => {
       if (accessCode) {
@@ -382,18 +457,19 @@ const PassengerService: React.FC = () => {
                                     第{groupIndex + 1}组
                                   </Badge>
                                </div>
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {group.map(request => (
-                                <RideRequestCard 
-                                  key={request.id} 
-                                  request={request} 
-                                  onDelete={deleteRequest}
-                                  accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                  vehicles={vehicles}
-                                  fixedRoutes={fixedRoutes}
-                                />
-                                ))}
-                              </div>
+                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                 {group.map(request => (
+                                 <RideRequestCard 
+                                   key={request.id} 
+                                   request={request} 
+                                   onDelete={deleteRequest}
+                                   accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                   vehicles={vehicles}
+                                   fixedRoutes={fixedRoutes}
+                                   showTimingWarning={checkDriverTimingForRequest(request)}
+                                 />
+                                 ))}
+                               </div>
                             </div>
                           ))}
                         </div>
