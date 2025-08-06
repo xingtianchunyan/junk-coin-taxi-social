@@ -261,7 +261,13 @@ const PassengerService: React.FC = () => {
         if (!groups[period]) groups[period] = {};
         if (!groups[period][routeKey]) groups[period][routeKey] = [];
 
-        // 查找合适的车辆进行分组
+        // 快速拼车信息类型的需求设置为单独的组
+        if (req.request_type === 'quick_carpool_info') {
+          groups[period][routeKey].push([req]);
+          return;
+        }
+
+        // 查找合适的车辆进行分组（仅对社区顺风车类型）
         let addedToGroup = false;
         for (const group of groups[period][routeKey]) {
           // 检查该组的总人数和行李
@@ -371,11 +377,11 @@ const PassengerService: React.FC = () => {
                         <div key={routeKey} className="space-y-3">
                           {groups.map((group, groupIndex) => (
                             <div key={groupIndex} className="border rounded-lg p-3 bg-white">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className="bg-green-100 text-green-700">
-                                   第{groupIndex + 1}组 ({group.reduce((sum, r) => sum + (r.passenger_count || 1), 0)}/{vehicles.filter(v => v.destination_id === selectedDestination?.id && v.is_active).length > 0 ? vehicles.filter(v => v.destination_id === selectedDestination?.id && v.is_active)[0].max_passengers : 4}人)
-                                 </Badge>
-                              </div>
+                               <div className="flex items-center gap-2 mb-2">
+                                 <Badge variant="outline" className="bg-green-100 text-green-700">
+                                    第{groupIndex + 1}组
+                                  </Badge>
+                               </div>
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {group.map(request => (
                                 <RideRequestCard 
