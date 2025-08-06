@@ -111,6 +111,11 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               </h3>
             </div>
             <div className="flex items-center gap-2">
+              {/* 显示需求类型 */}
+              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+                {request.request_type === 'community_carpool' ? '社区顺风车' : '快速拼车'}
+              </Badge>
+              
               {isUpcoming(request.requested_time) && request.status === 'pending' && <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-200">
                   即将到达
                 </Badge>}
@@ -235,7 +240,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               创建于 {formatDateTime(request.created_at)}
             </div>
             
-            {request.status === 'pending' && (canShowDetails || canManage) && <Button onClick={() => {
+            {request.status === 'pending' && canShowDetails && accessLevel !== 'community_admin' && <Button onClick={() => {
             if (window.confirm('确定要删除这个用车需求吗？此操作不可撤销。')) {
               onDelete(request.id);
             }

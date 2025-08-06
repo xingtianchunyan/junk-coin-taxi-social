@@ -139,9 +139,19 @@ const WorkSchedule: React.FC = () => {
 
   // 加载乘客需求
   const loadRideRequests = async () => {
-    if (!selectedDestination) return;
+    if (!selectedDestination || !driverVehicle) return;
     try {
       setLoading(true);
+      
+      // 获取当前司机的用户ID
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('access_code', accessCode)
+        .single();
+      
+      if (userError || !userData) return;
+      
       // 首先获取与目的地相关的路线ID
       const { data: routeData, error: routeError } = await supabase
         .from('fixed_routes')
@@ -165,9 +175,21 @@ const WorkSchedule: React.FC = () => {
       
       // 过滤掉当前时间之前1小时之外的请求
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const filteredData = (data || []).filter(request => 
+      let filteredData = (data || []).filter(request => 
         new Date(request.requested_time) > oneHourAgo
       );
+      
+      // 根据需求类型和司机关系进行过滤
+      filteredData = filteredData.filter(request => {
+        if (request.request_type === 'community_carpool') {
+          // 社区顺风车：只显示选择了当前司机的需求
+          return request.vehicle_id === driverVehicle.id;
+        } else if (request.request_type === 'quick_carpool_info') {
+          // 快速拼车：显示所有该目的地下的需求
+          return true;
+        }
+        return false;
+      });
       
       setRideRequests(filteredData);
     } catch (error) {
@@ -187,13 +209,13 @@ const WorkSchedule: React.FC = () => {
     loadDriverVehicle();
   }, [accessCode]);
 
-  // 当目的地改变时重新加载数据
+  // 当目的地或司机车辆改变时重新加载数据
   useEffect(() => {
-    if (selectedDestination) {
+    if (selectedDestination && driverVehicle) {
       loadFixedRoutes();
       loadRideRequests();
     }
-  }, [selectedDestination]);
+  }, [selectedDestination, driverVehicle]);
 
   // 检查行李是否能装入车辆后备箱
   const canFitLuggage = (requestLuggage: any, vehicleTrunk: { length: number; width: number; height: number }) => {
@@ -224,7 +246,13 @@ const WorkSchedule: React.FC = () => {
         if (!groups[period]) groups[period] = {};
         if (!groups[period][routeKey]) groups[period][routeKey] = [];
 
-        // 查找合适的分组
+        // 快速拼车信息类型的需求单独分组
+        if (req.request_type === 'quick_carpool_info') {
+          groups[period][routeKey].push([req]);
+          return;
+        }
+
+        // 查找合适的分组（仅对社区顺风车）
         let addedToGroup = false;
         for (const group of groups[period][routeKey]) {
           // 检查该组的总人数和行李
