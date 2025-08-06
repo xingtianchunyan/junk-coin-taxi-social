@@ -16,7 +16,7 @@ const Layout: React.FC<{
           <div className="flex justify-between items-center h-16">
             {/* 左侧 - 可以放logo或标题 */}
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">数字游民基地顺风车</h1>
+              <h1 className="text-xl font-semibold text-gray-900">数字游民社区内的社交顺风车</h1>
             </div>
             
             {/* 右侧 - Web3钱包按钮 */}
