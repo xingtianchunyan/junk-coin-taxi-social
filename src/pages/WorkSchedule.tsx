@@ -220,8 +220,9 @@ const WorkSchedule: React.FC = () => {
     if (!driverVehicle) return {};
     const groups: Record<string, Record<string, any[][]>> = {};
     rideRequests.sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime()).forEach(req => {
+      const requestDate = new Date(req.requested_time).toDateString();
       const hour = new Date(req.requested_time).getHours();
-      const period = `${hour}:00-${hour + 1}:00`;
+      const period = `${requestDate}-${hour}:00-${hour + 1}:00`;
       const routeKey = req.fixed_route_id || 'other';
       if (!groups[period]) groups[period] = {};
       if (!groups[period][routeKey]) groups[period][routeKey] = [];
