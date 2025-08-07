@@ -377,8 +377,8 @@ const WorkSchedule: React.FC = () => {
     let workEndTime: Date;
 
     if (isStartFromDestination) {
-      // 起点是目的地，司机平时在目的地，从最早时间开始工作
-      workStartTime = earliestTime;
+      // 起点是目的地，司机平时在目的地，只需考虑最晚时间
+      workStartTime = latestTime;
       workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
     } else {
       // 起点不是目的地，需要提前出发
