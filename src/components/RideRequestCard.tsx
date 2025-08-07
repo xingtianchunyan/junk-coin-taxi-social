@@ -142,8 +142,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             <span>{formatDateTime(request.requested_time)}</span>
           </div>
           
-          {/* 显示司机电话（乘客可见或管理员可见，但排除工作安排页面的管理员视图） */}
-          {(canShowDetails || (accessLevel === 'public' && request.request_type === 'quick_carpool_info')) && accessLevel !== 'community_admin' && (() => {
+          {canShowDetails && accessLevel !== 'community_admin' && (() => {
             const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
             return selectedVehicle?.driver_phone && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
