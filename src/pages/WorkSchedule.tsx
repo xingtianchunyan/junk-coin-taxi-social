@@ -368,20 +368,21 @@ const WorkSchedule: React.FC = () => {
     const latestTime = new Date(latestRequest.requested_time);
     const routeDuration = route.estimated_duration_minutes || 60; // 默认60分钟
 
-    // 判断固定路线的起点是否是目的地
-    const isStartFromDestination = selectedDestination && 
-      route.start_location.includes(selectedDestination.name) ||
-      route.start_location.includes(selectedDestination.address);
+    // 修正判断逻辑：更准确地判断路线起点是否是司机的常驻目的地
+    const isStartFromDestination = selectedDestination && (
+      route.start_location.toLowerCase().includes(selectedDestination.name.toLowerCase()) ||
+      (selectedDestination.address && route.start_location.toLowerCase().includes(selectedDestination.address.toLowerCase()))
+    );
 
     let workStartTime: Date;
     let workEndTime: Date;
 
     if (isStartFromDestination) {
-      // 起点是目的地，司机平时在目的地，只需考虑最晚时间
-      workStartTime = latestTime;
+      // 起点是目的地，司机平时在目的地，使用最早时间作为开始时间
+      workStartTime = earliestTime;
       workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
     } else {
-      // 起点不是目的地，需要提前出发
+      // 起点不是目的地，需要提前出发到起点
       workStartTime = new Date(earliestTime.getTime() - routeDuration * 60 * 1000);
       workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
     }
@@ -423,12 +424,21 @@ const WorkSchedule: React.FC = () => {
       const existingWorkTime = calculateDriverWorkTime(requests, route);
       if (!existingWorkTime) continue;
 
-      // 检查时间重叠
+      // 优化时间重叠检测：允许10分钟的缓冲时间
+      const bufferMinutes = 10;
+      const newStartWithBuffer = new Date(newWorkTime.workStartTime.getTime() - bufferMinutes * 60 * 1000);
+      const newEndWithBuffer = new Date(newWorkTime.workEndTime.getTime() + bufferMinutes * 60 * 1000);
+      
       const isOverlapping = 
-        (newWorkTime.workStartTime <= existingWorkTime.workEndTime) &&
-        (newWorkTime.workEndTime >= existingWorkTime.workStartTime);
+        (newStartWithBuffer < existingWorkTime.workEndTime) &&
+        (newEndWithBuffer > existingWorkTime.workStartTime);
 
       if (isOverlapping) {
+        console.log('时间冲突检测:', {
+          new: { start: newWorkTime.workStartTime, end: newWorkTime.workEndTime },
+          existing: { start: existingWorkTime.workStartTime, end: existingWorkTime.workEndTime },
+          overlap: isOverlapping
+        });
         return true;
       }
     }
