@@ -318,8 +318,9 @@ const PassengerService: React.FC = () => {
     // 获取目的地车辆信息
     const destinationVehicles = vehicles.filter(vehicle => vehicle.destination_id === selectedDestination?.id && vehicle.is_active);
     filteredRequests.sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime()).forEach(req => {
+      const requestDate = req.requested_time.toDateString();
       const hour = req.requested_time.getHours();
-      const period = `${hour}:00-${hour + 1}:00`;
+      const period = `${requestDate}-${hour}:00-${hour + 1}:00`;
       const routeKey = req.fixed_route_id || 'other';
       if (!groups[period]) groups[period] = {};
       if (!groups[period][routeKey]) groups[period][routeKey] = [];
@@ -432,7 +433,7 @@ const PassengerService: React.FC = () => {
                                   </Badge>
                                </div>
                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                 {group.map(request => <RideRequestCard key={request.id} request={request} onDelete={deleteRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} vehicles={vehicles} fixedRoutes={fixedRoutes} showTimingWarning={checkDriverTimingForRequest(request)} />)}
+                                 {group.map(request => <RideRequestCard key={request.id} request={request} onDelete={deleteRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} vehicles={vehicles} fixedRoutes={fixedRoutes} showTimingWarning={request.status !== 'processing' && checkDriverTimingForRequest(request)} />)}
                                </div>
                             </div>)}
                         </div>)}

@@ -209,12 +209,22 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
             const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
             if (!selectedVehicle) return null;
             
+            // 计算司机在需求时段的工作状态
+            const getDriverStatusForRequest = () => {
+              if (request.status === 'processing' && selectedVehicle.user_id === request.processing_driver_id) {
+                return { status: '工作中', className: 'bg-orange-100 text-orange-700' };
+              }
+              return { status: '空闲', className: 'bg-green-100 text-green-700' };
+            };
+            
+            const driverStatus = getDriverStatusForRequest();
+            
             return (
               <div className="text-sm p-2 rounded bg-blue-50 border border-blue-200">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-blue-700 font-medium">司机: {selectedVehicle.driver_name}</span>
-                  <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
-                    空闲
+                  <Badge variant="outline" className={`text-xs ${driverStatus.className}`}>
+                    {driverStatus.status}
                   </Badge>
                 </div>
                 {showTimingWarning && (
