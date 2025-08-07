@@ -138,13 +138,54 @@ const PassengerService: React.FC = () => {
           });
         }
       }
-      loadRideRequests();
+      await loadRideRequests();
       loadVehicles();
       loadFixedRoutes();
     };
     
     initializeSession();
   }, [accessCode, toast]);
+
+  // 检查用户是否有活跃需求，如果有则跳过目的地选择
+  useEffect(() => {
+    if (loading || !accessCode) return;
+    
+    const userActiveRequests = requests.filter(req => 
+      req.access_code === accessCode && 
+      new Date(req.requested_time) > new Date()
+    );
+    
+    if (userActiveRequests.length > 0 && userActiveRequests[0].fixed_route_id) {
+      // 从活跃需求中获取目的地信息
+      const route = fixedRoutes.find(r => r.id === userActiveRequests[0].fixed_route_id);
+      if (route && route.destination_id) {
+        // 获取目的地详细信息
+        const getDestinationInfo = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('preset_destinations')
+              .select('*')
+              .eq('id', route.destination_id)
+              .single();
+            
+            if (!error && data) {
+              setSelectedDestination({
+                id: data.id,
+                name: data.name,
+                address: data.address,
+                description: data.description
+              });
+              setShowMandatoryDestinationDialog(false);
+            }
+          } catch (error) {
+            console.error('获取目的地信息失败:', error);
+          }
+        };
+        
+        getDestinationInfo();
+      }
+    }
+  }, [loading, accessCode, requests, fixedRoutes]);
 
   const loadFixedRoutes = async () => {
     try {
