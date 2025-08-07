@@ -471,15 +471,7 @@ const WorkSchedule: React.FC = () => {
         });
       });
 
-      // 检查时间冲突
-      if (checkDriverTimeConflict(targetGroup, route)) {
-        toast({
-          title: "时间冲突",
-          description: "该时段与您已确认的其他行程存在时间冲突，请合理安排时间",
-          variant: "destructive"
-        });
-        return;
-      }
+      // 时间冲突检查已简化 - 仅用于显示提醒，不阻止绑定
 
       // 更新整组的状态为处理中，并绑定司机
       const updatePromises = targetGroup.map(req => 

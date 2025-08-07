@@ -204,14 +204,27 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
               <strong>备注：</strong>{request.notes}
             </div>}
 
-          {/* 时间冲突警告 */}
-          {showTimingWarning && (accessLevel === 'public' || accessLevel === 'private') && (
-            <div className="text-sm p-2 rounded bg-orange-50 border border-orange-200">
-              <div className="text-orange-700">
-                ⚠️ 社区朋友的顺风车可能无法及时到达，如果时间紧急请及时与社区朋友取得联系或直接选用滴滴打车
+          {/* 司机工作状态和时间冲突警告 */}
+          {accessLevel === 'public' && request.vehicle_id && (() => {
+            const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
+            if (!selectedVehicle) return null;
+            
+            return (
+              <div className="text-sm p-2 rounded bg-blue-50 border border-blue-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-blue-700 font-medium">司机: {selectedVehicle.driver_name}</span>
+                  <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
+                    空闲
+                  </Badge>
+                </div>
+                {showTimingWarning && (
+                  <div className="text-orange-700 text-xs">
+                    ⚠️ 该时段司机可能有其他安排，乘客可考虑等待或联系司机协调时间
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {request.payment_required && (accessLevel === 'private' || accessLevel === 'community_admin') && <div className="text-sm p-2 rounded bg-purple-50 border border-purple-200">
               <div className="flex items-center gap-2 text-purple-700">
