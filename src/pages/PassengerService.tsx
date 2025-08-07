@@ -500,15 +500,15 @@ const PassengerService: React.FC = () => {
                                </div>
                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                  {group.map(request => (
-                                 <RideRequestCard 
-                                   key={request.id} 
-                                   request={request} 
-                                   onDelete={deleteRequest}
-                                   accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                   vehicles={vehicles}
-                                   fixedRoutes={fixedRoutes}
-                                   showTimingWarning={checkDriverTimingForRequest(request)}
-                                 />
+                                  <RideRequestCard 
+                                    key={request.id} 
+                                    request={request} 
+                                    onDelete={deleteRequest}
+                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
+                                    vehicles={vehicles}
+                                    fixedRoutes={fixedRoutes}
+                                    showTimingWarning={checkDriverTimingForRequest(request)}
+                                  />
                                  ))}
                                </div>
                             </div>
