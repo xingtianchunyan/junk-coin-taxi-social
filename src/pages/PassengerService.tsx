@@ -16,14 +16,12 @@ import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { supabase } from '@/integrations/supabase/client';
-
 interface Destination {
   id: string;
   name: string;
   address: string;
   description: string | null;
 }
-
 const PassengerService: React.FC = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -41,11 +39,15 @@ const PassengerService: React.FC = () => {
     currency: ''
   });
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-
-  const { toast } = useToast();
-  const { hasAccess, accessCode, clearAccessCode } = useAccessCode();
+  const {
+    toast
+  } = useToast();
+  const {
+    hasAccess,
+    accessCode,
+    clearAccessCode
+  } = useAccessCode();
   const navigate = useNavigate();
-
   const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
 
   // 检查司机时间安排是否会冲突
@@ -55,30 +57,20 @@ const PassengerService: React.FC = () => {
     // 找到对应的车辆和路线
     const vehicle = vehicles.find(v => v.id === request.vehicle_id);
     const route = fixedRoutes.find(r => r.id === request.fixed_route_id);
-    
     if (!vehicle || !route) return false;
 
     // 获取司机的所有处理中请求
-    const driverProcessingRequests = requests.filter(req => 
-      req.processing_driver_id === vehicle.user_id && 
-      req.status === 'processing' &&
-      req.id !== request.id
-    );
-
+    const driverProcessingRequests = requests.filter(req => req.processing_driver_id === vehicle.user_id && req.status === 'processing' && req.id !== request.id);
     if (driverProcessingRequests.length === 0) return false;
 
     // 计算当前请求的时间需求
     const requestTime = request.requested_time;
     const routeDuration = route.estimated_duration_minutes || 60;
-    
-    // 判断路线起点是否是目的地
-    const isStartFromDestination = selectedDestination && 
-      (route.start_location.includes(selectedDestination.name) ||
-       route.start_location.includes(selectedDestination.address));
 
+    // 判断路线起点是否是目的地
+    const isStartFromDestination = selectedDestination && (route.start_location.includes(selectedDestination.name) || route.start_location.includes(selectedDestination.address));
     let requestStartTime: Date;
     let requestEndTime: Date;
-
     if (isStartFromDestination) {
       requestStartTime = requestTime;
       requestEndTime = new Date(requestTime.getTime() + routeDuration * 60 * 1000);
@@ -91,17 +83,11 @@ const PassengerService: React.FC = () => {
     for (const otherRequest of driverProcessingRequests) {
       const otherRoute = fixedRoutes.find(r => r.id === otherRequest.fixed_route_id);
       if (!otherRoute) continue;
-
       const otherRequestTime = otherRequest.requested_time;
       const otherRouteDuration = otherRoute.estimated_duration_minutes || 60;
-      
-      const otherIsStartFromDestination = selectedDestination && 
-        (otherRoute.start_location.includes(selectedDestination.name) ||
-         otherRoute.start_location.includes(selectedDestination.address));
-
+      const otherIsStartFromDestination = selectedDestination && (otherRoute.start_location.includes(selectedDestination.name) || otherRoute.start_location.includes(selectedDestination.address));
       let otherStartTime: Date;
       let otherEndTime: Date;
-
       if (otherIsStartFromDestination) {
         otherStartTime = otherRequestTime;
         otherEndTime = new Date(otherRequestTime.getTime() + otherRouteDuration * 60 * 1000);
@@ -111,18 +97,13 @@ const PassengerService: React.FC = () => {
       }
 
       // 检查时间重叠
-      const isOverlapping = 
-        (requestStartTime <= otherEndTime) &&
-        (requestEndTime >= otherStartTime);
-
+      const isOverlapping = requestStartTime <= otherEndTime && requestEndTime >= otherStartTime;
       if (isOverlapping) {
         return true;
       }
     }
-
     return false;
   };
-
   useEffect(() => {
     const initializeSession = async () => {
       if (accessCode) {
@@ -142,19 +123,13 @@ const PassengerService: React.FC = () => {
       loadVehicles();
       loadFixedRoutes();
     };
-    
     initializeSession();
   }, [accessCode, toast]);
 
   // 检查用户是否有活跃需求，如果有则跳过目的地选择
   useEffect(() => {
     if (loading || !accessCode) return;
-    
-    const userActiveRequests = requests.filter(req => 
-      req.access_code === accessCode && 
-      new Date(req.requested_time) > new Date()
-    );
-    
+    const userActiveRequests = requests.filter(req => req.access_code === accessCode && new Date(req.requested_time) > new Date());
     if (userActiveRequests.length > 0 && userActiveRequests[0].fixed_route_id) {
       // 从活跃需求中获取目的地信息
       const route = fixedRoutes.find(r => r.id === userActiveRequests[0].fixed_route_id);
@@ -162,12 +137,10 @@ const PassengerService: React.FC = () => {
         // 获取目的地详细信息
         const getDestinationInfo = async () => {
           try {
-            const { data, error } = await supabase
-              .from('preset_destinations')
-              .select('*')
-              .eq('id', route.destination_id)
-              .single();
-            
+            const {
+              data,
+              error
+            } = await supabase.from('preset_destinations').select('*').eq('id', route.destination_id).single();
             if (!error && data) {
               setSelectedDestination({
                 id: data.id,
@@ -181,35 +154,29 @@ const PassengerService: React.FC = () => {
             console.error('获取目的地信息失败:', error);
           }
         };
-        
         getDestinationInfo();
       }
     }
   }, [loading, accessCode, requests, fixedRoutes]);
-
   const loadFixedRoutes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('fixed_routes')
-        .select('*')
-        .eq('is_active', true);
-      
+      const {
+        data,
+        error
+      } = await supabase.from('fixed_routes').select('*').eq('is_active', true);
       if (error) throw error;
       setFixedRoutes(data || []);
     } catch (error) {
       console.error('加载固定路线失败:', error);
     }
   };
-
   const loadRideRequests = async () => {
     try {
       setLoading(true);
       const data = await rideRequestService.getAllRideRequests();
       // 过滤掉当前时间之前1小时之外的请求
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const filteredData = data.filter(request => 
-        new Date(request.requested_time) > oneHourAgo
-      );
+      const filteredData = data.filter(request => new Date(request.requested_time) > oneHourAgo);
       setRequests(filteredData);
     } catch (error) {
       console.error('加载用车需求失败:', error);
@@ -222,7 +189,6 @@ const PassengerService: React.FC = () => {
       setLoading(false);
     }
   };
-
   const loadVehicles = async () => {
     try {
       const vehicleData = await vehicleService.getVehicles();
@@ -231,10 +197,7 @@ const PassengerService: React.FC = () => {
       console.error('加载车辆失败:', error);
     }
   };
-
-  const addRequest = async (
-    requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>
-  ) => {
+  const addRequest = async (requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => {
     try {
       if (!hasAccess || !accessCode) {
         toast({
@@ -244,11 +207,7 @@ const PassengerService: React.FC = () => {
         });
         return;
       }
-
-      const existingRequest = requests.find(req => 
-        req.access_code === accessCode && 
-        req.requested_time.getHours() === requestData.requested_time.getHours()
-      );
+      const existingRequest = requests.find(req => req.access_code === accessCode && req.requested_time.getHours() === requestData.requested_time.getHours());
       if (existingRequest) {
         toast({
           title: "创建失败",
@@ -264,13 +223,11 @@ const PassengerService: React.FC = () => {
       if (!requestData.fixed_route_id) {
         throw new Error('请选择固定路线');
       }
-
       const request = await rideRequestService.createRideRequest(requestData, accessCode);
 
       // 重新加载数据以获取最新的组队信息
       await loadRideRequests();
       setShowForm(false);
-
       toast({
         title: "用车需求已创建",
         description: "需求已成功提交"
@@ -284,8 +241,6 @@ const PassengerService: React.FC = () => {
       });
     }
   };
-
-
   const deleteRequest = async (id: string) => {
     try {
       await rideRequestService.deleteRideRequest(id);
@@ -303,17 +258,14 @@ const PassengerService: React.FC = () => {
       });
     }
   };
-
   const handleDestinationSelected = (destination: Destination) => {
     setSelectedDestination(destination);
     setShowMandatoryDestinationDialog(false);
   };
-
   const handleLogout = () => {
     clearAccessCode();
     navigate('/');
   };
-
   const getFilteredRequests = () => {
     if (!selectedDestination) {
       return [];
@@ -322,12 +274,11 @@ const PassengerService: React.FC = () => {
     const destinationFilteredRequests = requests.filter(req => {
       // 如果没有固定路线ID，显示所有请求
       if (!req.fixed_route_id) return true;
-      
+
       // 查找对应的固定路线
       const route = fixedRoutes.find(route => route.id === req.fixed_route_id);
       return route && route.destination_id === selectedDestination.id;
     });
-    
     return destinationFilteredRequests.map(req => {
       if (hasAccess && accessCode && req.access_code === accessCode) {
         return req;
@@ -344,102 +295,90 @@ const PassengerService: React.FC = () => {
   };
 
   // 检查行李是否能装入车辆后备箱
-  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: { length: number; width: number; height: number }) => {
+  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: {
+    length: number;
+    width: number;
+    height: number;
+  }) => {
     if (!requestLuggage || !Array.isArray(requestLuggage) || requestLuggage.length === 0) return true;
-    
+
     // 计算所有行李的总体积
     const totalVolume = requestLuggage.reduce((total, item) => {
-      return total + (item.length * item.width * item.height * item.quantity);
+      return total + item.length * item.width * item.height * item.quantity;
     }, 0);
-    
     const trunkVolume = vehicleTrunk.length * vehicleTrunk.width * vehicleTrunk.height;
-    
+
     // 简化的装箱算法：总体积不超过后备箱80%（考虑空间利用率）
     return totalVolume <= trunkVolume * 0.8;
   };
-
   const getGroupedRequests = () => {
     const filteredRequests = getFilteredRequests();
     const groups: Record<string, Record<string, RideRequest[][]>> = {};
-    
+
     // 获取目的地车辆信息
-    const destinationVehicles = vehicles.filter(vehicle => 
-      vehicle.destination_id === selectedDestination?.id && vehicle.is_active
-    );
-    
-    filteredRequests
-      .sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime())
-      .forEach(req => {
-        const hour = req.requested_time.getHours();
-        const period = `${hour}:00-${hour + 1}:00`;
-        const routeKey = req.fixed_route_id || 'other';
-        
-        if (!groups[period]) groups[period] = {};
-        if (!groups[period][routeKey]) groups[period][routeKey] = [];
+    const destinationVehicles = vehicles.filter(vehicle => vehicle.destination_id === selectedDestination?.id && vehicle.is_active);
+    filteredRequests.sort((a, b) => a.requested_time.getTime() - b.requested_time.getTime()).forEach(req => {
+      const hour = req.requested_time.getHours();
+      const period = `${hour}:00-${hour + 1}:00`;
+      const routeKey = req.fixed_route_id || 'other';
+      if (!groups[period]) groups[period] = {};
+      if (!groups[period][routeKey]) groups[period][routeKey] = [];
 
-        // 快速拼车信息类型的需求设置为单独的组
-        if (req.request_type === 'quick_carpool_info') {
-          groups[period][routeKey].push([req]);
-          return;
-        }
+      // 快速拼车信息类型的需求设置为单独的组
+      if (req.request_type === 'quick_carpool_info') {
+        groups[period][routeKey].push([req]);
+        return;
+      }
 
-        // 查找合适的车辆进行分组（仅对社区顺风车类型）
-        let addedToGroup = false;
-        for (const group of groups[period][routeKey]) {
-          // 检查该组的总人数和行李
-          const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
-          const currentPassengers = req.passenger_count || 1;
-          
-          // 找到能容纳这些乘客和行李的车辆
-          const suitableVehicle = destinationVehicles.find(vehicle => {
-            const canFitPeople = totalPassengers + currentPassengers <= vehicle.max_passengers;
-            if (!canFitPeople) return false;
-            
-            // 检查所有行李是否能装下
-            const allLuggage = [...group.flatMap(r => r.luggage || []), ...(req.luggage || [])];
-            return canFitLuggage(allLuggage, {
-              length: vehicle.trunk_length_cm,
-              width: vehicle.trunk_width_cm,
-              height: vehicle.trunk_height_cm
-            });
+      // 查找合适的车辆进行分组（仅对社区顺风车类型）
+      let addedToGroup = false;
+      for (const group of groups[period][routeKey]) {
+        // 检查该组的总人数和行李
+        const totalPassengers = group.reduce((sum, r) => sum + (r.passenger_count || 1), 0);
+        const currentPassengers = req.passenger_count || 1;
+
+        // 找到能容纳这些乘客和行李的车辆
+        const suitableVehicle = destinationVehicles.find(vehicle => {
+          const canFitPeople = totalPassengers + currentPassengers <= vehicle.max_passengers;
+          if (!canFitPeople) return false;
+
+          // 检查所有行李是否能装下
+          const allLuggage = [...group.flatMap(r => r.luggage || []), ...(req.luggage || [])];
+          return canFitLuggage(allLuggage, {
+            length: vehicle.trunk_length_cm,
+            width: vehicle.trunk_width_cm,
+            height: vehicle.trunk_height_cm
           });
-
-          if (suitableVehicle) {
-            group.push(req);
-            addedToGroup = true;
-            break;
-          }
+        });
+        if (suitableVehicle) {
+          group.push(req);
+          addedToGroup = true;
+          break;
         }
+      }
 
-        // 如果没有合适的现有组，创建新组
-        if (!addedToGroup) {
-          groups[period][routeKey].push([req]);
-        }
-      });
-    
+      // 如果没有合适的现有组，创建新组
+      if (!addedToGroup) {
+        groups[period][routeKey].push([req]);
+      }
+    });
     return groups;
   };
-
   const groupedRequests = getGroupedRequests();
-
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
+    return <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <Car className="h-12 w-12 text-green-600 mx-auto mb-4 animate-spin" />
           <p className="text-gray-600">加载中...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">乘客服务</h1>
         <div className="flex items-center justify-center gap-4">
-          <p className="text-gray-600">便捷的用车服务，支持加密货币支付</p>
+          <p className="text-gray-600">解决出行难题，收获社区友谊~~~</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowDestinationDialog(true)} className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
@@ -471,8 +410,7 @@ const PassengerService: React.FC = () => {
 
       {/* 用车需求列表 */}
       <div className="space-y-8">
-        {selectedDestination && Object.keys(groupedRequests).length > 0 && (
-          <div>
+        {selectedDestination && Object.keys(groupedRequests).length > 0 && <div>
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-semibold text-gray-800">快速组队出发</h2>
               <Badge variant="outline" className="bg-blue-100 text-blue-700">
@@ -480,47 +418,28 @@ const PassengerService: React.FC = () => {
               </Badge>
             </div>
             <div className="space-y-6">
-              {Object.entries(groupedRequests)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([period, routeGroups]) => (
-                  <div key={period} className="border rounded-lg p-4 bg-gray-50">
+              {Object.entries(groupedRequests).sort(([a], [b]) => a.localeCompare(b)).map(([period, routeGroups]) => <div key={period} className="border rounded-lg p-4 bg-gray-50">
                     <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
                       <Clock className="h-5 w-5 text-blue-600" />
                       {period}
                     </h3>
                     <div className="space-y-4">
-                      {Object.entries(routeGroups).map(([routeKey, groups]) => (
-                        <div key={routeKey} className="space-y-3">
-                          {groups.map((group, groupIndex) => (
-                            <div key={groupIndex} className="border rounded-lg p-3 bg-white">
+                      {Object.entries(routeGroups).map(([routeKey, groups]) => <div key={routeKey} className="space-y-3">
+                          {groups.map((group, groupIndex) => <div key={groupIndex} className="border rounded-lg p-3 bg-white">
                                <div className="flex items-center gap-2 mb-2">
                                  <Badge variant="outline" className="bg-green-100 text-green-700">
                                     第{groupIndex + 1}组
                                   </Badge>
                                </div>
                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                 {group.map(request => (
-                                  <RideRequestCard 
-                                    key={request.id} 
-                                    request={request} 
-                                    onDelete={deleteRequest}
-                                    accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'}
-                                    vehicles={vehicles}
-                                    fixedRoutes={fixedRoutes}
-                                    showTimingWarning={checkDriverTimingForRequest(request)}
-                                  />
-                                 ))}
+                                 {group.map(request => <RideRequestCard key={request.id} request={request} onDelete={deleteRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} vehicles={vehicles} fixedRoutes={fixedRoutes} showTimingWarning={checkDriverTimingForRequest(request)} />)}
                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+                            </div>)}
+                        </div>)}
                     </div>
-                  </div>
-                ))}
+                  </div>)}
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* 空状态 */}
         {!selectedDestination && <Card className="text-center py-12">
@@ -549,8 +468,6 @@ const PassengerService: React.FC = () => {
       {/* 司机钱包地址弹窗 */}
       <DriverWalletDialog open={showDriverWalletDialog} onOpenChange={setShowDriverWalletDialog} selectedNetwork={paymentInfo.network} selectedCurrency={paymentInfo.currency} walletAddresses={driverWalletAddresses} />
 
-    </div>
-  );
+    </div>;
 };
-
 export default PassengerService;
