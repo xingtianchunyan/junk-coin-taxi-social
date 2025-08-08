@@ -377,7 +377,7 @@ const PassengerService: React.FC = () => {
   return <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">乘客服务</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">召唤社区内的朋友</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">解决出行难题，收获社区友谊~~~</p>
           <div className="flex gap-2">
