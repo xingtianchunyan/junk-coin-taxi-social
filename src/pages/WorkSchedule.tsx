@@ -359,24 +359,17 @@ const WorkSchedule: React.FC = () => {
     if (!requests.length || !route) return null;
 
     // 获取时间最早和最晚的请求
-    const sortedRequests = requests.sort((a, b) => 
-      new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime()
-    );
+    const sortedRequests = requests.sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime());
     const earliestRequest = sortedRequests[0];
     const latestRequest = sortedRequests[sortedRequests.length - 1];
-
     const earliestTime = new Date(earliestRequest.requested_time);
     const latestTime = new Date(latestRequest.requested_time);
     const routeDuration = route.estimated_duration_minutes || 60; // 默认60分钟
 
     // 判断固定路线的起点是否是目的地
-    const isStartFromDestination = selectedDestination && 
-      route.start_location.includes(selectedDestination.name) ||
-      route.start_location.includes(selectedDestination.address);
-
+    const isStartFromDestination = selectedDestination && route.start_location.includes(selectedDestination.name) || route.start_location.includes(selectedDestination.address);
     let workStartTime: Date;
     let workEndTime: Date;
-
     if (isStartFromDestination) {
       // 起点是目的地，司机平时在目的地，只需考虑最晚时间
       workStartTime = latestTime;
@@ -386,11 +379,11 @@ const WorkSchedule: React.FC = () => {
       workStartTime = new Date(earliestTime.getTime() - routeDuration * 60 * 1000);
       workEndTime = new Date(latestTime.getTime() + routeDuration * 60 * 1000);
     }
-
     return {
       workStartTime,
       workEndTime,
-      duration: (workEndTime.getTime() - workStartTime.getTime()) / (1000 * 60), // 分钟
+      duration: (workEndTime.getTime() - workStartTime.getTime()) / (1000 * 60),
+      // 分钟
       isStartFromDestination
     };
   };
@@ -398,10 +391,7 @@ const WorkSchedule: React.FC = () => {
   // 检查司机是否有时间冲突
   const checkDriverTimeConflict = (newRequests: any[], newRoute: any) => {
     // 获取司机当前所有处理中的请求
-    const currentProcessingRequests = rideRequests.filter(req => 
-      req.processing_driver_id && req.status === 'processing'
-    );
-
+    const currentProcessingRequests = rideRequests.filter(req => req.processing_driver_id && req.status === 'processing');
     if (currentProcessingRequests.length === 0) return false;
 
     // 按路线分组
@@ -420,20 +410,15 @@ const WorkSchedule: React.FC = () => {
     for (const [routeId, requests] of Object.entries(existingGroups)) {
       const route = fixedRoutes.find(r => r.id === routeId);
       if (!route) continue;
-
       const existingWorkTime = calculateDriverWorkTime(requests, route);
       if (!existingWorkTime) continue;
 
       // 检查时间重叠
-      const isOverlapping = 
-        (newWorkTime.workStartTime <= existingWorkTime.workEndTime) &&
-        (newWorkTime.workEndTime >= existingWorkTime.workStartTime);
-
+      const isOverlapping = newWorkTime.workStartTime <= existingWorkTime.workEndTime && newWorkTime.workEndTime >= existingWorkTime.workStartTime;
       if (isOverlapping) {
         return true;
       }
     }
-
     return false;
   };
 
@@ -461,7 +446,6 @@ const WorkSchedule: React.FC = () => {
       // 获取同一组的所有请求（同一时段、同一路线）
       const groupedRequests = getDriverGroupedRequests();
       let targetGroup: any[] = [];
-      
       Object.values(groupedRequests).forEach(periodGroups => {
         Object.values(periodGroups).forEach(routeGroups => {
           routeGroups.forEach(group => {
@@ -475,15 +459,11 @@ const WorkSchedule: React.FC = () => {
       // 时间冲突检查已简化 - 仅用于显示提醒，不阻止绑定
 
       // 更新整组的状态为处理中，并绑定司机
-      const updatePromises = targetGroup.map(req => 
-        supabase.from('ride_requests').update({
-          status: 'processing',
-          processing_driver_id: userData.id
-        }).eq('id', req.id)
-      );
-
+      const updatePromises = targetGroup.map(req => supabase.from('ride_requests').update({
+        status: 'processing',
+        processing_driver_id: userData.id
+      }).eq('id', req.id));
       await Promise.all(updatePromises);
-
       toast({
         title: "确认成功",
         description: "您已确认帮忙，订单状态已更新为处理中"
@@ -533,7 +513,7 @@ const WorkSchedule: React.FC = () => {
   return <div className="container mx-auto px-4 py-8">
       {/* 页面标题 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">工作安排</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">我要帮助社区伙伴</h1>
         <div className="flex items-center justify-center gap-4">
           <p className="text-gray-600">设置您空闲的时间和查看需求</p>
           <div className="flex gap-2">
