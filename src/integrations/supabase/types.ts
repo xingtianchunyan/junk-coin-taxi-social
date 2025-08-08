@@ -427,6 +427,22 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_current_access_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_destination_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_or_create_user_by_access_code: {
         Args: { input_access_code: string }
         Returns: {
@@ -438,6 +454,18 @@ export type Database = {
           created_at: string
           updated_at: string
         }[]
+      }
+      is_role: {
+        Args: { target: string }
+        Returns: boolean
+      }
+      jwt_claim_text: {
+        Args: { claim_key: string }
+        Returns: string
+      }
+      jwt_claim_uuid: {
+        Args: { claim_key: string }
+        Returns: string
       }
       validate_access_code: {
         Args: { input_access_code: string }
