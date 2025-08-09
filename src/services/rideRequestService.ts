@@ -1,11 +1,36 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RideRequest, WalletAddress, Payment, PresetDestination, FixedRoute } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database, Tables } from '@/integrations/supabase/types';
 
 export class RideRequestService {
+  private client: SupabaseClient<Database> | null = null;
+  private currentUser: Tables<'users'> | null = null;
+
+  setClient(client: SupabaseClient<Database>) {
+    this.client = client;
+    console.log('[RideRequestService] Private Supabase client injected');
+  }
+
+  clearClient() {
+    this.client = null;
+    console.log('[RideRequestService] Client cleared, falling back to public anon client');
+  }
+
+  setCurrentUser(user: Tables<'users'> | null) {
+    this.currentUser = user;
+    console.log('[RideRequestService] Current user updated:', user?.id);
+  }
+
+  private db() {
+    return this.client ?? supabase;
+  }
+
   // 获取所有用车需求（只显示基本信息）
   async getAllRideRequests(): Promise<RideRequest[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('ride_requests')
       .select('*')
       .order('requested_time', { ascending: true });
@@ -26,9 +51,7 @@ export class RideRequestService {
 
   // 创建用车需求
   async createRideRequest(requestData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>, accessCode: string): Promise<RideRequest> {
-    // Session management removed - no longer needed without RLS
-
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('ride_requests')
       .insert([{
         ...requestData,
@@ -62,7 +85,7 @@ export class RideRequestService {
 
   // 使用访问码获取详细信息
   async getRideRequestByAccessCode(accessCode: string): Promise<RideRequest | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('ride_requests')
       .select('*')
       .eq('access_code', accessCode)
@@ -89,7 +112,7 @@ export class RideRequestService {
 
   // 更新用车需求状态
   async updateRideRequestStatus(id: string, status: RideRequest['status']): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('ride_requests')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);
@@ -99,7 +122,7 @@ export class RideRequestService {
 
   // 删除用车需求
   async deleteRideRequest(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('ride_requests')
       .delete()
       .eq('id', id);
@@ -118,7 +141,7 @@ export class RideRequestService {
       updateData.payment_tx_hash = txHash;
     }
 
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('ride_requests')
       .update(updateData)
       .eq('id', id);
@@ -128,7 +151,7 @@ export class RideRequestService {
 
   // 获取钱包地址
   async getWalletAddresses(): Promise<WalletAddress[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .select('*')
       .eq('is_active', true)
@@ -144,7 +167,7 @@ export class RideRequestService {
 
   // 根据固定路线ID获取钱包地址
   async getWalletAddressesByRoute(routeId: string): Promise<WalletAddress[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .select('*')
       .eq('route_id', routeId)
@@ -161,7 +184,7 @@ export class RideRequestService {
 
   // 获取所有钱包地址（包括禁用的）
   async getAllWalletAddresses(): Promise<WalletAddress[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .select('*')
       .order('created_at', { ascending: true });
@@ -178,7 +201,7 @@ export class RideRequestService {
 
   // 创建钱包地址
   async createWalletAddress(walletData: Omit<WalletAddress, 'id' | 'created_at' | 'is_active'>): Promise<WalletAddress> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .insert([{
         ...walletData,
@@ -197,7 +220,7 @@ export class RideRequestService {
 
   // 更新钱包地址
   async updateWalletAddress(id: string, walletData: Partial<Omit<WalletAddress, 'id' | 'created_at'>>): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('wallet_addresses')
       .update(walletData)
       .eq('id', id);
@@ -207,7 +230,7 @@ export class RideRequestService {
 
   // 切换钱包地址状态
   async toggleWalletAddress(id: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('wallet_addresses')
       .update({ is_active: isActive })
       .eq('id', id);
@@ -217,7 +240,7 @@ export class RideRequestService {
 
   // 删除钱包地址
   async deleteWalletAddress(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('wallet_addresses')
       .delete()
       .eq('id', id);
@@ -237,8 +260,8 @@ export class RideRequestService {
     confirmedPayments: number;
   }> {
     const [requestsResult, paymentsResult] = await Promise.all([
-      supabase.from('ride_requests').select('status, payment_required'),
-      supabase.from('ride_requests').select('payment_status').eq('payment_required', true)
+      this.db().from('ride_requests').select('status, payment_required'),
+      this.db().from('ride_requests').select('payment_status').eq('payment_required', true)
     ]);
 
     if (requestsResult.error) throw requestsResult.error;
@@ -259,82 +282,10 @@ export class RideRequestService {
 
   // 预设目的地管理
   async getPresetDestinations(): Promise<PresetDestination[]> {
-    const { data, error } = await supabase
-      .from('preset_destinations')
-      .select('*')
-      .eq('is_active', true)
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-
-    return data?.map(item => ({
-      ...item,
-      is_active: item.is_active ?? true,
-      description: item.description ?? undefined,
-      created_at: new Date(item.created_at)
-    })) || [];
-  }
-
-  async getAllPresetDestinations(): Promise<PresetDestination[]> {
-    const { data, error } = await supabase
-      .from('preset_destinations')
-      .select('*')
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-
-    return data?.map(item => ({
-      ...item,
-      is_active: item.is_active ?? true,
-      description: item.description ?? undefined,
-      created_at: new Date(item.created_at)
-    })) || [];
-  }
-
-  async createPresetDestination(destinationData: Omit<PresetDestination, 'id' | 'created_at' | 'is_active'>): Promise<PresetDestination> {
-    const { data, error } = await supabase
-      .from('preset_destinations')
-      .insert([{
-        ...destinationData,
-        is_active: true
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return {
-      ...data,
-      is_active: data.is_active ?? true,
-      description: data.description ?? undefined,
-      created_at: new Date(data.created_at)
-    };
-  }
-
-  async updatePresetDestination(id: string, destinationData: Partial<Omit<PresetDestination, 'id' | 'created_at'>>): Promise<void> {
-    const { error } = await supabase
-      .from('preset_destinations')
-      .update(destinationData)
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
-  async togglePresetDestination(id: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('preset_destinations')
-      .update({ is_active: isActive })
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
-  // 固定路线管理 - 增强版本，包含调试信息
-  async getFixedRoutes(): Promise<FixedRoute[]> {
     console.log('正在从数据库获取固定路线...');
     
-    const { data, error } = await supabase
-      .from('fixed_routes')
+    const { data, error } = await this.db()
+      .from('preset_destinations')
       .select('*')
       .eq('is_active', true)
       .order('name', { ascending: true });
@@ -372,8 +323,108 @@ export class RideRequestService {
     return routes;
   }
 
+  async getAllPresetDestinations(): Promise<PresetDestination[]> {
+    const { data, error } = await this.db()
+      .from('preset_destinations')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    return data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      description: item.description ?? undefined,
+      created_at: new Date(item.created_at)
+    })) || [];
+  }
+
+  async createPresetDestination(destinationData: Omit<PresetDestination, 'id' | 'created_at' | 'is_active'>): Promise<PresetDestination> {
+    // 自动补齐 admin_user_id，满足 RLS 插入检查
+    const payload = {
+      ...destinationData,
+      is_active: true,
+      admin_user_id: destinationData['admin_user_id'] ?? this.currentUser?.id,
+    };
+
+    const { data, error } = await this.db()
+      .from('preset_destinations')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      description: data.description ?? undefined,
+      created_at: new Date(data.created_at)
+    };
+  }
+
+  async updatePresetDestination(id: string, destinationData: Partial<Omit<PresetDestination, 'id' | 'created_at'>>): Promise<void> {
+    const { error } = await this.db()
+      .from('preset_destinations')
+      .update(destinationData)
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async togglePresetDestination(id: string, isActive: boolean): Promise<void> {
+    const { error } = await this.db()
+      .from('preset_destinations')
+      .update({ is_active: isActive })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // 固定路线管理 - 增强版本，包含调试信息
+  async getFixedRoutes(): Promise<FixedRoute[]> {
+    console.log('正在从数据库获取固定路线...');
+    
+    const { data, error } = await this.db()
+      .from('fixed_routes')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('获取固定路线时发生错误:', error);
+      throw error;
+    }
+
+    console.log('数据库返回的原始路线数据:', data);
+
+    const routes = data?.map(item => ({
+      ...item,
+      is_active: item.is_active ?? true,
+      currency: item.currency ?? 'CNY',
+      created_at: new Date(item.created_at),
+      updated_at: new Date(item.updated_at)
+    })) || [];
+
+    console.log('处理后的路线数据:', routes);
+    console.log(`共找到 ${routes.length} 条活跃路线`);
+    
+    routes.forEach((route, index) => {
+      console.log(`路线 ${index + 1}:`, {
+        id: route.id,
+        name: route.name,
+        start_location: route.start_location,
+        end_location: route.end_location,
+        is_active: route.is_active,
+        destination_id: route.destination_id
+      });
+    });
+
+    return routes;
+  }
+
   async getAllFixedRoutes(): Promise<FixedRoute[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('fixed_routes')
       .select('*')
       .order('name', { ascending: true });
@@ -390,7 +441,7 @@ export class RideRequestService {
   }
 
   async createFixedRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>): Promise<FixedRoute> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('fixed_routes')
       .insert([{
         ...routeData,
@@ -411,7 +462,7 @@ export class RideRequestService {
   }
 
   async updateFixedRoute(id: string, routeData: Partial<Omit<FixedRoute, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('fixed_routes')
       .update(routeData)
       .eq('id', id);
@@ -420,7 +471,7 @@ export class RideRequestService {
   }
 
   async toggleFixedRoute(id: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('fixed_routes')
       .update({ is_active: isActive })
       .eq('id', id);
@@ -430,9 +481,7 @@ export class RideRequestService {
 
   // 删除固定路线
   async deleteFixedRoute(id: string, accessCode?: string): Promise<void> {
-    // Session management removed - no longer needed without RLS
-
-    const { error } = await supabase
+    const { error } = await this.db()
       .from('fixed_routes')
       .delete()
       .eq('id', id);
@@ -442,9 +491,7 @@ export class RideRequestService {
 
   // 社区管理员专用方法
   async getCommunityDestination(accessCode: string): Promise<PresetDestination | null> {
-    // Session management removed - no longer needed without RLS
-
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await this.db()
       .from('users')
       .select('id')
       .eq('access_code', accessCode)
@@ -452,7 +499,7 @@ export class RideRequestService {
 
     if (userError || !user) return null;
 
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('preset_destinations')
       .select('*')
       .eq('admin_user_id', user.id)
@@ -470,9 +517,7 @@ export class RideRequestService {
   }
 
   async getDestinationRoutes(destinationId: string, accessCode?: string): Promise<FixedRoute[]> {
-    // Session management removed - no longer needed without RLS
-
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('fixed_routes')
       .select('*')
       .eq('destination_id', destinationId)
@@ -491,7 +536,7 @@ export class RideRequestService {
   }
 
   async getDestinationVehicles(destinationId: string): Promise<Vehicle[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('vehicles')
       .select(`
         *,
@@ -512,7 +557,7 @@ export class RideRequestService {
   }
 
   async getDestinationWallets(destinationId: string): Promise<WalletAddress[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .select('*')
       .eq('destination_id', destinationId)
@@ -528,9 +573,7 @@ export class RideRequestService {
   }
 
   async createDestinationRoute(routeData: Omit<FixedRoute, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<FixedRoute> {
-    // Session management removed - no longer needed without RLS
-
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('fixed_routes')
       .insert([{
         ...routeData,
@@ -553,7 +596,7 @@ export class RideRequestService {
 
   async createDestinationVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>, destinationId: string, accessCode?: string): Promise<Vehicle> {
     // 首先为司机创建用户记录
-    const { data: driverUser, error: userError } = await supabase
+    const { data: driverUser, error: userError } = await this.db()
       .from('users')
       .insert([{
         role: 'driver',
@@ -565,7 +608,7 @@ export class RideRequestService {
     if (userError) throw userError;
 
     // 然后创建车辆记录，关联到司机用户
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('vehicles')
       .insert([{
         ...vehicleData,
@@ -579,7 +622,7 @@ export class RideRequestService {
     if (error) throw error;
 
     // 重新查询以获取包含用户访问码的完整数据
-    const { data: vehicleWithUser, error: selectError } = await supabase
+    const { data: vehicleWithUser, error: selectError } = await this.db()
       .from('vehicles')
       .select(`
         *,
@@ -599,7 +642,7 @@ export class RideRequestService {
   }
 
   async createDestinationWallet(walletData: Omit<WalletAddress, 'id' | 'created_at' | 'is_active'>, destinationId: string): Promise<WalletAddress> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('wallet_addresses')
       .insert([{
         ...walletData,
@@ -619,7 +662,7 @@ export class RideRequestService {
 
   // 检查返程路线是否存在
   async checkReturnRouteExists(destinationId: string, startLocation: string, endLocation: string): Promise<boolean> {
-    const { data, error } = await supabase
+    const { data, error } = await this.db()
       .from('fixed_routes')
       .select('id')
       .eq('destination_id', destinationId)
@@ -628,7 +671,7 @@ export class RideRequestService {
       .eq('is_active', true)
       .single();
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 是没有找到记录的错误码
+    if (error && (error as any).code !== 'PGRST116') throw error; // PGRST116 是没有找到记录的错误码
     
     return !!data;
   }
@@ -683,7 +726,7 @@ export class RideRequestService {
   // 删除车辆（同时删除关联的司机用户）
   async deleteVehicle(vehicleId: string): Promise<void> {
     // 首先获取车辆的用户ID
-    const { data: vehicleData, error: vehicleError } = await supabase
+    const { data: vehicleData, error: vehicleError } = await this.db()
       .from('vehicles')
       .select('user_id')
       .eq('id', vehicleId)
@@ -692,7 +735,7 @@ export class RideRequestService {
     if (vehicleError) throw vehicleError;
     
     // 删除与该车辆相关的钱包地址
-    const { error: deleteWalletError } = await supabase
+    const { error: deleteWalletError } = await this.db()
       .from('wallet_addresses')
       .delete()
       .eq('vehicle_id', vehicleId);
@@ -703,7 +746,7 @@ export class RideRequestService {
     }
     
     // 删除车辆
-    const { error: deleteVehicleError } = await supabase
+    const { error: deleteVehicleError } = await this.db()
       .from('vehicles')
       .delete()
       .eq('id', vehicleId);
@@ -712,7 +755,7 @@ export class RideRequestService {
     
     // 如果有关联的司机用户，也删除该用户
     if (vehicleData?.user_id) {
-      const { error: deleteUserError } = await supabase
+      const { error: deleteUserError } = await this.db()
         .from('users')
         .delete()
         .eq('id', vehicleData.user_id);

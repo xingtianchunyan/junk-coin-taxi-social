@@ -1,6 +1,6 @@
+
 import { useState, useEffect } from 'react';
 import { useAccessCode } from '@/components/AccessCodeProvider';
-import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'passenger' | 'driver' | 'community_admin';
 
@@ -16,7 +16,7 @@ export const useUserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { accessCode } = useAccessCode();
+  const { accessCode, client } = useAccessCode();
 
   const fetchProfile = async () => {
     if (!accessCode) {
@@ -29,26 +29,17 @@ export const useUserProfile = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('users')
         .select('*')
         .eq('access_code', accessCode)
         .single();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // 用户不存在，创建新用户
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert([{ access_code: accessCode }])
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          setProfile(newUser);
-        } else {
-          throw error;
-        }
+        // 不再在客户端创建用户（这会违反 RLS）；用户的创建由 Edge Function 完成
+        console.error('获取用户资料失败:', error);
+        setProfile(null);
+        setError(error.message || '获取用户资料失败');
       } else {
         setProfile(data);
       }
@@ -62,26 +53,25 @@ export const useUserProfile = () => {
 
   useEffect(() => {
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessCode]);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!profile) throw new Error('No profile found');
 
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', profile.id)
-        .select()
-        .single();
+    const { data, error } = await client
+      .from('users')
+      .update(updates)
+      .eq('id', profile.id)
+      .select()
+      .single();
 
-      if (error) throw error;
-      setProfile(data);
-      return data;
-    } catch (err: any) {
-      console.error('更新用户资料失败:', err);
-      throw err;
+    if (error) {
+      console.error('更新用户资料失败:', error);
+      throw error;
     }
+    setProfile(data);
+    return data;
   };
 
   const hasRole = (role: UserRole): boolean => {

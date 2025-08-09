@@ -3,6 +3,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { createSupabaseWithToken } from '@/integrations/supabase/tokenClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { rideRequestService } from '@/services/rideRequestService';
 
 interface AccessCodeContextType {
   accessCode: string | null;
@@ -11,6 +13,7 @@ interface AccessCodeContextType {
   hasAccess: boolean;
   userProfile: Tables<'users'> | null;
   refreshUserProfile: () => Promise<void>;
+  client: SupabaseClient; // 暴露给全局使用（优先使用私有客户端）
 }
 
 const AccessCodeContext = createContext<AccessCodeContextType | undefined>(undefined);
@@ -27,7 +30,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [accessCode, setAccessCodeState] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<Tables<'users'> | null>(null);
   const [jwtToken, setJwtToken] = useState<string | null>(null);
-  const [privClient, setPrivClient] = useState<ReturnType<typeof createSupabaseWithToken> | null>(null);
+  const [privClient, setPrivClient] = useState<SupabaseClient | null>(null);
 
   useEffect(() => {
     // 从 localStorage 恢复访问码
@@ -53,10 +56,17 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setJwtToken(data.token);
           const client = createSupabaseWithToken(data.token);
           setPrivClient(client);
+
+          // 同步私有客户端到服务层，确保后续所有查询/写入走带 JWT 的客户端
+          rideRequestService.setClient(client);
+
           // 先用返回的用户信息预填充
           if (data.user) {
             setUserProfile(data.user);
+            // 将当前用户同步给服务层，便于服务层在需要时填充 admin_user_id 等
+            rideRequestService.setCurrentUser(data.user);
           }
+
           // 再拉取最新用户信息
           await refreshUserProfile();
         }
@@ -71,12 +81,11 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setUserProfile(null);
       setJwtToken(null);
       setPrivClient(null);
+      // 清理服务层状态
+      rideRequestService.clearClient();
+      rideRequestService.setCurrentUser(null);
     }
   }, [accessCode]);
-
-  const updateJWTClaims = async (_code: string) => {
-    // 已由 Edge Function 处理，这里不再需要单独更新
-  };
 
   const setAccessCode = (code: string) => {
     setAccessCodeState(code);
@@ -92,6 +101,9 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.removeItem('access_code');
     localStorage.removeItem('userAccessCode');
     localStorage.removeItem('rideAccessCode');
+    // 清理服务层状态
+    rideRequestService.clearClient();
+    rideRequestService.setCurrentUser(null);
   };
 
   const refreshUserProfile = async () => {
@@ -111,6 +123,8 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       setUserProfile(data);
+      // 同步给服务层
+      rideRequestService.setCurrentUser(data);
     } catch (error) {
       console.error('获取用户配置文件失败:', error);
     }
@@ -125,6 +139,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     hasAccess,
     userProfile,
     refreshUserProfile,
+    client: privClient ?? supabase,
   };
 
   return <AccessCodeContext.Provider value={value}>{children}</AccessCodeContext.Provider>;
