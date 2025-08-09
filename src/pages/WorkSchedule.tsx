@@ -410,7 +410,7 @@ const WorkSchedule: React.FC = () => {
       const {
         data: userData,
         error: userError
-      } = await supabase.from('users').select('id').eq('access_code', accessCode).single();
+      } = await client.from('users').select('id').eq('access_code', accessCode).single();
       if (userError || !userData) {
         throw new Error('获取用户信息失败');
       }
@@ -439,7 +439,7 @@ const WorkSchedule: React.FC = () => {
       // 时间冲突检查已简化 - 仅用于显示提醒，不阻止绑定
 
       // 更新整组的状态为处理中，并绑定司机
-      const updatePromises = targetGroup.map(req => supabase.from('ride_requests').update({
+      const updatePromises = targetGroup.map(req => client.from('ride_requests').update({
         status: 'processing',
         processing_driver_id: userData.id
       }).eq('id', req.id));
