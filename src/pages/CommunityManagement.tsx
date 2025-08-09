@@ -134,9 +134,9 @@ const CommunityManagement: React.FC = () => {
   // 支付方式多选删除相关状态
   const [selectedPaymentIdsForDelete, setSelectedPaymentIdsForDelete] = useState<string[]>([]);
 
-
   const { toast } = useToast();
   const { accessCode, clearAccessCode } = useAccessCode();
+  const { client } = useAccessCode();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -204,7 +204,7 @@ const CommunityManagement: React.FC = () => {
 
     try {
       // 使用函数获取或创建用户
-      const { data: userInfo, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
+      const { data: userInfo, error: userError } = await client.rpc('get_or_create_user_by_access_code', {
         input_access_code: accessCode
       });
 

@@ -5,6 +5,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { createSupabaseWithToken } from '@/integrations/supabase/tokenClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { rideRequestService } from '@/services/rideRequestService';
+import { vehicleService } from '@/services/vehicleService';
 
 interface AccessCodeContextType {
   accessCode: string | null;
@@ -59,9 +60,10 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
           // 同步私有客户端到服务层，确保后续所有查询/写入走带 JWT 的客户端
           rideRequestService.setClient(client);
+          vehicleService.setClient(client);
 
           // 先用返回的用户信息预填充
-          if (data.user) {
+          if (data?.user) {
             setUserProfile(data.user);
             // 将当前用户同步给服务层，便于服务层在需要时填充 admin_user_id 等
             rideRequestService.setCurrentUser(data.user);
@@ -104,6 +106,7 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // 清理服务层状态
     rideRequestService.clearClient();
     rideRequestService.setCurrentUser(null);
+    vehicleService.setClient(null as any);
   };
 
   const refreshUserProfile = async () => {

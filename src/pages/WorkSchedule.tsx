@@ -11,8 +11,7 @@ import { useAccessCode } from '@/components/AccessCodeProvider';
 import DestinationSelector from '@/components/DestinationSelector';
 import RideRequestCard from '@/components/RideRequestCard';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { vehicleService } from '@/services/vehicleService';
+import { vehicleService } from '@/services/vehicleService'; // keep
 import { Vehicle } from '@/types/Vehicle';
 import { LuggageItem } from '@/types/RideRequest';
 const WorkSchedule: React.FC = () => {
@@ -41,7 +40,8 @@ const WorkSchedule: React.FC = () => {
   } = useToast();
   const {
     clearAccessCode,
-    accessCode
+    accessCode,
+    client,
   } = useAccessCode();
   const navigate = useNavigate();
 
@@ -66,15 +66,11 @@ const WorkSchedule: React.FC = () => {
     try {
       // Session management removed - no longer needed without RLS
 
-      const {
-        data: userData,
-        error: userError
-      } = await supabase.from('users').select('id, destination_id').eq('access_code', accessCode).single();
+      const { data: userData, error: userError } = await client
+        .from('users').select('id, destination_id').eq('access_code', accessCode).single();
       if (userError || !userData) return;
-      const {
-        data: vehicleData,
-        error: vehicleError
-      } = await supabase.from('vehicles').select('*').eq('user_id', userData.id).eq('is_active', true).single();
+      const { data: vehicleData, error: vehicleError } = await client
+        .from('vehicles').select('*').eq('user_id', userData.id).eq('is_active', true).single();
       if (vehicleError || !vehicleData) return;
       setDriverVehicle({
         ...vehicleData,
@@ -85,10 +81,8 @@ const WorkSchedule: React.FC = () => {
       // 获取目的地ID - 优先使用用户的destination_id，否则使用车辆的destination_id
       const destinationId = userData.destination_id || vehicleData.destination_id;
       if (destinationId) {
-        const {
-          data: destinationData,
-          error: destError
-        } = await supabase.from('preset_destinations').select('*').eq('id', destinationId).single();
+        const { data: destinationData, error: destError } = await client
+          .from('preset_destinations').select('*').eq('id', destinationId).single();
         if (!destError && destinationData) {
           setSelectedDestination(destinationData);
         }
@@ -111,10 +105,8 @@ const WorkSchedule: React.FC = () => {
     if (!selectedDestination) return;
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('fixed_routes').select('*').eq('is_active', true).eq('destination_id', selectedDestination.id);
+      const { data, error } = await client
+        .from('fixed_routes').select('*').eq('is_active', true).eq('destination_id', selectedDestination.id);
       if (error) throw error;
       setFixedRoutes(data || []);
     } catch (error) {
@@ -136,27 +128,19 @@ const WorkSchedule: React.FC = () => {
       setLoading(true);
 
       // 获取当前司机的用户ID
-      const {
-        data: userData,
-        error: userError
-      } = await supabase.from('users').select('id').eq('access_code', accessCode).single();
+      const { data: userData, error: userError } = await client
+        .from('users').select('id').eq('access_code', accessCode).single();
       if (userError || !userData) return;
 
       // 首先获取与目的地相关的路线ID
-      const {
-        data: routeData,
-        error: routeError
-      } = await supabase.from('fixed_routes').select('id').eq('destination_id', selectedDestination.id).eq('is_active', true);
+      const { data: routeData, error: routeError } = await client
+        .from('fixed_routes').select('id').eq('destination_id', selectedDestination.id).eq('is_active', true);
       if (routeError) throw routeError;
       const routeIds = routeData?.map(route => route.id) || [];
 
       // 查询与这些路线相关的订单（包含pending和processing状态）
-      const {
-        data,
-        error
-      } = await supabase.from('ride_requests').select('*').in('status', ['pending', 'processing']).in('fixed_route_id', routeIds).order('requested_time', {
-        ascending: true
-      });
+      const { data, error } = await client
+        .from('ride_requests').select('*').in('status', ['pending', 'processing']).in('fixed_route_id', routeIds).order('requested_time', { ascending: true });
       if (error) throw error;
 
       // 过滤掉当前时间之前1小时之外的请求
@@ -284,10 +268,7 @@ const WorkSchedule: React.FC = () => {
     }
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.from('fixed_routes').insert({
+      const { data, error } = await client.from('fixed_routes').insert({
         name: `${newRoute.hub}-${selectedDestination.name}`,
         start_location: newRoute.hub,
         end_location: selectedDestination.name,
@@ -328,14 +309,13 @@ const WorkSchedule: React.FC = () => {
     try {
       // Session management removed - no longer needed without RLS
 
-      const {
-        error
-      } = await supabase.from('vehicles').update({
-        work_start_time: workHours.start_time,
-        work_end_time: workHours.end_time,
-        work_start_date: workHours.start_date,
-        work_end_date: workHours.end_date
-      }).eq('id', driverVehicle.id);
+      const { error } = await client
+        .from('vehicles').update({
+          work_start_time: workHours.start_time,
+          work_end_time: workHours.end_time,
+          work_start_date: workHours.start_date,
+          work_end_date: workHours.end_date
+        }).eq('id', driverVehicle.id);
       if (error) throw error;
       toast({
         title: "工作时间已更新",
@@ -484,11 +464,10 @@ const WorkSchedule: React.FC = () => {
   // 更新支付状态
   const handleUpdatePaymentStatus = async (requestId: string, status: string) => {
     try {
-      const {
-        error
-      } = await supabase.from('ride_requests').update({
-        payment_status: status
-      }).eq('id', requestId);
+      const { error } = await client
+        .from('ride_requests').update({
+          payment_status: status
+        }).eq('id', requestId);
       if (error) throw error;
       toast({
         title: "状态已更新",

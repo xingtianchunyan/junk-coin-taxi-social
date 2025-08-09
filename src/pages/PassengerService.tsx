@@ -47,6 +47,7 @@ const PassengerService: React.FC = () => {
     accessCode,
     clearAccessCode
   } = useAccessCode();
+  const { client } = useAccessCode();
   const navigate = useNavigate();
   const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
 
@@ -137,10 +138,8 @@ const PassengerService: React.FC = () => {
         // 获取目的地详细信息
         const getDestinationInfo = async () => {
           try {
-            const {
-              data,
-              error
-            } = await supabase.from('preset_destinations').select('*').eq('id', route.destination_id).single();
+            const { data, error } = await client
+              .from('preset_destinations').select('*').eq('id', route.destination_id).single();
             if (!error && data) {
               setSelectedDestination({
                 id: data.id,
@@ -160,10 +159,8 @@ const PassengerService: React.FC = () => {
   }, [loading, accessCode, requests, fixedRoutes]);
   const loadFixedRoutes = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('fixed_routes').select('*').eq('is_active', true);
+      const { data, error } = await client
+        .from('fixed_routes').select('*').eq('is_active', true);
       if (error) throw error;
       setFixedRoutes(data || []);
     } catch (error) {

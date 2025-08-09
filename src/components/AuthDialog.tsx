@@ -76,33 +76,22 @@ const AuthDialog: React.FC<AuthDialogProps> = ({
   const handleRegister = async () => {
     setLoading(true);
     try {
-      // 生成新的访问码
-      const newCode = crypto.randomUUID();
+      // 1) 让数据库生成新的访问码
+      const { data: genCode, error: genError } = await supabase.rpc('generate_access_code');
+      if (genError || !genCode) throw genError || new Error('无法生成访问码');
 
-      // 创建新用户
-      const {
-        data,
-        error
-      } = await supabase.from('users').insert({
-        access_code: newCode,
-        role: null
-      }).select().single();
-      if (error) {
-        throw error;
-      }
-      setNewAccessCode(newCode);
-      setMode('confirm');
-      toast({
-        title: "注册成功",
-        description: "请复制并保存您的访问码"
+      // 2) 通过安全的 RPC 创建/获取用户（SECURITY DEFINER，绕过 RLS）
+      const { error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
+        input_access_code: genCode as string,
       });
+      if (userError) throw userError;
+
+      setNewAccessCode(genCode as string);
+      setMode('confirm');
+      toast({ title: '注册成功', description: '请复制并保存您的访问码' });
     } catch (error) {
       console.error('注册失败:', error);
-      toast({
-        title: "注册失败",
-        description: "请稍后重试",
-        variant: "destructive"
-      });
+      toast({ title: '注册失败', description: '请稍后重试', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

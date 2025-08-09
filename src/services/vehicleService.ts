@@ -1,11 +1,18 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Vehicle } from '@/types/Vehicle';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+
+let clientOverride: SupabaseClient<Database> | null = null;
+const db = () => clientOverride ?? supabase;
 
 export const vehicleService = {
+  setClient(client: SupabaseClient<Database> | null) {
+    clientOverride = client;
+  },
   // 获取所有车辆
   async getVehicles(): Promise<Vehicle[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db()
       .from('vehicles')
       .select(`
         *,
@@ -25,7 +32,7 @@ export const vehicleService = {
 
   // 创建车辆
   async createVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'is_active'>): Promise<Vehicle> {
-    const { data, error } = await supabase
+    const { data, error } = await db()
       .from('vehicles')
       .insert([vehicleData])
       .select()
@@ -41,7 +48,7 @@ export const vehicleService = {
 
   // 更新车辆
   async updateVehicle(id: string, vehicleData: Partial<Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>>): Promise<Vehicle> {
-    const { data, error } = await supabase
+    const { data, error } = await db()
       .from('vehicles')
       .update(vehicleData)
       .eq('id', id)
@@ -58,7 +65,7 @@ export const vehicleService = {
 
   // 删除车辆（软删除）
   async deactivateVehicle(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await db()
       .from('vehicles')
       .update({ is_active: false })
       .eq('id', id);
@@ -69,7 +76,7 @@ export const vehicleService = {
   // 删除车辆（真删除，同时删除关联的司机用户）
   async deleteVehicle(id: string): Promise<void> {
     // 首先获取车辆的用户ID
-    const { data: vehicleData, error: vehicleError } = await supabase
+    const { data: vehicleData, error: vehicleError } = await db()
       .from('vehicles')
       .select('user_id')
       .eq('id', id)
@@ -78,7 +85,7 @@ export const vehicleService = {
     if (vehicleError) throw vehicleError;
     
     // 删除车辆
-    const { error: deleteVehicleError } = await supabase
+    const { error: deleteVehicleError } = await db()
       .from('vehicles')
       .delete()
       .eq('id', id);
@@ -87,7 +94,7 @@ export const vehicleService = {
     
     // 如果有关联的司机用户，也删除该用户
     if (vehicleData?.user_id) {
-      const { error: deleteUserError } = await supabase
+      const { error: deleteUserError } = await db()
         .from('users')
         .delete()
         .eq('id', vehicleData.user_id);
@@ -101,7 +108,7 @@ export const vehicleService = {
 
   // 获取单个车辆
   async getVehicleById(id: string): Promise<Vehicle | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db()
       .from('vehicles')
       .select(`
         *,
