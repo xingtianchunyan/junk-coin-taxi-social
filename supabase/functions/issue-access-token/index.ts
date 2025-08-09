@@ -1,7 +1,7 @@
 // Issue a short-lived JWT embedding access_code, user_role, user_id, destination_id
 // Usage: POST { access_code: "uuid" }
 // Returns: { token: string, expires_in: number, user: { id, access_code, role, destination_id } }
-// IMPORTANT: Configure the secret `SUPABASE_JWT_SECRET` in Function secrets with your project's JWT secret.
+// IMPORTANT: Configure the secret `JWT_SECRET` in Edge Function secrets (do NOT use SUPABASE_ prefix).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import { create, getNumericDate, Header, Payload } from 'https://deno.land/x/djwt@v2.9/mod.ts';
@@ -28,10 +28,10 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET');
+    const JWT_SECRET = Deno.env.get('JWT_SECRET');
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !JWT_SECRET) {
-      return new Response(JSON.stringify({ error: 'Missing function secrets. Please set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET.' }), { status: 500, headers: { 'content-type': 'application/json', ...cors(req) } });
+      return new Response(JSON.stringify({ error: 'Missing function secrets. Please set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET.' }), { status: 500, headers: { 'content-type': 'application/json', ...cors(req) } });
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);

@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.auto-generate-routes]
 verify_jwt = false
+
+[functions.issue-access-token]
+verify_jwt = false
