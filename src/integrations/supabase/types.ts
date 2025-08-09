@@ -410,6 +410,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_user_with_access_code: {
+        Args: { p_role: string; p_destination_id?: string }
+        Returns: {
+          id: string
+          access_code: string
+          role: string
+          destination_id: string
+          created_at: string
+        }[]
+      }
+      generate_access_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_approved_destinations: {
         Args: Record<PropertyKey, never>
         Returns: {
