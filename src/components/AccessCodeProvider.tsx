@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { createSupabaseWithToken } from '@/integrations/supabase/tokenClient';
 
 interface AccessCodeContextType {
   accessCode: string | null;
@@ -25,6 +26,8 @@ export const useAccessCode = () => {
 export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accessCode, setAccessCodeState] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<Tables<'users'> | null>(null);
+  const [jwtToken, setJwtToken] = useState<string | null>(null);
+  const [privClient, setPrivClient] = useState<ReturnType<typeof createSupabaseWithToken> | null>(null);
 
   useEffect(() => {
     // 从 localStorage 恢复访问码
@@ -35,30 +38,44 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   useEffect(() => {
+    const init = async () => {
+      if (!accessCode) return;
+      try {
+        // 向 Edge Function 申请 JWT（会自动创建或获取用户）
+        const { data, error } = await supabase.functions.invoke('issue-access-token', {
+          body: { access_code: accessCode },
+        });
+        if (error) {
+          console.error('获取访问令牌失败:', error);
+          return;
+        }
+        if (data?.token) {
+          setJwtToken(data.token);
+          const client = createSupabaseWithToken(data.token);
+          setPrivClient(client);
+          // 先用返回的用户信息预填充
+          if (data.user) {
+            setUserProfile(data.user);
+          }
+          // 再拉取最新用户信息
+          await refreshUserProfile();
+        }
+      } catch (e) {
+        console.error('初始化私有会话失败:', e);
+      }
+    };
+
     if (accessCode) {
-      refreshUserProfile();
-      // 设置 JWT claims 以便数据库 RLS 策略可以访问 access_code
-      updateJWTClaims(accessCode);
+      init();
     } else {
       setUserProfile(null);
+      setJwtToken(null);
+      setPrivClient(null);
     }
   }, [accessCode]);
 
-  const updateJWTClaims = async (code: string) => {
-    try {
-      // Session management removed - no longer needed without RLS
-
-      // 确保用户存在，如果不存在则创建
-      const { data: userData, error: userError } = await supabase.rpc('get_or_create_user_by_access_code', {
-        input_access_code: code
-      });
-
-      if (userError) {
-        console.error('获取或创建用户失败:', userError);
-      }
-    } catch (error) {
-      console.error('更新用户数据失败:', error);
-    }
+  const updateJWTClaims = async (_code: string) => {
+    // 已由 Edge Function 处理，这里不再需要单独更新
   };
 
   const setAccessCode = (code: string) => {
@@ -69,6 +86,8 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const clearAccessCode = () => {
     setAccessCodeState(null);
     setUserProfile(null);
+    setJwtToken(null);
+    setPrivClient(null);
     // 清除所有可能的访问码存储键名
     localStorage.removeItem('access_code');
     localStorage.removeItem('userAccessCode');
@@ -79,7 +98,8 @@ export const AccessCodeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!accessCode) return;
 
     try {
-      const { data, error } = await supabase
+      const client = privClient ?? supabase;
+      const { data, error } = await client
         .from('users')
         .select('*')
         .eq('access_code', accessCode)
