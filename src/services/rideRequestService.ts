@@ -282,7 +282,7 @@ export class RideRequestService {
 
   // 预设目的地管理
   async getPresetDestinations(): Promise<PresetDestination[]> {
-    console.log('正在从数据库获取固定路线...');
+    console.log('正在从数据库获取预设目的地...');
     
     const { data, error } = await this.db()
       .from('preset_destinations')
@@ -291,36 +291,35 @@ export class RideRequestService {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('获取固定路线时发生错误:', error);
+      console.error('获取预设目的地时发生错误:', error);
       throw error;
     }
 
-    console.log('数据库返回的原始路线数据:', data);
+    console.log('数据库返回的原始预设目的地数据:', data);
 
-    const routes = data?.map(item => ({
+    const destinations = data?.map(item => ({
       ...item,
       is_active: item.is_active ?? true,
-      currency: item.currency ?? 'CNY',
-      created_at: new Date(item.created_at),
-      updated_at: new Date(item.updated_at)
+      description: item.description ?? undefined,
+      created_at: new Date(item.created_at)
     })) || [];
 
-    console.log('处理后的路线数据:', routes);
-    console.log(`共找到 ${routes.length} 条活跃路线`);
+    console.log('处理后的预设目的地数据:', destinations);
+    console.log(`共找到 ${destinations.length} 条活跃目的地`);
     
-    // 打印所有路线的详细信息
-    routes.forEach((route, index) => {
-      console.log(`路线 ${index + 1}:`, {
-        id: route.id,
-        name: route.name,
-        start_location: route.start_location,
-        end_location: route.end_location,
-        is_active: route.is_active,
-        destination_id: route.destination_id
+    // 打印预设目的地的详细信息
+    destinations.forEach((d, index) => {
+      console.log(`目的地 ${index + 1}:`, {
+        id: d.id,
+        name: d.name,
+        address: d.address,
+        is_active: d.is_active,
+        is_approved: d.is_approved,
+        admin_user_id: d.admin_user_id,
       });
     });
 
-    return routes;
+    return destinations;
   }
 
   async getAllPresetDestinations(): Promise<PresetDestination[]> {
