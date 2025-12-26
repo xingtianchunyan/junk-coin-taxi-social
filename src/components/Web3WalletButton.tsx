@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Wallet, User, Unlink, LogOut } from 'lucide-react';
 import { ethers } from 'ethers';
-import detectEthereumProvider from '@metamask/detect-provider';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useWalletStore } from '@/store/useWalletStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ProfileDialog } from './ProfileDialog';
@@ -17,44 +17,32 @@ import { ProfileDialog } from './ProfileDialog';
 interface Web3WalletButtonProps {}
 
 export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const { userProfile, refreshUserProfile } = useAccessCode();
+  const { userProfile, refreshUserProfile, clearAccessCode } = useAuthStore();
+  const { 
+    walletAddress, 
+    isConnecting, 
+    connect, 
+    disconnect: disconnectWalletStore,
+    signMessage 
+  } = useWalletStore();
 
   useEffect(() => {
-    // 检查用户是否已绑定钱包地址
-    if (userProfile?.wallet_address) {
-      setWalletAddress(userProfile.wallet_address);
-    }
+    // 检查用户是否已绑定钱包地址，如果已绑定且 store 中没有，则尝试连接
+    // 注意：这里我们不自动调用 connect，因为这会弹出 MetaMask
+    // 但我们可以将 userProfile 中的地址同步到 store (如果需要的话，但 store 主要是运行时连接)
   }, [userProfile]);
 
-  const connectWallet = async () => {
+  const handleConnect = async () => {
+    const address = await connect();
+    if (!address) return;
+
     try {
-      setIsConnecting(true);
-      
-      // 检测是否有Web3提供者
-      const provider = await detectEthereumProvider();
-      if (!provider) {
-        toast.error('请安装MetaMask或其他Web3钱包');
-        return;
-      }
-
-      // 请求连接钱包
-      const ethProvider = new ethers.BrowserProvider(provider as any);
-      const accounts = await ethProvider.send('eth_requestAccounts', []);
-      
-      if (accounts.length === 0) {
-        toast.error('未能获取钱包地址');
-        return;
-      }
-
-      const address = accounts[0];
-      
       // 请求签名以验证钱包所有权
-      const signer = await ethProvider.getSigner();
       const message = `连接钱包到访问码: ${userProfile?.access_code}`;
-      const signature = await signer.signMessage(message);
+      const signature = await signMessage(message);
+      
+      if (!signature) return;
       
       // 将钱包地址绑定到当前访问码
       const { error } = await supabase
@@ -68,15 +56,10 @@ export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
         return;
       }
 
-      setWalletAddress(address);
       await refreshUserProfile();
       toast.success('钱包连接成功');
-      
     } catch (error) {
-      console.error('连接钱包失败:', error);
-      toast.error('连接钱包失败');
-    } finally {
-      setIsConnecting(false);
+      console.error('连接钱包流程失败:', error);
     }
   };
 
@@ -93,7 +76,7 @@ export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
         return;
       }
 
-      setWalletAddress(null);
+      disconnectWalletStore();
       await refreshUserProfile();
       toast.success('钱包解绑成功');
     } catch (error) {
@@ -102,22 +85,19 @@ export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
     }
   };
 
-  const logout = () => {
-    // 清除所有可能的访问码存储键名
-    localStorage.removeItem('access_code');
-    localStorage.removeItem('userAccessCode');
-    localStorage.removeItem('rideAccessCode');
-    window.location.reload();
-  };
-
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  if (!walletAddress) {
+  const logout = () => {
+    clearAccessCode();
+    disconnectWalletStore();
+  };
+
+  if (!userProfile?.wallet_address && !walletAddress) {
     return (
       <Button 
-        onClick={connectWallet} 
+        onClick={handleConnect} 
         disabled={isConnecting}
         className="flex items-center gap-2"
       >
@@ -127,36 +107,39 @@ export const Web3WalletButton: React.FC<Web3WalletButtonProps> = () => {
     );
   }
 
-  return (
-    <>
+  const displayAddress = userProfile?.wallet_address || walletAddress;
+
+  return (    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
-            {formatAddress(walletAddress)}
+            {displayAddress ? formatAddress(displayAddress) : '已连接'}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onClick={() => setShowProfile(true)}>
             <User className="mr-2 h-4 w-4" />
-            Profile
+            个人资料
           </DropdownMenuItem>
           <DropdownMenuItem onClick={unbindWallet}>
             <Unlink className="mr-2 h-4 w-4" />
-            Unbind
+            解绑钱包
           </DropdownMenuItem>
           <DropdownMenuItem onClick={logout}>
             <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            退出登录
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       
-      <ProfileDialog
-        open={showProfile}
-        onOpenChange={setShowProfile}
-        walletAddress={walletAddress}
-      />
+      {displayAddress && (
+        <ProfileDialog
+          open={showProfile}
+          onOpenChange={setShowProfile}
+          walletAddress={displayAddress}
+        />
+      )}
     </>
   );
 };

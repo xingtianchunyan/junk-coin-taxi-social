@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, Crown } from 'lucide-react';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -38,7 +38,7 @@ const roleConfig = {
 const RoleSelector: React.FC<RoleSelectorProps> = ({ onRoleSelected, currentRoles = [] }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const { userProfile } = useAccessCode();
+  const { userProfile } = useAuthStore();
 
   const selectRole = (role: UserRole) => {
     if (role === 'community_admin') {

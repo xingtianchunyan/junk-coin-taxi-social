@@ -1,6 +1,9 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+// @ts-ignore
 import { Resend } from "npm:resend@2.0.0";
 
+// @ts-ignore: Deno global
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -82,7 +85,8 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error("Error in send-access-code function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),

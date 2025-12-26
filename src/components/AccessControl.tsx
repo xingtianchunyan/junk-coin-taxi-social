@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Key, Eye, EyeOff, Shield, LogIn, User } from 'lucide-react';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { sanitizeTextInput } from '@/utils/inputValidation';
 
 interface AccessControlProps {
@@ -19,7 +19,7 @@ const AccessControl: React.FC<AccessControlProps> = ({ onAccessChange, currentLe
   const [inputAccessCode, setInputAccessCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [showPrivateAccess, setShowPrivateAccess] = useState(false);
-  const { accessCode: currentAccessCode, userProfile, clearAccessCode, setAccessCode } = useAccessCode();
+  const { accessCode: currentAccessCode, userProfile, clearAccessCode, setAccessCode } = useAuthStore();
 
   useEffect(() => {
     // Update access level based on current access code and user profile

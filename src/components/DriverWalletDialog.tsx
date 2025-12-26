@@ -7,12 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface WalletAddress {
-  id: string;
-  chain_name: string;
-  symbol: string;
-  address: string;
-}
+import { WalletAddress } from '@/types/RideRequest';
 
 interface DriverWalletDialogProps {
   open: boolean;
@@ -32,9 +27,22 @@ const DriverWalletDialog: React.FC<DriverWalletDialogProps> = ({
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // 映射链ID到名称的辅助函数
+  const getChainName = (chainId: number): string => {
+    const chainMap: Record<number, string> = {
+      1: 'BITCOIN',
+      2: 'EVM',
+      3: 'SOLANA',
+      4: 'TRON',
+      5: 'TON',
+      6: 'SUI'
+    };
+    return chainMap[chainId] || 'Unknown';
+  };
+
   // 根据选择的网络和币种过滤钱包地址
   const filteredAddresses = walletAddresses.filter(addr => 
-    addr.chain_name.toLowerCase() === selectedNetwork.toLowerCase() && 
+    getChainName(addr.chain_name).toLowerCase() === selectedNetwork.toLowerCase() && 
     addr.symbol.toLowerCase() === selectedCurrency.toLowerCase()
   );
 
@@ -83,7 +91,7 @@ const DriverWalletDialog: React.FC<DriverWalletDialogProps> = ({
                   <div key={addr.id} className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-sm font-medium">
-                        {addr.chain_name} ({addr.symbol})
+                        {getChainName(addr.chain_name)} ({addr.symbol})
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

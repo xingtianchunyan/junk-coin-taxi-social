@@ -59,8 +59,10 @@ export const validatePhoneNumber = (phone: string): boolean => {
   return phoneRegex.test(phone.replace(/\s/g, ''));
 };
 
+import { RideRequest } from '@/types/RideRequest';
+
 // Validate and sanitize ride request data
-export const validateRideRequestData = (data: any) => {
+export const validateRideRequestData = (data: Omit<Partial<RideRequest>, 'requested_time'> & { requested_time?: string | Date }) => {
   const errors: string[] = [];
   
   if (!data.friend_name || data.friend_name.trim().length === 0) {
@@ -96,9 +98,9 @@ export const validateRideRequestData = (data: any) => {
     isValid: errors.length === 0,
     errors,
     sanitizedData: {
-      friend_name: sanitizeTextInput(data.friend_name, 100),
-      start_location: sanitizeTextInput(data.start_location, 200),
-      end_location: sanitizeTextInput(data.end_location, 200),
+      friend_name: sanitizeTextInput(data.friend_name || '', 100),
+      start_location: sanitizeTextInput(data.start_location || '', 200),
+      end_location: sanitizeTextInput(data.end_location || '', 200),
       contact_info: data.contact_info ? sanitizeTextInput(data.contact_info, 100) : null,
       notes: data.notes ? sanitizeTextInput(data.notes, 500) : null,
       requested_time: data.requested_time,

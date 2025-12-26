@@ -5,32 +5,26 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Clock, MapPin, Car, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
 import DestinationSelector from '@/components/DestinationSelector';
 import DestinationSelectionDialog from '@/components/DestinationSelectionDialog';
 import DriverWalletDialog from '@/components/DriverWalletDialog';
-import { RideRequest } from '@/types/RideRequest';
+import { LuggageItem, PresetDestination, FixedRoute, RideRequest, WalletAddress } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { supabase } from '@/integrations/supabase/client';
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
-}
 const PassengerService: React.FC = () => {
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showDestinationDialog, setShowDestinationDialog] = useState(false);
   const [showMandatoryDestinationDialog, setShowMandatoryDestinationDialog] = useState(true);
-  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<PresetDestination | null>(null);
   const [showDriverWalletDialog, setShowDriverWalletDialog] = useState(false);
-  const [driverWalletAddresses, setDriverWalletAddresses] = useState<any[]>([]);
+  const [driverWalletAddresses, setDriverWalletAddresses] = useState<WalletAddress[]>([]);
   const [paymentInfo, setPaymentInfo] = useState<{
     network: string;
     currency: string;
@@ -39,72 +33,51 @@ const PassengerService: React.FC = () => {
     currency: ''
   });
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [timingConflicts, setTimingConflicts] = useState<Record<string, boolean>>({});
   const {
     toast
   } = useToast();
   const {
     hasAccess,
     accessCode,
-    clearAccessCode
-  } = useAccessCode();
-  const { client } = useAccessCode();
+    clearAccessCode,
+    privClient: client
+  } = useAuthStore();
   const navigate = useNavigate();
-  const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
+  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
 
-  // 检查司机时间安排是否会冲突
-  const checkDriverTimingForRequest = (request: RideRequest): boolean => {
-    if (!request.vehicle_id || !request.fixed_route_id) return false;
-
-    // 找到对应的车辆和路线
-    const vehicle = vehicles.find(v => v.id === request.vehicle_id);
-    const route = fixedRoutes.find(r => r.id === request.fixed_route_id);
-    if (!vehicle || !route) return false;
-
-    // 获取司机的所有处理中请求
-    const driverProcessingRequests = requests.filter(req => req.processing_driver_id === vehicle.user_id && req.status === 'processing' && req.id !== request.id);
-    if (driverProcessingRequests.length === 0) return false;
-
-    // 计算当前请求的时间需求
-    const requestTime = request.requested_time;
-    const routeDuration = route.estimated_duration_minutes || 60;
-
-    // 判断路线起点是否是目的地
-    const isStartFromDestination = selectedDestination && (route.start_location.includes(selectedDestination.name) || route.start_location.includes(selectedDestination.address));
-    let requestStartTime: Date;
-    let requestEndTime: Date;
-    if (isStartFromDestination) {
-      requestStartTime = requestTime;
-      requestEndTime = new Date(requestTime.getTime() + routeDuration * 60 * 1000);
-    } else {
-      requestStartTime = new Date(requestTime.getTime() - routeDuration * 60 * 1000);
-      requestEndTime = new Date(requestTime.getTime() + routeDuration * 60 * 1000);
-    }
-
-    // 检查与其他请求的时间冲突
-    for (const otherRequest of driverProcessingRequests) {
-      const otherRoute = fixedRoutes.find(r => r.id === otherRequest.fixed_route_id);
-      if (!otherRoute) continue;
-      const otherRequestTime = otherRequest.requested_time;
-      const otherRouteDuration = otherRoute.estimated_duration_minutes || 60;
-      const otherIsStartFromDestination = selectedDestination && (otherRoute.start_location.includes(selectedDestination.name) || otherRoute.start_location.includes(selectedDestination.address));
-      let otherStartTime: Date;
-      let otherEndTime: Date;
-      if (otherIsStartFromDestination) {
-        otherStartTime = otherRequestTime;
-        otherEndTime = new Date(otherRequestTime.getTime() + otherRouteDuration * 60 * 1000);
-      } else {
-        otherStartTime = new Date(otherRequestTime.getTime() - otherRouteDuration * 60 * 1000);
-        otherEndTime = new Date(otherRequestTime.getTime() + otherRouteDuration * 60 * 1000);
+  // 检查司机时间安排是否会冲突 (后端 RPC 版)
+  useEffect(() => {
+    const checkAllConflicts = async () => {
+      const newConflicts: Record<string, boolean> = {};
+      const pendingCheckRequests = requests.filter(req => req.status !== 'processing' && req.vehicle_id && req.fixed_route_id);
+      
+      if (pendingCheckRequests.length === 0) {
+        setTimingConflicts({});
+        return;
       }
 
-      // 检查时间重叠
-      const isOverlapping = requestStartTime <= otherEndTime && requestEndTime >= otherStartTime;
-      if (isOverlapping) {
-        return true;
-      }
+      await Promise.all(pendingCheckRequests.map(async (req) => {
+        try {
+          const hasConflict = await rideRequestService.checkDriverTimingConflict(
+            req.vehicle_id!,
+            req.fixed_route_id!,
+            req.requested_time
+          );
+          newConflicts[req.id] = hasConflict;
+        } catch (error) {
+          console.error(`检查需求 ${req.id} 冲突失败:`, error);
+        }
+      }));
+
+      setTimingConflicts(newConflicts);
+    };
+
+    if (requests.length > 0) {
+      checkAllConflicts();
     }
-    return false;
-  };
+  }, [requests]);
+
   useEffect(() => {
     const initializeSession = async () => {
       if (accessCode) {
@@ -145,7 +118,10 @@ const PassengerService: React.FC = () => {
                 id: data.id,
                 name: data.name,
                 address: data.address,
-                description: data.description
+                description: data.description || '',
+                is_active: data.is_active,
+                is_approved: data.is_approved,
+                created_at: new Date(data.created_at)
               });
               setShowMandatoryDestinationDialog(false);
             }
@@ -255,7 +231,7 @@ const PassengerService: React.FC = () => {
       });
     }
   };
-  const handleDestinationSelected = (destination: Destination) => {
+  const handleDestinationSelected = (destination: PresetDestination) => {
     setSelectedDestination(destination);
     setShowMandatoryDestinationDialog(false);
   };
@@ -292,7 +268,7 @@ const PassengerService: React.FC = () => {
   };
 
   // 检查行李是否能装入车辆后备箱
-  const canFitLuggage = (requestLuggage: any[], vehicleTrunk: {
+  const canFitLuggage = (requestLuggage: LuggageItem[], vehicleTrunk: {
     length: number;
     width: number;
     height: number;
@@ -430,7 +406,7 @@ const PassengerService: React.FC = () => {
                                   </Badge>
                                </div>
                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                 {group.map(request => <RideRequestCard key={request.id} request={request} onDelete={deleteRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} vehicles={vehicles} fixedRoutes={fixedRoutes} showTimingWarning={request.status !== 'processing' && checkDriverTimingForRequest(request)} />)}
+                                 {group.map(request => <RideRequestCard key={request.id} request={request} onDelete={deleteRequest} accessLevel={hasAccess && accessCode && request.access_code === accessCode ? 'private' : 'public'} vehicles={vehicles} fixedRoutes={fixedRoutes} showTimingWarning={timingConflicts[request.id] || false} />)}
                                </div>
                             </div>)}
                         </div>)}

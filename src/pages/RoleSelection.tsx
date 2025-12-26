@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Car } from 'lucide-react';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AuthDialog from '@/components/AuthDialog';
@@ -15,7 +15,7 @@ const RoleSelection: React.FC = () => {
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [currentAccessCode, setCurrentAccessCode] = useState('');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const { setAccessCode } = useAccessCode();
+  const { setAccessCode } = useAuthStore();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -42,7 +42,7 @@ const RoleSelection: React.FC = () => {
 
       if (user) {
         setCurrentAccessCode(accessCode);
-        setAccessCode(accessCode);
+        await setAccessCode(accessCode);
         
         if (user.role) {
           // 用户已有角色，直接跳转
@@ -68,7 +68,7 @@ const RoleSelection: React.FC = () => {
 
   const handleAuthenticated = async (accessCode: string, role?: string) => {
     setCurrentAccessCode(accessCode);
-    setAccessCode(accessCode);
+    await setAccessCode(accessCode);
     localStorage.setItem('access_code', accessCode);
 
     if (role) {

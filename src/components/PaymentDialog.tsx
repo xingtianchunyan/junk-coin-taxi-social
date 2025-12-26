@@ -15,7 +15,7 @@ interface PaymentDialogProps {
 }
 
 // 支付方式映射
-const PAY_WAY_MAP = {
+const PAY_WAY_MAP: Record<number, string> = {
   1: '区块链支付',
   2: '交易所转账',
   3: '支付宝/微信',
@@ -24,7 +24,7 @@ const PAY_WAY_MAP = {
 };
 
 // 区块链网络映射
-const CHAIN_NAME_MAP = {
+const CHAIN_NAME_MAP: Record<number, string> = {
   1: 'Bitcoin',
   2: 'Ethereum',
   3: 'Solana',
@@ -34,7 +34,7 @@ const CHAIN_NAME_MAP = {
 };
 
 // 交易所映射
-const EXCHANGE_NAME_MAP = {
+const EXCHANGE_NAME_MAP: Record<number, string> = {
   1: 'Binance',
   2: 'OKX',
   3: 'Coinbase',
@@ -51,10 +51,14 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
 }) => {
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletAddress | null>(null);
+  const [transactionHash, setTransactionHash] = useState('');
   const [loading, setLoading] = useState(false);
   const {
     toast
   } = useToast();
+
+  // 检查是否需要填写交易哈希
+  const needsTransactionHash = selectedWallet && (selectedWallet.pay_way === 1 || selectedWallet.pay_way === 2);
 
   // 过滤出区块链和交易所支付方式
   const onlinePaymentMethods = walletAddresses.filter(wallet => wallet.pay_way === 1 || wallet.pay_way === 2);
@@ -110,18 +114,57 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     });
   };
   const handlePaymentSubmit = async () => {
+    if (!selectedWallet || !request) return;
+    
+    if (needsTransactionHash && !transactionHash) {
+      toast({
+        title: "请填写交易哈希",
+        description: "线上支付需要提供交易哈希或UID以便核实",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      toast({
-        title: "等待当面确认",
-        description: "网站只提供信息，具体情况请与司机当面确认"
+      // 1. 创建支付记录
+      const payment = await rideRequestService.createPayment({
+        ride_request_id: request.id,
+        amount: request.payment_amount || 0,
+        currency: request.payment_currency || 'CNY',
+        wallet_address: selectedWallet.address,
+        payment_method: getPaymentMethodDescription(selectedWallet),
+        transaction_hash: transactionHash || undefined
       });
+
+      // 2. 如果提供了交易哈希，尝试后端自动验证确认
+      if (transactionHash) {
+        const success = await rideRequestService.confirmPayment(payment.id, transactionHash);
+        if (success) {
+          toast({
+            title: "感谢成功！",
+            description: "支付已确认，感谢您对社区的支持",
+          });
+        } else {
+          toast({
+            title: "支付已提交",
+            description: "支付信息已记录，等待系统或司机核实",
+          });
+        }
+      } else {
+        // 线下支付或未提供哈希
+        toast({
+          title: "信息已提交",
+          description: "请在支付后告知司机进行核实",
+        });
+      }
+      
       onOpenChange(false);
     } catch (error) {
       console.error('支付确认失败:', error);
       toast({
         title: "确认失败",
-        description: "请与司机联系确认支付",
+        description: "提交支付信息时出错，请稍后重试",
         variant: "destructive"
       });
     } finally {
@@ -221,6 +264,32 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
                   </div>
                 </ScrollArea>
               </div>}
+
+            {needsTransactionHash && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-purple-600" />
+                  {selectedWallet?.pay_way === 2 ? '交易所UID / 交易哈希' : '区块链交易哈希 (TXID)'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="w-full p-3 bg-gray-50 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    placeholder={selectedWallet?.pay_way === 2 ? "请输入交易所转账UID或哈希" : "请输入区块链交易哈希..."}
+                    value={transactionHash}
+                    onChange={(e) => setTransactionHash(e.target.value)}
+                  />
+                  {transactionHash && (
+                    <div className="absolute right-3 top-3">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-500">
+                  💡 填写正确的哈希可以加快系统自动核实速度。
+                </p>
+              </div>
+            )}
 
             {hasOfflinePayment && <Card className="border-orange-200 bg-orange-50">
                 <CardContent className="p-4">

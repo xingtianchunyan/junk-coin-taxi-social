@@ -9,23 +9,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Clock, MapPin, User, Phone, Route, Users, Package, Plus, Minus, Car } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { RideRequest, FixedRoute, LuggageItem } from '@/types/RideRequest';
+import { RideRequest, FixedRoute, LuggageItem, PresetDestination } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
 import { rideRequestService } from '@/services/rideRequestService';
 import { vehicleService } from '@/services/vehicleService';
 import { useToast } from '@/hooks/use-toast';
 import { validateRideRequestData, globalRateLimiter } from '@/utils/inputValidation';
-
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
-}
+import { CreditCard } from 'lucide-react';
 
 interface RideRequestFormProps {
   onSubmit: (request: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'>) => void;
-  selectedDestination?: Destination | null;
+  selectedDestination?: PresetDestination | null;
 }
 
 // 预设行李选项
@@ -84,12 +78,35 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
   const [calculating, setCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [estimatedFare, setEstimatedFare] = useState<{ amount: number; currency: string; is_discounted: boolean } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadFixedRoutes();
     loadVehicles();
   }, [selectedDestination]);
+
+  // 当路线或车辆变化时，计算预计费用
+  useEffect(() => {
+    const updateEstimatedFare = async () => {
+      if (formData.fixed_route_id) {
+        setCalculating(true);
+        try {
+          const fare = await rideRequestService.calculateFare(formData.fixed_route_id, formData.vehicle_id || undefined);
+          setEstimatedFare(fare);
+        } catch (error) {
+          console.error('获取预计费用失败:', error);
+          setEstimatedFare(null);
+        } finally {
+          setCalculating(false);
+        }
+      } else {
+        setEstimatedFare(null);
+      }
+    };
+
+    updateEstimatedFare();
+  }, [formData.fixed_route_id, formData.vehicle_id]);
 
   // Clear selected vehicle when requested time changes if the vehicle is no longer available
   useEffect(() => {
@@ -215,37 +232,21 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
     setIsSubmitting(true);
     
     try {
-      // Get the selected route to determine payment info
-      const selectedRoute = fixedRoutes.find(route => route.id === formData.fixed_route_id);
-      const selectedVehicle = vehicles.find(v => v.id === formData.vehicle_id);
+      // 获取后端计算的最终费用（确保安全和一致性）
+      const fareResult = await rideRequestService.calculateFare(formData.fixed_route_id, formData.vehicle_id || undefined);
+      console.log('后端计算费用:', fareResult);
       
-      console.log('选择的路线:', selectedRoute);
-      console.log('选择的车辆:', selectedVehicle);
-      
-      // 计算支付金额：市场价 × 司机折扣百分比
-      let paymentAmount = 0;
-      if (selectedRoute?.market_price && selectedVehicle?.discount_percentage) {
-        paymentAmount = selectedRoute.market_price * (selectedVehicle.discount_percentage / 100);
-        console.log('使用折扣计算金额:', selectedRoute.market_price, '×', selectedVehicle.discount_percentage, '% =', paymentAmount);
-      } else if (selectedRoute?.our_price) {
-        // 如果没有市场价或司机折扣，则使用原价
-        paymentAmount = selectedRoute.our_price;
-        console.log('使用原价:', paymentAmount);
-      }
-      
-      console.log('最终支付金额:', paymentAmount);
-      
-      const submitData = {
+      const submitData: Omit<RideRequest, 'id' | 'access_code' | 'created_at' | 'updated_at' | 'status' | 'payment_status'> = {
         ...validation.sanitizedData,
         requested_time: new Date(formData.requested_time),
         fixed_route_id: formData.fixed_route_id,
         vehicle_id: formData.vehicle_id || undefined,
         passenger_count: formData.passenger_count,
         luggage: luggage.filter(item => item.length > 0 || item.width > 0 || item.height > 0),
-        payment_required: paymentAmount > 0,
-        payment_amount: paymentAmount,
-        payment_currency: selectedRoute?.currency || 'CNY',
-        request_type: formData.request_type
+        payment_required: fareResult.amount > 0,
+        payment_amount: fareResult.amount,
+        payment_currency: fareResult.currency,
+        request_type: formData.request_type as 'community_carpool' | 'quick_carpool_info'
       };
       
       await onSubmit(submitData);
@@ -740,10 +741,41 @@ const RideRequestForm: React.FC<RideRequestFormProps> = ({ onSubmit, selectedDes
             />
           </div>
 
+          {/* 预计费用展示 */}
+          {formData.fixed_route_id && (
+            <div className="p-4 border rounded-lg bg-green-50 border-green-100">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-green-800 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  预计费用
+                </span>
+                {calculating ? (
+                  <span className="text-xs text-green-600 animate-pulse">正在计算...</span>
+                ) : estimatedFare ? (
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-green-700">
+                      {estimatedFare.amount.toFixed(2)} {estimatedFare.currency}
+                    </span>
+                    {estimatedFare.is_discounted && (
+                      <Badge variant="outline" className="ml-2 bg-white text-green-600 border-green-200 text-[10px] h-5">
+                        已享折扣
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500">无法计算</span>
+                )}
+              </div>
+              <p className="text-[10px] text-green-600 mt-1">
+                💡 最终费用以系统确认为准。
+              </p>
+            </div>
+          )}
+
           <Button 
             type="submit" 
             className="w-full bg-green-600 hover:bg-green-700 text-white"
-            disabled={isSubmitting}
+            disabled={isSubmitting || calculating}
           >
             {isSubmitting ? '提交中...' : '添加用车需求'}
           </Button>

@@ -10,12 +10,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Wallet, Plus, Trash2, Route, Car, LogOut, Building2, Phone, CreditCard, Copy, Check, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
 import { FixedRoute, WalletAddress, PresetDestination } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as client } from '@/integrations/supabase/client';
 
 // 支付方式选项
 const PAY_WAY_OPTIONS = [
@@ -135,8 +135,7 @@ const CommunityManagement: React.FC = () => {
   const [selectedPaymentIdsForDelete, setSelectedPaymentIdsForDelete] = useState<string[]>([]);
 
   const { toast } = useToast();
-  const { accessCode, clearAccessCode } = useAccessCode();
-  const { client } = useAccessCode();
+  const { accessCode, clearAccessCode } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {

@@ -4,15 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Car, Calendar, Clock, User, IdCard, X } from 'lucide-react';
 
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
-}
+import { PresetDestination } from '@/types/RideRequest';
 
 interface MyVehicleCardProps {
-  selectedDestination: Destination | null;
+  selectedDestination: PresetDestination | null;
   onCancel: () => void;
 }
 

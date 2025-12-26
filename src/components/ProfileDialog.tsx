@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { Coins } from 'lucide-react';
+import { useWalletStore } from '@/store/useWalletStore';
 
 interface ProfileDialogProps {
   open: boolean;
@@ -33,8 +34,8 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
 }) => {
   const [ethBalance, setEthBalance] = useState<string>('0');
   const [tokens, setTokens] = useState<TokenBalance[]>([]);
-  
   const [loading, setLoading] = useState(false);
+  const { getBalance } = useWalletStore();
 
   useEffect(() => {
     if (open && walletAddress) {
@@ -47,9 +48,8 @@ export const ProfileDialog: React.FC<ProfileDialogProps> = ({
       setLoading(true);
       
       // 获取ETH余额
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const balance = await provider.getBalance(walletAddress);
-      setEthBalance(ethers.formatEther(balance));
+      const balance = await getBalance(walletAddress);
+      setEthBalance(balance);
       
       // 这里可以集成第三方API来获取代币信息
       // 例如使用Alchemy、Moralis或其他服务

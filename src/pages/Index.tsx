@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Car, Plus, Users, Clock, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import RideRequestForm from '@/components/RideRequestForm';
 import RideRequestCard from '@/components/RideRequestCard';
 import AccessControl from '@/components/AccessControl';
@@ -19,7 +19,7 @@ const Index = () => {
   const [privateAccessCode, setPrivateAccessCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { accessCode, userProfile } = useAccessCode();
+  const { accessCode, userProfile } = useAuthStore();
 
   // 加载用车需求数据
   useEffect(() => {

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, Shield, Loader2, Home } from 'lucide-react';
 import { ethers } from 'ethers';
-import detectEthereumProvider from '@metamask/detect-provider';
+import { useWalletStore } from '@/store/useWalletStore';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { SUPER_ADMIN_CONFIG, isAuthorizedSuperAdmin } from '@/config/admin-config';
@@ -14,41 +14,12 @@ interface SuperAdminWalletAuthProps {
 }
 
 export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAuthenticated }) => {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const navigate = useNavigate();
+  const { walletAddress, isConnecting, connect, signMessage } = useWalletStore();
 
-  const connectWallet = async () => {
-    try {
-      setIsConnecting(true);
-      
-      // 检测是否有Web3提供者
-      const provider = await detectEthereumProvider();
-      if (!provider) {
-        toast.error('请安装MetaMask或其他Web3钱包');
-        return;
-      }
-
-      // 请求连接钱包
-      const ethProvider = new ethers.BrowserProvider(provider as any);
-      const accounts = await ethProvider.send('eth_requestAccounts', []);
-      
-      if (accounts.length === 0) {
-        toast.error('未能获取钱包地址');
-        return;
-      }
-
-      const address = accounts[0];
-      setWalletAddress(address);
-      toast.success('钱包连接成功');
-      
-    } catch (error) {
-      console.error('连接钱包失败:', error);
-      toast.error('连接钱包失败');
-    } finally {
-      setIsConnecting(false);
-    }
+  const handleConnect = async () => {
+    await connect();
   };
 
   const authenticateAsAdmin = async () => {
@@ -66,15 +37,11 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
         return;
       }
       
-      const provider = await detectEthereumProvider();
-      const ethProvider = new ethers.BrowserProvider(provider as any);
-      const signer = await ethProvider.getSigner();
-      
       // 创建签名消息
       const message = `${SUPER_ADMIN_CONFIG.SIGNATURE_MESSAGE}\n时间戳: ${Date.now()}\n钱包地址: ${walletAddress}`;
-      const signature = await signer.signMessage(message);
+      const signature = await signMessage(message);
       
-      // Session verification removed - no longer needed without RLS
+      if (!signature) return;
       
       onAuthenticated(walletAddress, signature);
       toast.success('身份验证成功');
@@ -105,7 +72,7 @@ export const SuperAdminWalletAuth: React.FC<SuperAdminWalletAuthProps> = ({ onAu
         <CardContent className="space-y-4">
           {!walletAddress ? (
             <Button 
-              onClick={connectWallet} 
+              onClick={handleConnect} 
               disabled={isConnecting}
               className="w-full flex items-center gap-2"
               size="lg"

@@ -3,13 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { RideRequest, WalletAddress, Payment, PresetDestination, FixedRoute } from '@/types/RideRequest';
 import { Vehicle } from '@/types/Vehicle';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Tables } from '@/integrations/supabase/types';
+import type { Tables } from '@/integrations/supabase/types';
+import type { ExtendedDatabase } from '@/types/supabase';
 
 export class RideRequestService {
-  private client: SupabaseClient<Database> | null = null;
+  private client: SupabaseClient<ExtendedDatabase> | null = null;
   private currentUser: Tables<'users'> | null = null;
 
-  setClient(client: SupabaseClient<Database>) {
+  setClient(client: SupabaseClient<ExtendedDatabase>) {
     this.client = client;
     console.log('[RideRequestService] Private Supabase client injected');
   }
@@ -25,7 +26,7 @@ export class RideRequestService {
   }
 
   private db() {
-    return this.client ?? supabase;
+    return (this.client || (supabase as unknown as SupabaseClient<ExtendedDatabase>));
   }
 
   // 获取所有用车需求（只显示基本信息）
@@ -37,7 +38,7 @@ export class RideRequestService {
 
     if (error) throw error;
     
-    return data?.map(item => ({
+    return (data || []).map(item => ({
       ...item,
       status: (item.status as RideRequest['status']) || 'pending',
       payment_status: (item.payment_status as RideRequest['payment_status']) || 'unpaid',
@@ -45,8 +46,9 @@ export class RideRequestService {
       requested_time: new Date(item.requested_time),
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at),
-      luggage: Array.isArray(item.luggage) ? item.luggage : (typeof item.luggage === 'string' ? JSON.parse(item.luggage) : [])
-    })) || [];
+      luggage: Array.isArray(item.luggage) ? item.luggage : (typeof item.luggage === 'string' ? JSON.parse(item.luggage) : []),
+      processing_driver_id: item.processing_driver_id || undefined
+    }));
   }
 
   // 创建用车需求
@@ -77,10 +79,33 @@ export class RideRequestService {
       requested_time: new Date(data.requested_time),
       created_at: new Date(data.created_at),
       updated_at: new Date(data.updated_at),
-      luggage: Array.isArray(data.luggage) ? data.luggage : (typeof data.luggage === 'string' ? JSON.parse(data.luggage) : [])
+      luggage: Array.isArray(data.luggage) ? data.luggage : (typeof data.luggage === 'string' ? JSON.parse(data.luggage) : []),
+      processing_driver_id: data.processing_driver_id || undefined
     };
 
     return request;
+  }
+
+  // 计算预计费用 (后端逻辑)
+  async calculateFare(fixedRouteId: string, vehicleId?: string): Promise<{ amount: number; currency: string; is_discounted: boolean }> {
+    const { data, error } = await this.db()
+      .rpc('calculate_ride_fare', {
+        p_fixed_route_id: fixedRouteId,
+        p_vehicle_id: vehicleId
+      });
+
+    if (error) {
+      console.error('计算费用失败:', error);
+      throw error;
+    }
+
+    // data will be an array of objects because return type is TABLE
+    const result = Array.isArray(data) ? data[0] : data;
+    return {
+      amount: Number(result?.amount || 0),
+      currency: result?.currency || 'CNY',
+      is_discounted: !!result?.is_discounted
+    };
   }
 
   // 使用访问码获取详细信息
@@ -110,6 +135,64 @@ export class RideRequestService {
     };
   }
 
+  // 创建支付记录
+  async createPayment(paymentData: Omit<Payment, 'id' | 'created_at' | 'status'>): Promise<Payment> {
+    const { data, error } = await this.db()
+      .from('payments')
+      .insert([{
+        ...paymentData,
+        status: 'pending'
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('创建支付记录失败:', error);
+      throw error;
+    }
+
+    return {
+      ...data,
+      status: data.status as Payment['status'],
+      created_at: new Date(data.created_at),
+      confirmed_at: data.confirmed_at ? new Date(data.confirmed_at) : undefined,
+      transaction_hash: data.transaction_hash || undefined
+    };
+  }
+
+  // 验证并确认支付
+  async confirmPayment(paymentId: string, transactionHash: string): Promise<boolean> {
+    const { data, error } = await this.db()
+      .rpc('verify_and_confirm_payment', {
+        p_payment_id: paymentId,
+        p_transaction_hash: transactionHash
+      });
+
+    if (error) {
+      console.error('确认支付失败:', error);
+      throw error;
+    }
+
+    return !!data;
+  }
+
+  // 检查司机时间冲突 (后端逻辑)
+  async checkDriverTimingConflict(vehicleId: string, fixedRouteId: string, requestedTime: Date): Promise<boolean> {
+    const { data, error } = await this.db()
+      .rpc('check_driver_timing_conflict', {
+        p_vehicle_id: vehicleId,
+        p_fixed_route_id: fixedRouteId,
+        p_requested_time: requestedTime.toISOString()
+      });
+
+    if (error) {
+      console.error('检查时间冲突失败:', error);
+      throw error;
+    }
+
+    return !!data;
+  }
+
   // 更新用车需求状态
   async updateRideRequestStatus(id: string, status: RideRequest['status']): Promise<void> {
     const { error } = await this.db()
@@ -132,7 +215,7 @@ export class RideRequestService {
 
   // 更新支付状态
   async updatePaymentStatus(id: string, paymentStatus: RideRequest['payment_status'], txHash?: string): Promise<void> {
-    const updateData: any = { 
+    const updateData: Partial<Tables<'ride_requests'>> = { 
       payment_status: paymentStatus, 
       updated_at: new Date().toISOString() 
     };
@@ -670,7 +753,7 @@ export class RideRequestService {
       .eq('is_active', true)
       .single();
 
-    if (error && (error as any).code !== 'PGRST116') throw error; // PGRST116 是没有找到记录的错误码
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 是没有找到记录的错误码
     
     return !!data;
   }

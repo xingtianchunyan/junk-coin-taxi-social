@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, User, Phone, Trash2, Calendar, CreditCard, Copy } from 'lucide-react';
-import { RideRequest } from '@/types/RideRequest';
+import { RideRequest, FixedRoute } from '@/types/RideRequest';
+import { Vehicle } from '@/types/Vehicle';
 import PaymentDialog from './PaymentDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,8 +13,8 @@ interface RideRequestCardProps {
   onDelete: (id: string) => void;
   onUpdatePaymentStatus?: (id: string, status: string) => void;
   accessLevel: 'public' | 'private' | 'community_admin';
-  vehicles?: any[];
-  fixedRoutes?: any[];
+  vehicles?: Vehicle[];
+  fixedRoutes?: FixedRoute[];
   showTimingWarning?: boolean;
 }
 const RideRequestCard: React.FC<RideRequestCardProps> = ({
@@ -68,40 +69,43 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
     window.location.href = `tel:${phoneNumber}`;
   };
 
-  // 计算折扣后的价格和折扣信息
-  const getDiscountedPrice = () => {
-    if (!request.fixed_route_id || !request.vehicle_id) {
+  // 获取价格和折扣信息
+  const getPriceInfo = () => {
+    const amount = request.payment_amount || 0;
+    const currency = request.payment_currency || 'CNY';
+    
+    // 如果没有路线信息，直接返回原始金额
+    if (!request.fixed_route_id) {
       return {
-        amount: request.payment_amount,
-        discountPercentage: null,
+        amount,
+        currency,
+        isDiscounted: false,
         originalPrice: null
       };
     }
+
     const selectedRoute = fixedRoutes.find(route => route.id === request.fixed_route_id);
-    const selectedVehicle = vehicles.find(vehicle => vehicle.id === request.vehicle_id);
-    if (!selectedRoute || !selectedVehicle) {
+    if (!selectedRoute) {
       return {
-        amount: request.payment_amount,
-        discountPercentage: null,
+        amount,
+        currency,
+        isDiscounted: false,
         originalPrice: null
       };
     }
+
+    // 原始价格通常是 market_price 或 our_price
     const originalPrice = selectedRoute.market_price || selectedRoute.our_price;
-    if (!originalPrice || !selectedVehicle.discount_percentage) {
-      return {
-        amount: originalPrice || request.payment_amount,
-        discountPercentage: null,
-        originalPrice
-      };
-    }
-    const discountedAmount = originalPrice * (selectedVehicle.discount_percentage / 100);
+    const isDiscounted = amount < (originalPrice || 0);
+
     return {
-      amount: discountedAmount,
-      discountPercentage: selectedVehicle.discount_percentage,
+      amount,
+      currency,
+      isDiscounted,
       originalPrice
     };
   };
-  const priceInfo = getDiscountedPrice();
+  const priceInfo = getPriceInfo();
   return <>
       <Card className={`transition-all duration-200 hover:shadow-md ${request.status === 'completed' ? 'opacity-75 bg-gray-50' : isUpcoming(request.requested_time) ? 'border-orange-200 bg-orange-50' : 'bg-white'}`}>
         <CardHeader className="pb-3">
@@ -242,17 +246,19 @@ const RideRequestCard: React.FC<RideRequestCardProps> = ({
                 <span className="font-medium">感谢费</span>
               </div>
               <div className="mt-1 text-purple-600">
-                {priceInfo.discountPercentage ? <div>
+                <div className="flex flex-col">
+                  {priceInfo.isDiscounted ? <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="line-through text-gray-500">原价: {priceInfo.originalPrice} {request.payment_currency}</span>
+                      <span className="line-through text-gray-500">原价: {priceInfo.originalPrice} {priceInfo.currency}</span>
                       <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">
-                        {priceInfo.discountPercentage}% 折扣
+                        已享社区优惠
                       </Badge>
                     </div>
                     <div className="font-semibold">
-                      折后价: {priceInfo.amount.toFixed(2)} {request.payment_currency}
+                      折后价: {priceInfo.amount.toFixed(2)} {priceInfo.currency}
                     </div>
-                  </div> : <span>金额: {priceInfo.amount} {request.payment_currency}</span>}
+                  </div> : <span>金额: {priceInfo.amount} {priceInfo.currency}</span>}
+                </div>
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <Badge className={request.payment_status === 'confirmed' ? 'bg-green-100 text-green-700' : request.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>

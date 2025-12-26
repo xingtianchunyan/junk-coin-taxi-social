@@ -7,18 +7,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MapPin, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
-}
+import { PresetDestination } from '@/types/RideRequest';
 
 interface DestinationSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (destination: Destination) => void;
-  selectedDestination: Destination | null;
+  onSelect: (destination: PresetDestination) => void;
+  selectedDestination: PresetDestination | null;
 }
 
 const DestinationSelector: React.FC<DestinationSelectorProps> = ({
@@ -27,7 +22,7 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
   onSelect,
   selectedDestination
 }) => {
-  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinations, setDestinations] = useState<PresetDestination[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +38,14 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
       const { data, error } = await supabase.rpc('get_approved_destinations');
 
       if (error) throw error;
-      setDestinations(data || []);
+      
+      // 处理日期格式转换
+      const formattedData = (data || []).map((item: any) => ({
+        ...item,
+        created_at: new Date(item.created_at)
+      }));
+      
+      setDestinations(formattedData);
     } catch (error) {
       console.error('加载目的地失败:', error);
     } finally {
@@ -51,7 +53,7 @@ const DestinationSelector: React.FC<DestinationSelectorProps> = ({
     }
   };
 
-  const handleSelect = (destination: Destination) => {
+  const handleSelect = (destination: PresetDestination) => {
     onSelect(destination);
     onOpenChange(false);
   };

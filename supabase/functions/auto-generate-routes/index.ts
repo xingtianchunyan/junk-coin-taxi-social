@@ -1,4 +1,6 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -12,7 +14,7 @@ interface AutoGenerateRequest {
   gaode_api_key?: string; // 可选，用于实际API调用
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -147,7 +149,11 @@ async function getDestinationInfo(address: string, gaodeKey: string): Promise<{
 }
 
 // 按行政区划搜索交通枢纽
-async function searchHubsByAdministrativeDivision(destinationInfo: any, gaodeKey: string): Promise<Array<{name: string, address: string, type: string, coordinates?: string}>> {
+async function searchHubsByAdministrativeDivision(destinationInfo: {
+  district?: string;
+  city?: string;
+  province?: string;
+}, gaodeKey: string): Promise<Array<{name: string, address: string, type: string, coordinates?: string}>> {
   const allHubs: Array<{name: string, address: string, type: string, coordinates?: string}> = []
   
   // 定义搜索类型和关键词
@@ -209,7 +215,9 @@ async function searchHubsByAdministrativeDivision(destinationInfo: any, gaodeKey
 }
 
 // 根据距离和类型筛选交通枢纽
-async function filterHubsByDistanceAndType(destinationInfo: any, hubs: Array<{name: string, address: string, type: string, coordinates?: string}>, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
+async function filterHubsByDistanceAndType(destinationInfo: {
+  coordinates: string;
+}, hubs: Array<{name: string, address: string, type: string, coordinates?: string}>, gaodeKey: string): Promise<Array<{name: string, address: string, type: string}>> {
   const distanceLimits = {
     'airport': 200000, // 200公里
     'high_speed_rail': 100000, // 100公里

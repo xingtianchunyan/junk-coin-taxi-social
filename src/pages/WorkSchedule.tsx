@@ -7,19 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Car, CheckCircle, XCircle, Plus, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import DestinationSelector from '@/components/DestinationSelector';
 import RideRequestCard from '@/components/RideRequestCard';
 import { useToast } from '@/hooks/use-toast';
 import { vehicleService } from '@/services/vehicleService'; // keep
 import { Vehicle } from '@/types/Vehicle';
-import { LuggageItem } from '@/types/RideRequest';
+import { LuggageItem, PresetDestination, FixedRoute, RideRequest } from '@/types/RideRequest';
 const WorkSchedule: React.FC = () => {
-  const [selectedDestination, setSelectedDestination] = useState<any>(null);
+  const [selectedDestination, setSelectedDestination] = useState<PresetDestination | null>(null);
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<string>('');
-  const [fixedRoutes, setFixedRoutes] = useState<any[]>([]);
-  const [rideRequests, setRideRequests] = useState<any[]>([]);
+  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
+  const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [driverVehicle, setDriverVehicle] = useState<Vehicle | null>(null);
   const [newRoute, setNewRoute] = useState({
@@ -41,12 +41,12 @@ const WorkSchedule: React.FC = () => {
   const {
     clearAccessCode,
     accessCode,
-    client,
-  } = useAccessCode();
+    privClient: client,
+  } = useAuthStore();
   const navigate = useNavigate();
 
   // 安全解析行李数据的辅助函数
-  const parseLuggageData = (luggage: any): LuggageItem[] => {
+  const parseLuggageData = (luggage: string | LuggageItem[] | null | undefined): LuggageItem[] => {
     if (!luggage) return [];
     if (Array.isArray(luggage)) return luggage;
     if (typeof luggage === 'string') {
@@ -185,7 +185,7 @@ const WorkSchedule: React.FC = () => {
   }, [selectedDestination, driverVehicle]);
 
   // 检查行李是否能装入车辆后备箱
-  const canFitLuggage = (requestLuggage: any, vehicleTrunk: {
+  const canFitLuggage = (requestLuggage: LuggageItem[] | string | null | undefined, vehicleTrunk: {
     length: number;
     width: number;
     height: number;
@@ -202,7 +202,7 @@ const WorkSchedule: React.FC = () => {
   // 智能分组函数 - 根据司机车辆容量进行分组
   const getDriverGroupedRequests = () => {
     if (!driverVehicle) return {};
-    const groups: Record<string, Record<string, any[][]>> = {};
+    const groups: Record<string, Record<string, RideRequest[][]>> = {};
     rideRequests.sort((a, b) => new Date(a.requested_time).getTime() - new Date(b.requested_time).getTime()).forEach(req => {
       const requestDate = new Date(req.requested_time).toDateString();
       const hour = new Date(req.requested_time).getHours();
@@ -335,7 +335,7 @@ const WorkSchedule: React.FC = () => {
   };
 
   // 计算司机工作时间冲突
-  const calculateDriverWorkTime = (requests: any[], route: any) => {
+  const calculateDriverWorkTime = (requests: RideRequest[], route: FixedRoute) => {
     if (!requests.length || !route) return null;
 
     // 获取时间最早和最晚的请求
@@ -347,7 +347,7 @@ const WorkSchedule: React.FC = () => {
     const routeDuration = route.estimated_duration_minutes || 60; // 默认60分钟
 
     // 判断固定路线的起点是否是目的地
-    const isStartFromDestination = selectedDestination && route.start_location.includes(selectedDestination.name) || route.start_location.includes(selectedDestination.address);
+    const isStartFromDestination = selectedDestination && (route.start_location.includes(selectedDestination.name) || (selectedDestination.address && route.start_location.includes(selectedDestination.address)));
     let workStartTime: Date;
     let workEndTime: Date;
     if (isStartFromDestination) {
@@ -369,15 +369,16 @@ const WorkSchedule: React.FC = () => {
   };
 
   // 检查司机是否有时间冲突
-  const checkDriverTimeConflict = (newRequests: any[], newRoute: any) => {
+  const checkDriverTimeConflict = (newRequests: RideRequest[], newRoute: FixedRoute) => {
     // 获取司机当前所有处理中的请求
     const currentProcessingRequests = rideRequests.filter(req => req.processing_driver_id && req.status === 'processing');
     if (currentProcessingRequests.length === 0) return false;
 
     // 按路线分组
-    const existingGroups: Record<string, any[]> = {};
+    const existingGroups: Record<string, RideRequest[]> = {};
     currentProcessingRequests.forEach(req => {
       const routeId = req.fixed_route_id;
+      if (!routeId) return; // Skip if no routeId
       if (!existingGroups[routeId]) existingGroups[routeId] = [];
       existingGroups[routeId].push(req);
     });
@@ -425,11 +426,11 @@ const WorkSchedule: React.FC = () => {
 
       // 获取同一组的所有请求（同一时段、同一路线）
       const groupedRequests = getDriverGroupedRequests();
-      let targetGroup: any[] = [];
+      let targetGroup: RideRequest[] = [];
       Object.values(groupedRequests).forEach(periodGroups => {
         Object.values(periodGroups).forEach(routeGroups => {
           routeGroups.forEach(group => {
-            if (group.some((req: any) => req.id === requestId)) {
+            if (group.some((req: RideRequest) => req.id === requestId)) {
               targetGroup = group;
             }
           });
@@ -639,7 +640,12 @@ const WorkSchedule: React.FC = () => {
           </Card>}
       </div>
       
-      <DestinationSelector open={showDestinationSelector} onOpenChange={setShowDestinationSelector} onSelect={setSelectedDestination} selectedDestination={selectedDestination} />
+      <DestinationSelector 
+        open={showDestinationSelector} 
+        onOpenChange={setShowDestinationSelector} 
+        onSelect={(dest) => setSelectedDestination(dest)} 
+        selectedDestination={selectedDestination} 
+      />
     </div>;
 };
 export default WorkSchedule;

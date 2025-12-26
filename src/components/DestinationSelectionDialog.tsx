@@ -8,18 +8,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MapPin, Info, CheckCircle, Users, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { rideRequestService } from '@/services/rideRequestService';
-
-interface Destination {
-  id: string;
-  name: string;
-  address: string;
-  description: string | null;
-}
+import { PresetDestination } from '@/types/RideRequest';
 
 interface DestinationSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDestinationSelected: (destination: Destination) => void;
+  onDestinationSelected: (destination: PresetDestination) => void;
 }
 
 const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
@@ -27,7 +21,7 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
   onOpenChange,
   onDestinationSelected
 }) => {
-  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinations, setDestinations] = useState<PresetDestination[]>([]);
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -42,10 +36,7 @@ const DestinationSelectionDialog: React.FC<DestinationSelectionDialogProps> = ({
     try {
       setLoading(true);
       const data = await rideRequestService.getPresetDestinations();
-      setDestinations(data.map(d => ({
-        ...d,
-        description: d.description || null
-      })));
+      setDestinations(data);
     } catch (error) {
       console.error('加载目的地失败:', error);
       toast({

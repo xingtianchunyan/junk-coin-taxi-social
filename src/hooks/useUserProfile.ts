@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export type UserRole = 'passenger' | 'driver' | 'community_admin';
 
@@ -16,10 +16,10 @@ export const useUserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { accessCode, client } = useAccessCode();
+  const { accessCode, privClient: client } = useAuthStore();
 
   const fetchProfile = async () => {
-    if (!accessCode) {
+    if (!accessCode || !client) {
       setProfile(null);
       setLoading(false);
       return;
@@ -43,9 +43,9 @@ export const useUserProfile = () => {
       } else {
         setProfile(data);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('获取用户资料失败:', err);
-      setError(err.message || '获取用户资料失败');
+      setError(err instanceof Error ? err.message : '获取用户资料失败');
     } finally {
       setLoading(false);
     }

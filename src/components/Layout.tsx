@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAccessCode } from '@/components/AccessCodeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Web3WalletButton } from '@/components/Web3WalletButton';
 const Layout: React.FC<{
   children: React.ReactNode;
@@ -8,7 +8,7 @@ const Layout: React.FC<{
 }) => {
   const {
     hasAccess
-  } = useAccessCode();
+  } = useAuthStore();
   return <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white">
       {/* 顶部导航栏 */}
       <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
